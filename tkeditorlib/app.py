@@ -1,11 +1,12 @@
 from tkeditorlib.editor import Editor
+from tkeditorlib.filestructure import CodeStructure
 import tkinter as tk
 from tkinter import ttk
 from tkinter.messagebox import askyesnocancel, showerror
 from tkfilebrowser import askopenfilename, asksaveasfilename
 import traceback
 import os
-from subprocess import Popen, PIPE, STDOUT
+from subprocess import Popen
 
 
 class App(tk.Tk):
@@ -18,9 +19,8 @@ class App(tk.Tk):
         bg = style.lookup('TFrame', 'background', default='light grey')
         self.configure(bg=bg)
         self.file = ''
-
+        self.codestruct = CodeStructure(self)
         self.editor = Editor(self)
-        self.editor.pack(fill='both', expand=True)
 
         # --- menu
         menu = tk.Menu(self, tearoff=False, bg=bg)
@@ -51,6 +51,7 @@ class App(tk.Tk):
         menu.add_command(label='Run', command=self.run)
         self.configure(menu=menu)
 
+        self.codestruct.set_callback(self.editor.goto_item)
         self.editor.text.bind('<<Modified>>', lambda e: self._edit_modified())
 
         self.bind('<Control-n>', self.new)
@@ -62,8 +63,11 @@ class App(tk.Tk):
             self.open(file)
         self.protocol('WM_DELETE_WINDOW', self.quit)
 
+        # placement
+        self.codestruct.pack(side='left', fill='y')
+        self.editor.pack(side='left', fill='both', expand=True)
+
     def _edit_modified(self, *args):
-        print(self.editor.text.edit_modified())
         self.editor.text.edit_modified(*args)
         file = self.file if self.file else 'TkEditor'
         if self.editor.text.edit_modified():
@@ -93,6 +97,7 @@ class App(tk.Tk):
         self.editor.delete('1.0', 'end')
         self.editor.text.edit_reset()
         self._edit_modified(0)
+        self.codestruct.populate(self.editor.get())
 
     def open(self, file=None):
         if self.editor.text.edit_modified():
@@ -119,6 +124,7 @@ class App(tk.Tk):
             self.editor.insert('1.0', txt)
             self.editor.text.edit_reset()
             self._edit_modified(0)
+            self.codestruct.populate(self.editor.get())
 
     def saveas(self, event=None):
         initialdir, initialfile = os.path.split(os.path.abspath(self.file))
@@ -141,8 +147,10 @@ class App(tk.Tk):
             res = True
         if res:
             self._edit_modified(0)
+            self.codestruct.populate(self.editor.get())
 
     def run(self, event=None):
         self.save()
         if self.file:
-            Popen(['xfce4-terminal', '-e', 'python ' + self.file])
+            filename = os.path.join(os.path.dirname(__file__), 'console.py')
+            Popen(['xfce4-terminal', '-e', 'python {} {}'.format(filename,  self.file)])

@@ -1,11 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-import io
 import jedi
 from jedi import settings
-import keyword
-import builtins
-import tokenize
+from pygments import lex
+from pygments.lexers import Python3Lexer
 import tkinter as tk
 from tkinter import ttk
 from tkinter import messagebox
@@ -14,6 +12,25 @@ from tkeditorlib.autoscrollbar import AutoHideScrollbar
 from tkeditorlib.complistbox import CompListbox
 
 settings.case_insensitive_completion = False
+
+SYNTAX_HIGHLIGHTING = {
+    'Token.Text': dict(foreground='black', font="DejaVu\ Sans\ Mono 10"),
+    'Token.Punctuation': dict(foreground='#9A0800', font="DejaVu\ Sans\ Mono 10"),
+    'Token.Name': dict(foreground='black', font="DejaVu\ Sans\ Mono 10"),
+    'Token.Name.Decorator': dict(foreground='#2675C3', font="DejaVu\ Sans\ Mono 10 italic"),
+    'Token.Name.Exception': dict(foreground='#3089E3', font="DejaVu\ Sans\ Mono 10"),
+    'Token.Name.Class': dict(foreground='#00804B', font="DejaVu\ Sans\ Mono 10 bold"),
+    'Token.Name.Function': dict(foreground='dark orange', font="DejaVu\ Sans\ Mono 10 bold"),
+    'Token.Name.Builtin': dict(foreground='#3089E3', font="DejaVu\ Sans\ Mono 10 "),
+    'Token.Name.Builtin.Pseudo': dict(foreground='#3089E3', font="DejaVu\ Sans\ Mono 10 italic"),
+    'Token.Keyword': dict(foreground='#000257', font="DejaVu\ Sans\ Mono 10 bold"),
+    'Token.Literal.String': dict(foreground='#E32000', font="DejaVu\ Sans\ Mono 10"),
+    'Token.Literal.Number': dict(foreground='#007502', font="DejaVu\ Sans\ Mono 10"),
+    'Token.Comment': dict(foreground='blue', font="DejaVu\ Sans\ Mono 10 italic"),
+    'Token.Comment.Hashbang': dict(foreground='blue', font="DejaVu\ Sans\ Mono 10 bold italic"),
+    'Token.Operator': dict(foreground='#9A0800', font="DejaVu\ Sans\ Mono 10"),
+    'Token.Operator.Word': dict(foreground='#000257', font="DejaVu\ Sans\ Mono 10 bold"),
+}
 
 
 class Editor(ttk.Frame):
@@ -30,20 +47,25 @@ class Editor(ttk.Frame):
         self._comp = CompListbox(self)
         self._comp.set_callback(self._comp_sel)
 
-        self._multiline_string_count = 0
+        style = ttk.Style(self)
+        bg = style.lookup('TFrame', 'background', default='light grey')
+        select_fg = style.lookup('TEntry', 'selectforeground', ['focus'])
+        select_bg = style.lookup('TEntry', 'selectbackground', ['focus'])
 
         self.text = tk.Text(self, fg="black", bg="white", undo=True,
                             autoseparators=True,
                             highlightthickness=0, wrap='none',
+                            selectbackground=select_bg,
+                            inactiveselectbackground=select_bg,
+                            selectforeground=select_fg,
                             insertbackground='black', font="DejaVu\ Sans\ Mono 10")
         self.sep = tk.Frame(self.text, bg='gray60')
         self.sep.place(y=0, relheight=1, x=632, width=1)
 
-        style = ttk.Style(self)
-
         self.line_nb = tk.Text(self, width=5,
-                               bg=style.lookup('TFrame', 'background', default='light grey'),
-                               fg='gray40', highlightthickness=0, relief='flat',
+                               bg=bg, selectbackground=bg,
+                               fg='gray40', selectforeground='gray40',
+                               highlightthickness=0, relief='flat',
                                font="DejaVu\ Sans\ Mono 10")
         self.line_nb.insert('1.0', '1')
         self.line_nb.tag_configure('right', justify='right')
@@ -106,16 +128,8 @@ class Editor(ttk.Frame):
         self.frame_search.grid_remove()
 
         # syntax highlighting
-        self.text.tag_configure('keyword', foreground='#000257', font="DejaVu\ Sans\ Mono 10 bold")
-        self.text.tag_configure('defname', foreground='dark orange', font="DejaVu\ Sans\ Mono 10 bold")
-        self.text.tag_configure('classname', foreground='#00804B', font="DejaVu\ Sans\ Mono 10 bold")
-        self.text.tag_configure('builtin', foreground='#3089E3', font="DejaVu\ Sans\ Mono 10 ")
-        self.text.tag_configure('decorator', foreground='#2675C3', font="DejaVu\ Sans\ Mono 10 italic")
-        self.text.tag_configure('number', foreground='#007502', font="DejaVu\ Sans\ Mono 10")
-        self.text.tag_configure('string', foreground='#E32000', font="DejaVu\ Sans\ Mono 10")
-        self.text.tag_configure('operator', foreground='#9A0800', font="DejaVu\ Sans\ Mono 10")
-        self.text.tag_configure('comment', foreground='blue', font="DejaVu\ Sans\ Mono 10 italic")
-        self.text.tag_configure('name', foreground='black', font="DejaVu\ Sans\ Mono 10")
+        for tag, opts in SYNTAX_HIGHLIGHTING.items():
+            self.text.tag_configure(tag, selectforeground=select_fg, **opts)
 
         # bindings
         self.text.bind("<KeyRelease>", self.on_key)
@@ -132,8 +146,8 @@ class Editor(ttk.Frame):
         self.text.bind("<braceright>", self.close_brackets)
         self.text.bind("<Control-z>", self.undo)
         self.text.bind("<Control-y>", self.redo)
-        self.text.bind("<Control-d>", self.duplicate_line)
-        self.text.bind("<Control-k>", self.delete_line)
+        self.text.bind("<Control-d>", self.duplicate_lines)
+        self.text.bind("<Control-k>", self.delete_lines)
         self.text.bind("<Control-a>", self.select_all)
         self.text.bind("<Return>", self.on_return)
         self.text.bind("<BackSpace>", self.on_backspace)
@@ -148,6 +162,9 @@ class Editor(ttk.Frame):
         self.line_nb.bind('<5>', self._on_b5)
         self.bind('<FocusOut>', lambda e: self._comp.withdraw())
 
+        self.text.focus_set()
+        self.text.edit_modified(0)
+
     def _on_b4(self, event):
         self.yview('scroll', -3, 'units')
         return "break"
@@ -159,96 +176,69 @@ class Editor(ttk.Frame):
     def undo(self, event):
         try:
             self.text.edit_undo()
-            self.parse_all()
-            self.update_nb_line()
         except tk.TclError:
             pass
+        finally:
+            self.update_nb_line()
+            self.parse_all()
+        return "break"
 
     def redo(self, event):
         try:
             self.text.edit_redo()
-            self.parse_all()
-            self.update_nb_line()
         except tk.TclError:
             pass
+        finally:
+            self.update_nb_line()
+            self.parse_all()
         return "break"
 
-    def colorize(self, text, tag, row):
-        start = "%i.%i" % (row + text.start[0], text.start[1])
-        end = "%i.%i" % (row + text.end[0], text.end[1])
-        if tag == 'name' and 'string' in self.text.tag_names(start):
-            return
-        for t in ['name', 'operator']:
-            self.text.tag_remove(t, start, end)
-        self.text.tag_add(tag, start, end)
-
-    def parse(self, text):
-        try:
-            row = int(self.text.index("insert").split(".")[0]) - len(text.splitlines())
-            if text and text[-1] == '\n':
-                row -= 1
-            if row < 0:
-                row = 0
-            for i in tokenize.tokenize(io.BytesIO(text.encode("utf-8")).readline):
-                if i.type == 1:
-                    if keyword.iskeyword(i.string):
-                        self.colorize(i, "keyword", row)
-                    elif i.string in dir(builtins) or i.string in ['self', 'cls']:
-                        self.colorize(i, "builtin", row)
-                    elif 'def ' + i.string in i.line:
-                        self.colorize(i, "defname", row)
-                    elif 'class ' + i.string in i.line:
-                        self.colorize(i, "classname", row)
-                    elif '@' + i.string in i.line:
-                        self.colorize(i, "decorator", row)
-                    elif '"' + i.string in i.line or "'" + i.string in i.line:
-                        self.colorize(i, "string", row)
-                    else:
-                        self.colorize(i, "name", row)
-                elif i.type == 2:
-                    self.colorize(i, "number", row)
-                elif i.type == 3:
-                    self.colorize(i, "string", row)
-                elif i.type == 53:
-                    if i.string == '@':
-                        self.colorize(i, "decorator", row)
-                    else:
-                        self.colorize(i, "operator", row)
-                elif i.type == 55:
-                    self.colorize(i, "comment", row)
-        except tokenize.TokenError:
-            pass
+    def parse(self, text, start):
+        data = text
+        while data and '\n' == data[0]:
+            start = self.text.index('%s+1c' % start)
+            data = data[1:]
+        self.text.mark_set('range_start', start)
+        for t in SYNTAX_HIGHLIGHTING:
+            self.text.tag_remove(t, start, "range_start +%ic" % len(data))
+        for token, content in lex(data, Python3Lexer()):
+            self.text.mark_set("range_end", "range_start + %ic" % len(content))
+            for t in token.split():
+                self.text.tag_add(str(t), "range_start", "range_end")
+            self.text.mark_set("range_start", "range_end")
 
     def parse_all(self):
-        index = self.text.index('insert')
-        self.text.mark_set('insert', 'end')
-        self.parse(self.text.get('1.0', 'end'))
-        self.text.mark_set('insert', index)
+        self.parse(self.text.get('1.0', 'end'), '1.0')
 
     def on_down(self, event):
         if self._comp.winfo_ismapped():
             self._comp.sel_next()
             return "break"
+        else:
+            self.parse(self.text.get('insert linestart', 'insert lineend'), 'insert linestart')
 
     def on_up(self, event):
         if self._comp.winfo_ismapped():
             self._comp.sel_prev()
             return "break"
+        else:
+            self.parse(self.text.get('insert linestart', 'insert lineend'), 'insert linestart')
 
     def on_key(self, event):
         key = event.keysym
         if key in ('Return',) + tuple(self._autoclose):
             return
-        else:
-            self._multiline_string_count = 0
-            self.parse(self.text.get("insert linestart", "insert lineend"))
-            if self._comp.winfo_ismapped():
-                if event.char.isalnum():
-                    self._comp_display()
-                elif key not in ['Tab', 'Down', 'Up']:
-                    self._comp.withdraw()
-            elif key == 'x':
-                self.update_nb_line()
+        elif self._comp.winfo_ismapped():
+            if event.char.isalnum():
+                self._comp_display()
+            elif key not in ['Tab', 'Down', 'Up']:
+                self._comp.withdraw()
+        elif (event.char in [' ', ':', ',', ';', '(', '[', '{', ')', ']', '}'] or
+              key in ['BackSpace', 'Left', 'Right']):
+            self.parse(self.text.get("insert linestart", "insert lineend"),
+                       "insert linestart")
+        elif key == 'x':
+            self.update_nb_line()
 
     def select_all(self, event):
         self.text.tag_add('sel', '1.0', 'end')
@@ -258,14 +248,14 @@ class Editor(ttk.Frame):
         sel = self.text.tag_ranges('sel')
         if sel:
             text = self.text.get('sel.first', 'sel.last')
+            index = self.text.insert('sel.first')
             self.text.insert('sel.first', event.char)
             self.text.insert('sel.last', self._autoclose[event.char])
             self.text.mark_set('insert', 'sel.last+1c')
             self.text.tag_remove('sel', 'sel.first', 'sel.last')
-            self.parse(event.char + text + self._autoclose[event.char])
+            self.parse(event.char + text + self._autoclose[event.char], index)
         else:
-            self.text.insert('insert', event.char + self._autoclose[event.char])
-            self.parse(event.char + self._autoclose[event.char])
+            self.text.insert('insert', event.char + self._autoclose[event.char], 'Token.Punctuation')
             self.text.mark_set('insert', 'insert-1c')
         return 'break'
 
@@ -277,25 +267,23 @@ class Editor(ttk.Frame):
                 char = event.char * 3
             else:
                 char = event.char
-
             self.text.insert('sel.first', char)
             self.text.insert('sel.last', char)
             self.text.mark_set('insert', 'sel.last+%ic' % (len(char)))
             self.text.tag_remove('sel', 'sel.first', 'sel.last')
-            self.parse(char + text + char)
         elif self.text.get('insert') == event.char:
             self.text.mark_set('insert', 'insert+1c')
         else:
             self.text.insert('insert', event.char * 2)
             self.text.mark_set('insert', 'insert-1c')
-            self.parse_all()
+        self.parse_all()
         return 'break'
 
     def close_brackets(self, event):
         if self.text.get('insert') == event.char:
             self.text.mark_set('insert', 'insert+1c')
         else:
-            self.text.insert('insert', event.char)
+            self.text.insert('insert', event.char, 'Token.Punctuation')
         return 'break'
 
     def on_paste(self, event):
@@ -306,18 +294,30 @@ class Editor(ttk.Frame):
         txt = self.clipboard_get()
         self.text.insert("insert", txt)
         self.update_nb_line()
-        self.parse(txt)
+        self.parse_all()
+        self.see('insert')
         return "break"
 
-    def duplicate_line(self, event):
-        line = self.text.get('insert linestart', 'insert lineend')
-        self.text.insert('insert lineend', '\n%s' % line)
-        self.parse(line)
+    def duplicate_lines(self, event):
+        sel = self.text.tag_ranges('sel')
+        if sel:
+            index = 'sel.last'
+            line = self.text.get('sel.first linestart', 'sel.last lineend')
+        else:
+            index = 'insert'
+            line = self.text.get('insert linestart', 'insert lineend')
+        start = self.text.index('%s lineend +1c' % index)
+        self.text.insert('%s lineend' % index, '\n%s' % line)
+        self.parse(line, start)
         self.update_nb_line()
         return "break"
 
-    def delete_line(self, event):
-        self.text.delete('insert linestart', 'insert lineend +1c')
+    def delete_lines(self, event):
+        sel = self.text.tag_ranges('sel')
+        if sel:
+            self.text.delete('sel.first linestart', 'sel.last lineend +1c')
+        else:
+            self.text.delete('insert linestart', 'insert lineend +1c')
         self.update_nb_line()
         return "break"
 
@@ -390,8 +390,9 @@ class Editor(ttk.Frame):
         sel = self.text.tag_ranges('sel')
         if sel:
             self.text.delete('sel.first', 'sel.last')
-        t = self.text.get("insert linestart", "insert lineend")
-        self.parse(t)
+        index = self.text.index('insert linestart')
+        t = self.text.get("insert linestart", "insert")
+        self.parse(t, index)
         indent = re.match(r'( )*', t).group()
         colon = re.search(r':( )*$', t)
         if colon:
@@ -403,6 +404,7 @@ class Editor(ttk.Frame):
         self.update_nb_line()
         # update whole syntax highlighting
         self.parse_all()
+        self.see('insert')
         return "break"
 
     def update_nb_line(self):
@@ -544,7 +546,7 @@ class Editor(ttk.Frame):
                 self.text.mark_set('insert', '%s+%ic' % (res, self._search_count.get()))
             else:
                 self.text.mark_set('insert', '%s-1c' % (res))
-            self.text.see(res)
+            self.see(res)
         else:
             if notify_no_match:
                 messagebox.showinfo("Search complete", "No matches found")
@@ -554,8 +556,7 @@ class Editor(ttk.Frame):
         def goto(event):
             try:
                 line = int(e.get())
-                self.text.see('%i.0' % line)
-                self.line_nb.see('%i.0' % line)
+                self.see('%i.0' % line)
                 self.text.mark_set('insert', '%i.0' % line)
             except ValueError:
                 pass
@@ -573,6 +574,11 @@ class Editor(ttk.Frame):
         e.focus_set()
         e.bind('<Return>', goto)
 
+    def goto_item(self, start, end):
+        self.see(start)
+        self.text.tag_remove('sel', '1.0', 'end')
+        self.text.tag_add('sel', start, end)
+
     def get(self):
         return self.text.get('1.0', 'end')
 
@@ -586,3 +592,6 @@ class Editor(ttk.Frame):
         self.update_nb_line()
         self.parse_all()
 
+    def see(self, index):
+        self.text.see(index)
+        self.line_nb.see(index)

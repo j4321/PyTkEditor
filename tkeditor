@@ -2,6 +2,5 @@
 # -*- coding: utf-8 -*-
 import sys
 from tkeditorlib.app import App
-
-root = App()
-root.mainloop(*sys.argv[1:])
+app = App(*sys.argv[1:])
+app.mainloop()
