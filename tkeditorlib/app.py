@@ -1,4 +1,5 @@
 from tkeditorlib.editor import Editor
+from tkeditorlib.syntax_check import check_file
 from tkeditorlib.filestructure import CodeStructure
 import tkinter as tk
 from tkinter import ttk
@@ -16,11 +17,18 @@ class App(tk.Tk):
         style = ttk.Style(self)
         style.theme_use('clam')
         style.configure('border.TFrame', borderwidth=1, relief='sunken')
+        style.layout('flat.Treeview', [('Treeview.treearea', {'sticky': 'nswe'})])
         bg = style.lookup('TFrame', 'background', default='light grey')
         self.configure(bg=bg)
         self.file = ''
-        self.codestruct = CodeStructure(self)
-        self.editor = Editor(self)
+
+        pane = ttk.PanedWindow(self, orient='horizontal')
+        self.codestruct = CodeStructure(pane)
+        self.editor = Editor(pane)
+        # placement
+        pane.add(self.codestruct, weight=1)
+        pane.add(self.editor, weight=1)
+        pane.pack(fill='both', expand=True)
 
         # --- menu
         menu = tk.Menu(self, tearoff=False, bg=bg)
@@ -63,9 +71,6 @@ class App(tk.Tk):
             self.open(file)
         self.protocol('WM_DELETE_WINDOW', self.quit)
 
-        # placement
-        self.codestruct.pack(side='left', fill='y')
-        self.editor.pack(side='left', fill='both', expand=True)
 
     def _edit_modified(self, *args):
         self.editor.text.edit_modified(*args)
@@ -78,7 +83,7 @@ class App(tk.Tk):
             self.menu_file.entryconfigure(2, state='disabled')
 
     def quit(self):
-        if self.editor.text.edit_modified():
+        if self.editor.text.edit_modified() and self.editor.get_end() != '1.0':
             rep = askyesnocancel('Confirmation', 'The file %r has been modified. Do you want to save it?' % self.file)
             if rep is None:
                 return
@@ -87,7 +92,7 @@ class App(tk.Tk):
         self.destroy()
 
     def new(self, event=None):
-        if self.editor.text.edit_modified():
+        if self.editor.text.edit_modified() and self.editor.get_end() != '1.0':
             rep = askyesnocancel('Confirmation', 'The file %r has been modified. Do you want to save it?' % self.file)
             if rep is None:
                 return
@@ -100,7 +105,7 @@ class App(tk.Tk):
         self.codestruct.populate(self.editor.get())
 
     def open(self, file=None):
-        if self.editor.text.edit_modified():
+        if self.editor.text.edit_modified() and self.editor.get_end() != '1.0':
             rep = askyesnocancel('Confirmation', 'The file %r has been modified. Do you want to save it?' % self.file)
             if rep is None:
                 return
@@ -125,6 +130,7 @@ class App(tk.Tk):
             self.editor.text.edit_reset()
             self._edit_modified(0)
             self.codestruct.populate(self.editor.get())
+            self.check_syntax()
 
     def saveas(self, event=None):
         initialdir, initialfile = os.path.split(os.path.abspath(self.file))
@@ -147,10 +153,16 @@ class App(tk.Tk):
             res = True
         if res:
             self._edit_modified(0)
-            self.codestruct.populate(self.editor.get())
+            self.codestruct.populate(self.editor.get(strip=False))
+            self.check_syntax()
 
     def run(self, event=None):
         self.save()
         if self.file:
             filename = os.path.join(os.path.dirname(__file__), 'console.py')
-            Popen(['xfce4-terminal', '-e', 'python {} {}'.format(filename,  self.file)])
+            Popen(['xfce4-terminal', '-e', 'python {} {}'.format(filename, self.file)])
+
+    def check_syntax(self):
+        if self.file:
+            results = check_file(self.file)
+            self.editor.show_syntax_issues(results)

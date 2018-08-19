@@ -6,28 +6,29 @@ Created on Sat Aug 18 15:04:09 2018
 @author: juliette
 """
 from tkinter import PhotoImage
-from tkinter.ttk import Treeview, Frame, Label, Combobox
-from tokenize import tokenize
+from tkinter.ttk import Treeview, Frame, Label, Separator
+from tkinter.font import Font
+from tokenize import tokenize, TokenError
 from tkeditorlib.autoscrollbar import AutoHideScrollbar as Scrollbar
 from tkeditorlib.autocomplete import AutoCompleteCombobox
+from tkeditorlib.constants import IM_CLASS, IM_FCT, IM_HFCT, IM_SEP
 from io import BytesIO
-import os
-
-IM_CLASS = os.path.join(os.path.dirname(__file__), 'images', 'c.png')
-IM_FCT = os.path.join(os.path.dirname(__file__), 'images', 'f.png')
-IM_HFCT = os.path.join(os.path.dirname(__file__), 'images', 'hf.png')
 
 
 class CodeTree(Treeview):
     def __init__(self, master):
-        Treeview.__init__(self, master, show='tree', selectmode='none')
+        Treeview.__init__(self, master, show='tree', selectmode='none', style='flat.Treeview')
         self._img_class = PhotoImage(file=IM_CLASS, master=self)
         self._img_fct = PhotoImage(file=IM_FCT, master=self)
         self._img_hfct = PhotoImage(file=IM_HFCT, master=self)
+        self._img_sep = PhotoImage(file=IM_SEP, master=self)
+
+        self.font = Font(self, font="TkDefaultFont 9")
 
         self.tag_configure('class', image=self._img_class)
         self.tag_configure('def', image=self._img_fct)
         self.tag_configure('_def', image=self._img_hfct)
+        self.tag_configure('#', image=self._img_sep)
         self.callback = None
 
         self.bind('<1>', self._on_click)
@@ -50,32 +51,53 @@ class CodeTree(Treeview):
         self.delete(*self.get_children())
         tokens = tokenize(BytesIO(text.encode()).readline)
         names = set()
+        max_length = 20
         while True:
             try:
                 token = tokens.send(None)
             except StopIteration:
                 break
-            if token.type == 1:  # name
-                if token.string in ['class', 'def']:
-                    obj_type = token.string
-                    index = token.start[1] // 4
-                    token = tokens.send(None)
-                    name = token.string
-                    names.add(name)
-                    if name[0] == '_' and obj_type == 'def':
-                        obj_type = '_def'
-                    parent = ''
-                    for i in range(index):
-                        parent = self.get_children(parent)[-1]
-                    self.insert(parent, 'end', text=name,
-                                tag=(obj_type, name),
-                                values=('%i.%i' % token.start, '%i.%i' % token.end))
+            except TokenError:
+                continue
+            add = False
+            if token.type == 1 and token.string in ['class', 'def']:
+                obj_type = token.string
+                index = token.start[1] // 4
+                token = tokens.send(None)
+                name = token.string
+                names.add(name)
+                if name[0] == '_' and obj_type == 'def':
+                    obj_type = '_def'
+                add = True
+            elif token.type == 55 and (token.string[:5] == '# ---' or 'TODO' in token.string):
+                obj_type = '#'
+                index = token.start[1] // 4
+                name = token.string[1:]
+                add = True
+
+            if add:
+                parent = ''
+                i = 0
+                children = self.get_children(parent)
+
+                while i < index and children:
+                    # avoid errors due to over indentation
+                    parent = children[-1]
+                    children = self.get_children(parent)
+                    i += 1
+
+                max_length = max(max_length, self.font.measure(name) + 18 + (i + 1) * 18)
+                self.insert(parent, 'end', text=name,
+                            tag=(obj_type, name),
+                            values=('%i.%i' % token.start, '%i.%i' % token.end))
+        self.column('#0', width=max_length)
         return names
 
 
 class CodeStructure(Frame):
     def __init__(self, master):
-        Frame.__init__(self, master, padding=1)
+        Frame.__init__(self, master, style='border.TFrame',
+                       padding=(0, 0, 1, 0))
         self.rowconfigure(0, weight=1)
         self.columnconfigure(0, weight=1)
 
@@ -84,9 +106,9 @@ class CodeStructure(Frame):
         sy = Scrollbar(self, orient='vertical', command=self.codetree.yview)
 
         self.goto_frame = Frame(self)
-        Label(self.goto_frame, text='Go to: ').pack(side='left')
+        Label(self.goto_frame, text='Go to:').pack(side='left')
         self.goto_entry = AutoCompleteCombobox(self.goto_frame, completevalues=[])
-        self.goto_entry.pack(side='left', fill='x')
+        self.goto_entry.pack(side='left', fill='x', pady=4, padx=4)
         self._goto_index = 0
 
         self.codetree.configure(xscrollcommand=sx.set,
@@ -95,7 +117,8 @@ class CodeStructure(Frame):
         self.codetree.grid(row=0, column=0, sticky='ewns')
         sx.grid(row=1, column=0, sticky='ew')
         sy.grid(row=0, column=1, sticky='ns')
-        self.goto_frame.grid(row=1, column=0, columnspan=2, sticky='ew', pady=4)
+        Separator(self, orient='horizontal').grid(row=2, column=0, columnspan=2, sticky='ew')
+        self.goto_frame.grid(row=3, column=0, columnspan=2, sticky='nsew')
 
         self.set_callback = self.codetree.set_callback
 

@@ -9,7 +9,11 @@ from tkinter import ttk
 from tkinter import messagebox
 import re
 from tkeditorlib.autoscrollbar import AutoHideScrollbar
+from tkeditorlib.constants import IM_WARN, IM_ERR
 from tkeditorlib.complistbox import CompListbox
+from tkeditorlib.tooltip import TooltipTextWrapper
+from tkeditorlib.filebar import FileBar
+
 
 settings.case_insensitive_completion = False
 
@@ -35,10 +39,14 @@ SYNTAX_HIGHLIGHTING = {
 
 class Editor(ttk.Frame):
     def __init__(self, master=None):
-        ttk.Frame.__init__(self, master, class_='Editor')
+        ttk.Frame.__init__(self, master, class_='Editor', style='border.TFrame',
+                           padding=(1, 0, 0, 0))
 
-        self.columnconfigure(1, weight=1)
+        self.columnconfigure(2, weight=1)
         self.rowconfigure(0, weight=1)
+
+        self._syntax_icons = {'warning': tk.PhotoImage(master=self, file=IM_WARN),
+                              'error': tk.PhotoImage(master=self, file=IM_ERR)}
 
         self._paste = False
         self._autoclose = {'(': ')', '[': ']', '{': '}', '"': '"', "'": "'"}
@@ -54,6 +62,7 @@ class Editor(ttk.Frame):
 
         self.text = tk.Text(self, fg="black", bg="white", undo=True,
                             autoseparators=True,
+                            relief='flat', borderwidth=0,
                             highlightthickness=0, wrap='none',
                             selectbackground=select_bg,
                             inactiveselectbackground=select_bg,
@@ -62,7 +71,7 @@ class Editor(ttk.Frame):
         self.sep = tk.Frame(self.text, bg='gray60')
         self.sep.place(y=0, relheight=1, x=632, width=1)
 
-        self.line_nb = tk.Text(self, width=5,
+        self.line_nb = tk.Text(self, width=1, cursor='arrow',
                                bg=bg, selectbackground=bg,
                                fg='gray40', selectforeground='gray40',
                                highlightthickness=0, relief='flat',
@@ -72,17 +81,30 @@ class Editor(ttk.Frame):
         self.line_nb.tag_add('right', '1.0', 'end')
         self.line_nb.configure(state='disabled')
 
+        self.syntax_checks = tk.Text(self, width=2, cursor='arrow',
+                                     state='disabled',
+                                     bg=bg, selectbackground=bg,
+                                     fg='gray40', selectforeground='gray40',
+                                     highlightthickness=0, relief='flat',
+                                     font="DejaVu\ Sans\ Mono 10")
+        self.textwrapper = TooltipTextWrapper(self.syntax_checks, background='light yellow',
+                                              foreground='black', title='Syntax')
+
         sx = AutoHideScrollbar(self, orient='horizontal', command=self.text.xview)
         sy = AutoHideScrollbar(self, orient='vertical', command=self.yview)
+        self.filebar = FileBar(self, self, width=10, bg=bg)
         self.text.configure(xscrollcommand=sx.set, yscrollcommand=sy.set)
         self.line_nb.configure(yscrollcommand=sy.set)
+        self.syntax_checks.configure(yscrollcommand=sy.set)
 
         # search and replace
-        self.frame_search = ttk.Frame(self, style='border.TFrame', padding=2)
+        self.frame_search = ttk.Frame(self, padding=2)
         self.frame_search.columnconfigure(1, weight=1)
         self.entry_search = ttk.Entry(self.frame_search)
         self.entry_search.bind('<Return>', self.search)
+        self.entry_search.bind('<Control-r>', self.replace)
         self.entry_replace = ttk.Entry(self.frame_search)
+        self.entry_replace.bind('<Control-f>', self.find)
         search_buttons = ttk.Frame(self.frame_search)
         ttk.Button(search_buttons, text='▲', padding=0, width=2,
                    command=lambda: self.search(backwards=True)).pack(side='left', padx=2, pady=4)
@@ -120,11 +142,14 @@ class Editor(ttk.Frame):
         self.replace_buttons.grid(row=1, column=2, sticky='w')
 
         # grid
-        self.text.grid(row=0, column=1, sticky='ewns')
-        self.line_nb.grid(row=0, column=0, sticky='ns')
-        sx.grid(row=1, column=1, sticky='ew')
-        sy.grid(row=0, column=2, sticky='ns')
-        self.frame_search.grid(row=2, column=0, columnspan=2, sticky='ew')
+        self.text.grid(row=0, column=2, sticky='ewns')
+        self.line_nb.grid(row=0, column=1, sticky='ns')
+        self.syntax_checks.grid(row=0, column=0, sticky='ns')
+        sx.grid(row=1, column=2, sticky='ew')
+        sy.grid(row=0, column=4, sticky='ns')
+        self.filebar.grid(row=0, column=3, sticky='ns')
+        ttk.Separator(self, orient='horizontal').grid(row=2, column=0, columnspan=5, sticky='ew')
+        self.frame_search.grid(row=3, column=0, columnspan=5, sticky='ew')
         self.frame_search.grid_remove()
 
         # syntax highlighting
@@ -133,6 +158,7 @@ class Editor(ttk.Frame):
 
         # bindings
         self.text.bind("<KeyRelease>", self.on_key)
+        self.text.bind("<ButtonPress>", self._on_press)
         self.text.bind("<Down>", self.on_down)
         self.text.bind("<Up>", self.on_up)
         self.text.bind("<<Paste>>", self.on_paste)
@@ -156,6 +182,8 @@ class Editor(ttk.Frame):
         self.text.bind('<Control-f>', self.find)
         self.text.bind('<Control-r>', self.replace)
         self.text.bind('<Control-l>', self.goto_line)
+        self.text.bind('<Control-e>', self.toggle_comment)
+        self.text.bind('<Configure>', self.filebar.update_highlight)
         self.text.bind('<4>', self._on_b4)
         self.line_nb.bind('<4>', self._on_b4)
         self.text.bind('<5>', self._on_b5)
@@ -164,6 +192,10 @@ class Editor(ttk.Frame):
 
         self.text.focus_set()
         self.text.edit_modified(0)
+
+    def _on_press(self, event):
+        if self._comp.winfo_ismapped():
+            self._comp.withdraw()
 
     def _on_b4(self, event):
         self.yview('scroll', -3, 'units')
@@ -298,7 +330,29 @@ class Editor(ttk.Frame):
         self.see('insert')
         return "break"
 
+    def toggle_comment(self, event):
+        sel = self.text.tag_ranges('sel')
+        if sel:
+            lines = self.text.get('sel.first linestart', 'sel.last lineend').splitlines()
+            index = self.text.index('sel.first linestart')
+            self.text.delete('sel.first linestart', 'sel.last lineend')
+        else:
+            lines = self.text.get('insert linestart', 'insert lineend').splitlines()
+            index = self.text.index('insert linestart')
+            self.text.delete('insert linestart', 'insert lineend')
+
+        for i, line in enumerate(lines):
+            res = re.match(r'^( )*# ', line)
+            if res:
+                lines[i] = res.group()[:-2] + line[len(res.group()):]
+            elif not re.match(r'^( )*$', line):
+                lines[i] = '# ' + line
+        txt = '\n'.join(lines)
+        self.text.insert(index, txt)
+        self.parse(txt, index)
+
     def duplicate_lines(self, event):
+        self.text.edit_separator()
         sel = self.text.tag_ranges('sel')
         if sel:
             index = 'sel.last'
@@ -313,6 +367,7 @@ class Editor(ttk.Frame):
         return "break"
 
     def delete_lines(self, event):
+        self.text.edit_separator()
         sel = self.text.tag_ranges('sel')
         if sel:
             self.text.delete('sel.first linestart', 'sel.last lineend +1c')
@@ -411,13 +466,19 @@ class Editor(ttk.Frame):
         row = int(str(self.text.index('end')).split('.')[0]) - 1
         row_old = int(str(self.line_nb.index('end')).split('.')[0]) - 1
         self.line_nb.configure(state='normal')
+        self.syntax_checks.configure(state='normal')
         if row_old < row:
+            self.syntax_checks.insert('end', '\n')
             self.line_nb.insert('end',
                                 '\n' + '\n'.join([str(i) for i in range(row_old + 1, row + 1)]),
                                 'right')
+
         elif row_old > row:
             self.line_nb.delete('%i.0' % (row + 1), 'end')
-        self.line_nb.configure(state='disabled')
+            self.syntax_checks.delete('%i.0' % (row + 1), 'end')
+        self.line_nb.configure(width=len(str(row)), state='disabled')
+        self.syntax_checks.configure(state='disabled')
+        self.filebar.update_highlight()
 
     def on_backspace(self, event):
         txt = event.widget
@@ -452,8 +513,12 @@ class Editor(ttk.Frame):
         return "break"
 
     def yview(self, *args):
-        self.text.yview(*args)
         self.line_nb.yview(*args)
+        self.syntax_checks.yview(*args)
+        res = self.text.yview(*args)
+        if args:
+            self.filebar.update_highlight()
+        return res
 
     def find(self, event=None):
         self.label_replace.grid_remove()
@@ -579,8 +644,22 @@ class Editor(ttk.Frame):
         self.text.tag_remove('sel', '1.0', 'end')
         self.text.tag_add('sel', start, end)
 
-    def get(self):
-        return self.text.get('1.0', 'end')
+    def get(self, strip=True):
+        txt = self.text.get('1.0', 'end')
+        if strip:
+            index = self.text.index('insert')
+            txt = txt.splitlines()
+            for i, line in enumerate(txt):
+                txt[i] = line[:re.search(r'( )*$', line).span()[0]]
+            txt = '\n'.join(txt)
+            self.text.delete('1.0', 'end')
+            self.text.insert('1.0', txt)
+            self.parse_all()
+            self.text.mark_set('insert', index)
+        return txt
+
+    def get_end(self):
+        return str(self.text.index('end'))
 
     def delete(self, index1, index2=None):
         self.text.delete(index1, index2=index2)
@@ -595,3 +674,19 @@ class Editor(ttk.Frame):
     def see(self, index):
         self.text.see(index)
         self.line_nb.see(index)
+        self.syntax_checks.see(index)
+
+    def show_syntax_issues(self, results):
+        self.syntax_checks.configure(state='normal')
+        self.syntax_checks.delete('1.0', 'end')
+        self.textwrapper.reset()
+        self.filebar.clear()
+        end = int(str(self.text.index('end')).split('.')[0]) - 1
+        self.syntax_checks.insert('end', '\n' * end)
+        for line, (category, msg) in results.items():
+            self.syntax_checks.image_create('%i.0' % line,
+                                            image=self._syntax_icons[category])
+            self.syntax_checks.tag_add(str(line), '%i.0' % line)
+            self.filebar.add_mark(line, category)
+            self.textwrapper.add_tooltip(str(line), msg)
+        self.syntax_checks.configure(state='disabled')
