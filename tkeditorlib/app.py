@@ -1,6 +1,7 @@
 from tkeditorlib.editor import Editor
 from tkeditorlib.syntax_check import check_file
 from tkeditorlib.filestructure import CodeStructure
+from tkeditorlib.notebook import Notebook
 import tkinter as tk
 from tkinter import ttk
 from tkinter.messagebox import askyesnocancel, showerror
@@ -24,10 +25,12 @@ class App(tk.Tk):
 
         pane = ttk.PanedWindow(self, orient='horizontal')
         self.codestruct = CodeStructure(pane)
-        self.editor = Editor(pane)
+#        self.editor = Editor(pane)
+        self.notebook = Notebook(pane)
         # placement
         pane.add(self.codestruct, weight=1)
-        pane.add(self.editor, weight=1)
+#        pane.add(self.editor, weight=1)
+        pane.add(self.notebook, weight=1)
         pane.pack(fill='both', expand=True)
 
         # --- menu
@@ -70,7 +73,6 @@ class App(tk.Tk):
         if file:
             self.open(file)
         self.protocol('WM_DELETE_WINDOW', self.quit)
-
 
     def _edit_modified(self, *args):
         self.editor.text.edit_modified(*args)

@@ -7,18 +7,32 @@ Created on Sun Aug 19 16:02:58 2018
 """
 from tkinter import ttk
 import tkinter as tk
+#from tkeditorlib.constants import IM_CLOSE, IM_CLOSE_ACTIVE
+import os
+
+IMG_PATH = 'images'
+
+IM_CLOSE = os.path.join(IMG_PATH, 'close.png')
+IM_CLOSE_ACTIVE = os.path.join(IMG_PATH, 'close_active.png')
 
 
 class Tab(ttk.Frame):
     def __init__(self, master=None, tab_nb=0, **kwargs):
-        ttk.Frame.__init__(self, master, class_='MyNotebook.Tab',
-                           style='MyNotebook.Tab', padding=1)
-        self.label = ttk.Label(self, style='MyNotebook.Tab.Label', **kwargs,
-                               anchor='center', padding=1)
+        ttk.Frame.__init__(self, master, class_='Notebook.Tab',
+                           style='Notebook.Tab', padding=1)
+        closecmd = kwargs.pop('closecmd', None)
+        self.frame = ttk.Frame(self, style='Notebook.Tab.Frame')
+        self.label = ttk.Label(self.frame, style='Notebook.Tab.Label', **kwargs,
+                               anchor='center')
+        self.closebtn = ttk.Button(self.frame, style='Notebook.Tab.Close',
+                                   command=closecmd, class_='Notebook.Tab.Close')
+        self.label.pack(side='left', padx=(6, 0))
+        self.closebtn.pack(side='right', padx=(0, 6))
         self.update_idletasks()
-        self.configure(width=self.label.winfo_reqwidth() + 12,
-                       height=self.label.winfo_reqheight() + 8)
-        self.label.place(bordermode='inside', x=0, y=0, relwidth=1, relheight=1)
+        self.configure(width=self.frame.winfo_reqwidth() + 6,
+                       height=self.frame.winfo_reqheight() + 6)
+        self.frame.place(bordermode='inside', anchor='nw', x=0, y=0,
+                         relwidth=1, relheight=1)
         self.tab_nb = tab_nb
 
     @property
@@ -28,36 +42,44 @@ class Tab(ttk.Frame):
     @tab_nb.setter
     def tab_nb(self, tab_nb):
         self.label.tab_nb = tab_nb
+        self.frame.tab_nb = tab_nb
 
     def state(self, *args):
         res = ttk.Frame.state(self, *args)
         self.label.state(*args)
+        self.frame.state(*args)
+        self.closebtn.state(*args)
         if args and 'selected' in self.state():
-            self.configure(width=self.label.winfo_reqwidth() + 12,
-                           height=self.label.winfo_reqheight() + 8)
-            self.label.place(bordermode='inside', x=0, y=0, relheight=1.1)
+            self.configure(width=self.frame.winfo_reqwidth() + 6,
+                           height=self.frame.winfo_reqheight() + 6)
+            self.frame.place_configure(relheight=1.1)
         else:
-            self.label.place(bordermode='inside', x=0, y=0, relwidth=1, relheight=1)
-            self.configure(width=self.label.winfo_reqwidth() + 12,
-                           height=self.label.winfo_reqheight() + 8)
+            self.frame.place_configure(relheight=1)
+            self.configure(width=self.frame.winfo_reqwidth() + 6,
+                           height=self.frame.winfo_reqheight() + 6)
         return res
 
     def bind(self, sequence=None, func=None, add=None):
-        return self.label.bind(sequence, func, add)
+        return self.frame.bind(sequence, func, add), self.label.bind(sequence, func, add)
 
-    def unbind(self, sequence, funcid=None):
-        self.label.unbind(sequence, funcid)
+    def unbind(self, sequence, funcids=(None, None)):
+        self.label.unbind(sequence, funcids[1])
+        self.frame.unbind(sequence, funcids[0])
 
     def tab_configure(self, *args, **kwargs):
+        if 'closecmd' in kwargs:
+            self.closebtn.configure(command=kwargs.pop('closecmd'))
+            if not kwargs:
+                return
         return self.label.configure(*args, **kwargs)
 
 
-class MyNotebook(ttk.Frame):
+class Notebook(ttk.Frame):
 
     _initialized = False
 
     def __init__(self, master=None, **kwargs):
-        ttk.Frame.__init__(self, master, class_='MyNotebook', padding=(0, 0, 0, 1),
+        ttk.Frame.__init__(self, master, class_='Notebook', padding=(0, 0, 0, 1),
                            relief='raised', **kwargs)
         self.rowconfigure(1, weight=1)
         self.columnconfigure(1, weight=1)
@@ -72,10 +94,19 @@ class MyNotebook(ttk.Frame):
         self._current_tab = None
         self._dragged_tab = None
 
+        style = ttk.Style(self)
+        bg = style.lookup('TFrame', 'background')
         # --- init style
-        if not MyNotebook._initialized:
+        if not Notebook._initialized:
+            Notebook._img_close = tk.PhotoImage(file=IM_CLOSE)
+            style.element_create('close', 'image', Notebook._img_close,
+                                 sticky='')
+
+            for seq in self.bind_class('TButton'):
+                self.bind_class('Notebook.Tab.Close', seq, self.bind_class('TButton', seq), True)
+
             self._setup_style()
-            MyNotebook._initialized = True
+            Notebook._initialized = True
 
         # --- widgets
         # to display current tab content
@@ -84,12 +115,16 @@ class MyNotebook(ttk.Frame):
         self._body.columnconfigure(0, weight=1)
         self._body.grid_propagate(False)
         # tab labels
-        self._canvas = tk.Canvas(self)  # to scroll through tab labels
-        self._tab_frame = ttk.Frame(self._canvas)  # to display tab labels
-        self._sep = ttk.Separator(self, orient='horizontal')
-        self._canvas.create_window(0, 1, anchor='nw', window=self._sep, width=1,
-                                   tags='sep', height=1)
-        self._canvas.create_window(0, 0, anchor='nw', window=self._tab_frame, tags='window')
+        self._canvas = tk.Canvas(self, bg=bg, highlightthickness=0, borderwidth=0, takefocus=False)  # to scroll through tab labels
+        self._tab_frame2 = ttk.Frame(self)  # to display tab labels
+        self._tab_frame = ttk.Frame(self._tab_frame2)  # to display tab labels
+        self._sep = ttk.Separator(self._tab_frame2, orient='horizontal')
+        self._sep.place(anchor='sw', x=0, rely=1, relwidth=1, height=1)
+        self._tab_frame.pack(side='left')
+
+#        self._canvas.create_window(0, 1, anchor='nw', window=self._sep, width=1,
+#                                   tags='sep', height=1)
+        self._canvas.create_window(0, 0, anchor='nw', window=self._tab_frame2, tags='window')
         self._canvas.configure(height=self._tab_frame.winfo_reqheight())
         # dragging dummy
         self._dummy_frame = ttk.Frame(self._tab_frame)
@@ -97,9 +132,9 @@ class MyNotebook(ttk.Frame):
         self._dummy_sep.place(in_=self._dummy_frame, x=0, relwidth=1, height=1,
                               y=0, anchor='sw', bordermode='outside')
         # tab navigation
-        self._btn_left = ttk.Button(self, style='MyNotebook.Left.Button',
+        self._btn_left = ttk.Button(self, style='Notebook.Left.Button',
                                     command=self.show_prev)
-        self._btn_right = ttk.Button(self, style='MyNotebook.Right.Button',
+        self._btn_right = ttk.Button(self, style='Notebook.Right.Button',
                                      command=self.show_next)
 
         # --- grid
@@ -114,6 +149,77 @@ class MyNotebook(ttk.Frame):
         self.bind_all('<ButtonRelease-1>', self._on_click)
         self.bind('<<ThemeChanged>>', self._setup_style)
 
+    def _on_configure(self, event=None):
+        self.update_idletasks()
+        h = self._tab_frame.winfo_reqheight()
+        self._canvas.configure(height=h)
+        self._canvas.configure(scrollregion=self._canvas.bbox('all'))
+#        self._canvas.coords('sep', 0, h - 1)
+        self._canvas.itemconfigure('sep', width=self._canvas.winfo_width())
+        self._canvas.itemconfigure('window', width=max(self._canvas.winfo_width(), self._tab_frame.winfo_reqwidth()))
+#        self._sep.lower(self._tab_frame2)
+        self.see(self._current_tab)
+        if self._tab_frame.winfo_reqwidth() < self._canvas.winfo_width():
+            self._btn_left.grid_remove()
+            self._btn_right.grid_remove()
+        else:
+            self._btn_left.grid()
+            self._btn_right.grid()
+
+    def _setup_style(self, vent=None):
+        style = ttk.Style(self)
+        style.layout('Notebook', style.layout('TFrame'))
+        style.layout('Notebook.Tab', style.layout('TFrame'))
+        style.layout('Notebook.Tab.Frame', style.layout('TFrame'))
+        style.layout('Notebook.Tab.Label', style.layout('TLabel'))
+        style.layout('Notebook.Tab.Close',
+                     [('Close.padding',
+                       {'sticky': 'nswe',
+                        'children': [('Close.border',
+                                      {'border': '1',
+                                       'sticky': 'nsew',
+                                       'children': [('Close.close',
+                                                     {'sticky': 'ewsn'})]})]})])
+        style.layout('Notebook.Left.Button',
+                     [('Button.padding',
+                       {'sticky': 'nswe',
+                        'children': [('Button.leftarrow', {'sticky': 'nswe'})]})])
+        style.layout('Notebook.Right.Button',
+                     [('Button.padding',
+                       {'sticky': 'nswe',
+                        'children': [('Button.rightarrow', {'sticky': 'nswe'})]})])
+        bg = style.lookup('TNotebook.Tab', 'background')
+        style.configure('Notebook', relief='raised', borderwidth=1, padding=1)
+        style.configure('Notebook.Tab', relief='raised', borderwidth=1,
+                        background=bg)
+        style.configure('Notebook.Tab.Frame', relief='flat', borderwidth=0,
+                        background=bg)
+        style.configure('Notebook.Tab.Label', relief='flat', borderwidth=1,
+                        background=bg, padding=0)
+        style.configure('Notebook.Tab.Close', relief='flat', borderwidth=1,
+                        background=bg, padding=0)
+
+        style.map('Notebook.Tab.Frame',
+                  **{'lightcolor': [('selected', '!disabled', '#eeebe7')],
+                     'background': [('selected', '!disabled', '#dcdad5')]})
+        style.map('Notebook.Tab.Label',
+                  **{'lightcolor': [('selected', '!disabled', '#eeebe7')],
+                     'background': [('selected', '!disabled', '#dcdad5')]})
+        style.map('Notebook.Tab.Close',
+                  **{'background': [('selected', '#dcdad5'),
+                                    ('pressed', bg),
+                                    ('active', '#dcdad5')],
+                     'relief': [('hover', '!disabled', 'raised'),
+                                ('pressed', '!disabled', 'sunken')],
+                     'lightcolor': [('pressed', '#bab5ab')],
+                     'darkcolor': [('pressed', '#bab5ab')]})
+        style.map('Notebook.Tab',
+                  **{'lightcolor': [('selected', '!disabled', '#eeebe7')],
+                     'background': [('selected', '!disabled', '#dcdad5')]})
+
+        style.map('Notebook.Left.Button', arrowcolor=[('disabled', 'gray50')])
+        style.map('Notebook.Right.Button', arrowcolor=[('disabled', 'gray50')])
+
     def _on_press(self, event):
         self.show(event.widget.tab_nb)
         tab = event.widget.tab_nb
@@ -126,7 +232,7 @@ class MyNotebook(ttk.Frame):
         self.update_idletasks()
         self._dummy_sep.place(in_=self._dummy_frame, y=self._dummy_frame.winfo_height())
         widget.grid_remove()
-        widget.place(x=x, y=y)
+        widget.place(bordermode='outside', x=x, y=y)
         widget.lift()
         self._dragged_tab = widget
         self._dx = - event.x_root
@@ -135,7 +241,7 @@ class MyNotebook(ttk.Frame):
         widget.bind_all('<Motion>', self._on_drag)
 
     def _on_drag(self, event):
-        self._dragged_tab.place(x=self._dragged_tab.winfo_x() + event.x_root + self._dx)
+        self._dragged_tab.place_configure(x=self._dragged_tab.winfo_x() + event.x_root + self._dx)
         x_border = event.x_root + self._distance_to_dragged_border
         if event.x_root > - self._dx:
             # move towards right
@@ -182,8 +288,10 @@ class MyNotebook(ttk.Frame):
             self._tabs[self._nb_tab] = widget
             ind = self._nb_tab
             self._indexes[name] = ind
-            self._tab_labels[ind] = Tab(self._tab_frame,
-                                        tab_nb=self._nb_tab, **kwargs)
+            self._tab_labels[ind] = Tab(self._tab_frame2,
+                                        tab_nb=self._nb_tab,
+                                        closecmd=lambda: self.forget(ind),
+                                        **kwargs)
             self._tab_labels[ind].bind('<ButtonRelease-1>', self._on_click)
             self._tab_labels[ind].bind('<ButtonPress-1>', self._on_press)
             self._body.configure(height=max(self._body.winfo_height(), widget.winfo_reqheight()),
@@ -223,7 +331,7 @@ class MyNotebook(ttk.Frame):
             self._tab_labels[self._current_tab].state(['!selected'])
 
         if tab in self._hidden_tabs:
-            self._tab_labels[tab].grid()
+            self._tab_labels[tab].grid(in_=self._tab_frame)
             self._visible_tabs.insert(self._tab_labels[tab].grid_info()['column'], tab)
             self._hidden_tabs.remove(tab)
 
@@ -234,10 +342,10 @@ class MyNotebook(ttk.Frame):
         if new:
             # add new tab
             c, r = self._tab_frame.grid_size()
-            self._tab_labels[tab].grid(row=0, column=c)
+            self._tab_labels[tab].grid(in_=self._tab_frame, row=0, column=c)
             self._visible_tabs.append(tab)
         self.update_idletasks()
-
+        self._on_configure()
         # ensure tab visibility
         self.see(tab)
         # display body
@@ -256,8 +364,9 @@ class MyNotebook(ttk.Frame):
         elif not isinstance(tab, int):
             tab = self.index(tab)
         w = self._tab_frame.winfo_reqwidth()
-        x1 = self._tab_labels[tab].winfo_x() / w
-        x2 = x1 + self._tab_labels[tab].winfo_reqwidth() / w
+        label = self._tab_labels[tab]
+        x1 = label.winfo_x() / w
+        x2 = x1 + label.winfo_reqwidth() / w
         xc1, xc2 = self._canvas.xview()
         if x1 < xc1:
             self._canvas.xview_moveto(x1)
@@ -288,6 +397,8 @@ class MyNotebook(ttk.Frame):
                 else:
                     self._current_tab = None
                 self._tabs[tab].grid_remove()
+            self.update_idletasks()
+            self._on_configure()
 
     def forget(self, tab):
         if not isinstance(tab, int):
@@ -307,6 +418,8 @@ class MyNotebook(ttk.Frame):
         del self._tab_labels[tab]
         del self._indexes[str(self._tabs[tab])]
         del self._tabs[tab]
+        self.update_idletasks()
+        self._on_configure()
 
     def select(self, tab=None):
         if tab is None:
@@ -333,63 +446,15 @@ class MyNotebook(ttk.Frame):
             if sticky is not None or padding is not None and self._current_tab == tab:
                 self.show(tab, update=True)
 
-    def _on_configure(self, event=None):
-        self.update_idletasks()
-        h = self._tab_frame.winfo_reqheight()
-        self._canvas.configure(height=h)
-        self._canvas.configure(scrollregion=self._canvas.bbox('all'))
-        self._canvas.coords('sep', 0, h - 1)
-        self._canvas.itemconfigure('sep', width=self._canvas.winfo_width())
-        self._sep.lower(self._tab_frame)
-        self.see(self._current_tab)
-        if self._tab_frame.winfo_reqwidth() < self._canvas.winfo_width():
-            self._btn_left.grid_remove()
-            self._btn_right.grid_remove()
-        else:
-            self._btn_left.grid()
-            self._btn_right.grid()
-
-    def _setup_style(self, vent=None):
-        style = ttk.Style(self)
-        style.layout('MyNotebook', style.layout('TFrame'))
-        style.layout('MyNotebook.Tab', style.layout('TFrame'))
-        style.layout('MyNotebook.Tab.Label', style.layout('TLabel'))
-        style.layout('MyNotebook.Left.Button',
-                     [('Button.padding',
-                       {'sticky': 'nswe',
-                        'children': [('Button.leftarrow', {'sticky': 'nswe'})]})])
-        style.layout('MyNotebook.Right.Button',
-                     [('Button.padding',
-                       {'sticky': 'nswe',
-                        'children': [('Button.rightarrow', {'sticky': 'nswe'})]})])
-
-        style.configure('MyNotebook', relief='raised', borderwidth=1, padding=1)
-        style.configure('MyNotebook.Tab', relief='raised', borderwidth=1,
-                        background=style.lookup('TNotebook.Tab', 'background'))
-        style.configure('MyNotebook.Tab.Label', relief='flat', borderwidth=0,
-                        padding=4,
-                        background=style.lookup('TNotebook.Tab', 'background'))
-
-        style.map('MyNotebook.Tab.Label',
-                  **{'lightcolor': [('selected', '#eeebe7')],
-                     'background': [('selected', '#dcdad5')]})
-        style.map('MyNotebook.Tab',
-                  **{'lightcolor': [('selected', '#eeebe7')],
-                     'background': [('selected', '#dcdad5')]})
-
-        style.map('MyNotebook.Left.Button', arrowcolor=[('disabled', 'gray50')])
-        style.map('MyNotebook.Right.Button', arrowcolor=[('disabled', 'gray50')])
-
 
 if __name__ == '__main__':
     root = tk.Tk()
+    colors = ['red', 'blue', 'cyan', 'white', 'yellow', 'green', 'brown', 'orange']
     s = ttk.Style(root)
     s.theme_use('clam')
-    root.columnconfigure(0, weight=1)
-    root.rowconfigure(0, weight=1)
-    colors = ['red', 'blue', 'cyan', 'white', 'yellow', 'green', 'brown', 'orange']
-    n = MyNotebook(root)
-    n.grid()
+
+    n = Notebook(root)
+    n.pack(expand=True, fill='both')
     for i, c in enumerate(colors):
         f = tk.Frame(root, bg=c, width=200, height=200)
         n.add(f, text='frame %i %s' % (i, c))

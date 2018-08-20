@@ -9,32 +9,13 @@ from tkinter import ttk
 from tkinter import messagebox
 import re
 from tkeditorlib.autoscrollbar import AutoHideScrollbar
-from tkeditorlib.constants import IM_WARN, IM_ERR
+from tkeditorlib.constants import IM_WARN, IM_ERR, SYNTAX_HIGHLIGHTING
 from tkeditorlib.complistbox import CompListbox
 from tkeditorlib.tooltip import TooltipTextWrapper
 from tkeditorlib.filebar import FileBar
 
 
 settings.case_insensitive_completion = False
-
-SYNTAX_HIGHLIGHTING = {
-    'Token.Text': dict(foreground='black', font="DejaVu\ Sans\ Mono 10"),
-    'Token.Punctuation': dict(foreground='#9A0800', font="DejaVu\ Sans\ Mono 10"),
-    'Token.Name': dict(foreground='black', font="DejaVu\ Sans\ Mono 10"),
-    'Token.Name.Decorator': dict(foreground='#2675C3', font="DejaVu\ Sans\ Mono 10 italic"),
-    'Token.Name.Exception': dict(foreground='#3089E3', font="DejaVu\ Sans\ Mono 10"),
-    'Token.Name.Class': dict(foreground='#00804B', font="DejaVu\ Sans\ Mono 10 bold"),
-    'Token.Name.Function': dict(foreground='dark orange', font="DejaVu\ Sans\ Mono 10 bold"),
-    'Token.Name.Builtin': dict(foreground='#3089E3', font="DejaVu\ Sans\ Mono 10 "),
-    'Token.Name.Builtin.Pseudo': dict(foreground='#3089E3', font="DejaVu\ Sans\ Mono 10 italic"),
-    'Token.Keyword': dict(foreground='#000257', font="DejaVu\ Sans\ Mono 10 bold"),
-    'Token.Literal.String': dict(foreground='#E32000', font="DejaVu\ Sans\ Mono 10"),
-    'Token.Literal.Number': dict(foreground='#007502', font="DejaVu\ Sans\ Mono 10"),
-    'Token.Comment': dict(foreground='blue', font="DejaVu\ Sans\ Mono 10 italic"),
-    'Token.Comment.Hashbang': dict(foreground='blue', font="DejaVu\ Sans\ Mono 10 bold italic"),
-    'Token.Operator': dict(foreground='#9A0800', font="DejaVu\ Sans\ Mono 10"),
-    'Token.Operator.Word': dict(foreground='#000257', font="DejaVu\ Sans\ Mono 10 bold"),
-}
 
 
 class Editor(ttk.Frame):
@@ -205,7 +186,7 @@ class Editor(ttk.Frame):
         self.yview('scroll', 3, 'units')
         return "break"
 
-    def undo(self, event):
+    def undo(self, event=None):
         try:
             self.text.edit_undo()
         except tk.TclError:
@@ -215,7 +196,7 @@ class Editor(ttk.Frame):
             self.parse_all()
         return "break"
 
-    def redo(self, event):
+    def redo(self, event=None):
         try:
             self.text.edit_redo()
         except tk.TclError:
