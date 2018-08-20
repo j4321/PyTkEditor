@@ -1,7 +1,8 @@
-from tkeditorlib.editor import Editor
+#from tkeditorlib.editor import Editor
+from tkeditorlib.editornotebook import EditorNotebook
 from tkeditorlib.syntax_check import check_file
 from tkeditorlib.filestructure import CodeStructure
-from tkeditorlib.notebook import Notebook
+#from tkeditorlib.notebook import Notebook
 import tkinter as tk
 from tkinter import ttk
 from tkinter.messagebox import askyesnocancel, showerror
@@ -26,11 +27,10 @@ class App(tk.Tk):
         pane = ttk.PanedWindow(self, orient='horizontal')
         self.codestruct = CodeStructure(pane)
 #        self.editor = Editor(pane)
-        self.notebook = Notebook(pane)
+        self.editor = EditorNotebook(pane)
         # placement
         pane.add(self.codestruct, weight=1)
-#        pane.add(self.editor, weight=1)
-        pane.add(self.notebook, weight=1)
+        pane.add(self.editor, weight=3)
         pane.pack(fill='both', expand=True)
 
         # --- menu
@@ -62,8 +62,8 @@ class App(tk.Tk):
         menu.add_command(label='Run', command=self.run)
         self.configure(menu=menu)
 
-        self.codestruct.set_callback(self.editor.goto_item)
-        self.editor.text.bind('<<Modified>>', lambda e: self._edit_modified())
+        self.editor.bind('<<NotebookTabChanged>>', self._on_tab_changed)
+        self.editor.bind('<<Modified>>', lambda e: self._edit_modified())
 
         self.bind('<Control-n>', self.new)
         self.bind('<Control-s>', self.save)
@@ -74,10 +74,15 @@ class App(tk.Tk):
             self.open(file)
         self.protocol('WM_DELETE_WINDOW', self.quit)
 
+    def _on_tab_changed(self, event):
+        self.codestruct.set_callback(self.editor.goto_item)
+        self.codestruct.populate(self.editor.get())
+
     def _edit_modified(self, *args):
-        self.editor.text.edit_modified(*args)
+        # TODO: adapt to notebook
+        self.editor.edit_modified(*args)
         file = self.file if self.file else 'TkEditor'
-        if self.editor.text.edit_modified():
+        if self.editor.edit_modified():
             self.title('%s*' % file)
             self.menu_file.entryconfigure(2, state='normal')
         else:
@@ -85,36 +90,22 @@ class App(tk.Tk):
             self.menu_file.entryconfigure(2, state='disabled')
 
     def quit(self):
-        if self.editor.text.edit_modified() and self.editor.get_end() != '1.0':
-            rep = askyesnocancel('Confirmation', 'The file %r has been modified. Do you want to save it?' % self.file)
-            if rep is None:
-                return
-            elif rep:
-                self.save()
+        # to adapt
+        for tab in self.editor.tabs():
+            self.editor.close(tab)
         self.destroy()
 
     def new(self, event=None):
-        if self.editor.text.edit_modified() and self.editor.get_end() != '1.0':
-            rep = askyesnocancel('Confirmation', 'The file %r has been modified. Do you want to save it?' % self.file)
-            if rep is None:
-                return
-            elif rep:
-                self.save()
-        self.file = ''
-        self.editor.delete('1.0', 'end')
-        self.editor.text.edit_reset()
+        self.editor.new()
+        self.editor.edit_reset()
         self._edit_modified(0)
-        self.codestruct.populate(self.editor.get())
+        self.codestruct.populate('')
 
     def open(self, file=None):
-        if self.editor.text.edit_modified() and self.editor.get_end() != '1.0':
-            rep = askyesnocancel('Confirmation', 'The file %r has been modified. Do you want to save it?' % self.file)
-            if rep is None:
-                return
-            elif rep:
-                self.save()
-        initialdir, initialfile = os.path.split(os.path.abspath(self.file))
         if file is None:
+            tab = self.editor.select()
+            file = self.editor.files.get(tab, '')
+            initialdir, initialfile = os.path.split(os.path.abspath(file))
             file = askopenfilename(self, initialfile=initialfile,
                                    initialdir=initialdir,
                                    filetypes=[('Python', '*.py'), ('All files', '*')])
@@ -126,10 +117,9 @@ class App(tk.Tk):
         except Exception:
             showerror('Error', traceback.format_exc())
         else:
-            self.file = file
-            self.editor.delete('1.0', 'end')
+            self.editor.new(file)
             self.editor.insert('1.0', txt)
-            self.editor.text.edit_reset()
+            self.editor.edit_reset()
             self._edit_modified(0)
             self.codestruct.populate(self.editor.get())
             self.check_syntax()
@@ -140,31 +130,32 @@ class App(tk.Tk):
                                  initialdir=initialdir, defaultext='.py',
                                  filetypes=[('Python', '*.py'), ('All files', '*')])
         if name:
-            self.file = name
+            tab = self.editor.select()
+            self.editor.files[tab] = name
             self.save()
             return True
         else:
             return False
 
-    def save(self, event=None):
-        if not self.file:
-            res = self.saveas()
-        else:
-            with open(self.file, 'w') as f:
-                f.write(self.editor.get())
-            res = True
-        if res:
+    def save(self, event=None, tab=None):
+        update = False
+        if tab is None:
+            tab = self.editor.select()
+            update = True
+        saved = self.editor.save(tab)
+        if update and saved:
             self._edit_modified(0)
             self.codestruct.populate(self.editor.get(strip=False))
             self.check_syntax()
+        return saved
 
     def run(self, event=None):
-        self.save()
-        if self.file:
-            filename = os.path.join(os.path.dirname(__file__), 'console.py')
-            Popen(['xfce4-terminal', '-e', 'python {} {}'.format(filename, self.file)])
+        if self.save():
+            self.editor.run()
 
-    def check_syntax(self):
-        if self.file:
-            results = check_file(self.file)
+    def check_syntax(self, tab=None):
+        if tab is None:
+            tab = self.editor.select()
+        if self.editor.files[tab]:
+            results = check_file(self.editor.files[tab])
             self.editor.show_syntax_issues(results)

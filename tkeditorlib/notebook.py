@@ -7,13 +7,13 @@ Created on Sun Aug 19 16:02:58 2018
 """
 from tkinter import ttk
 import tkinter as tk
-#from tkeditorlib.constants import IM_CLOSE, IM_CLOSE_ACTIVE
-import os
+from tkeditorlib.constants import IM_CLOSE, IM_CLOSE_ACTIVE
+#import os
 
-IMG_PATH = 'images'
-
-IM_CLOSE = os.path.join(IMG_PATH, 'close.png')
-IM_CLOSE_ACTIVE = os.path.join(IMG_PATH, 'close_active.png')
+#IMG_PATH = 'images'
+#
+#IM_CLOSE = os.path.join(IMG_PATH, 'close.png')
+#IM_CLOSE_ACTIVE = os.path.join(IMG_PATH, 'close_active.png')
 
 
 class Tab(ttk.Frame):
@@ -73,14 +73,18 @@ class Tab(ttk.Frame):
                 return
         return self.label.configure(*args, **kwargs)
 
+    def tab_cget(self, option):
+        return self.label.cget(option)
+
 
 class Notebook(ttk.Frame):
 
     _initialized = False
 
     def __init__(self, master=None, **kwargs):
+        stylename = kwargs.pop('style', 'Notebook')
         ttk.Frame.__init__(self, master, class_='Notebook', padding=(0, 0, 0, 1),
-                           relief='raised', **kwargs)
+                           **kwargs)
         self.rowconfigure(1, weight=1)
         self.columnconfigure(1, weight=1)
 
@@ -107,7 +111,7 @@ class Notebook(ttk.Frame):
 
             self._setup_style()
             Notebook._initialized = True
-
+        self.configure(style=stylename)
         # --- widgets
         # to display current tab content
         self._body = ttk.Frame(self, padding=2)
@@ -154,10 +158,8 @@ class Notebook(ttk.Frame):
         h = self._tab_frame.winfo_reqheight()
         self._canvas.configure(height=h)
         self._canvas.configure(scrollregion=self._canvas.bbox('all'))
-#        self._canvas.coords('sep', 0, h - 1)
         self._canvas.itemconfigure('sep', width=self._canvas.winfo_width())
         self._canvas.itemconfigure('window', width=max(self._canvas.winfo_width(), self._tab_frame.winfo_reqwidth()))
-#        self._sep.lower(self._tab_frame2)
         self.see(self._current_tab)
         if self._tab_frame.winfo_reqwidth() < self._canvas.winfo_width():
             self._btn_left.grid_remove()
@@ -303,12 +305,16 @@ class Notebook(ttk.Frame):
             self.show(self._nb_tab, new=True, update=True)
 
             self._nb_tab += 1
+        return ind
 
     def index(self, tab_id):
-        if isinstance(tab_id, int):
-            return self._visible_tabs.index(tab_id)
+        if tab_id in self._tabs:
+            return tab_id
         else:
-            return self._indexes[str(tab_id)]
+            try:
+                return self._indexes[str(tab_id)]
+            except KeyError:
+                raise ValueError('No such tab in the notebook: %s' % tab_id)
 
     def show_next(self):
         if self._current_tab is not None:
@@ -324,45 +330,45 @@ class Notebook(ttk.Frame):
             if index >= 0:
                 self.show(self._visible_tabs[index])
 
-    def show(self, tab, new=False, update=False):
+    def show(self, tab_id, new=False, update=False):
         # hide current tab body
         if self._current_tab is not None:
             self._tabs[self._current_tab].grid_remove()
             self._tab_labels[self._current_tab].state(['!selected'])
 
-        if tab in self._hidden_tabs:
-            self._tab_labels[tab].grid(in_=self._tab_frame)
-            self._visible_tabs.insert(self._tab_labels[tab].grid_info()['column'], tab)
-            self._hidden_tabs.remove(tab)
+        if tab_id in self._hidden_tabs:
+            self._tab_labels[tab_id].grid(in_=self._tab_frame)
+            self._visible_tabs.insert(self._tab_labels[tab_id].grid_info()['column'], tab_id)
+            self._hidden_tabs.remove(tab_id)
 
         # update current tab
-        self._current_tab = tab
-        self._tab_labels[tab].state(['selected'])
+        self._current_tab = tab_id
+        self._tab_labels[tab_id].state(['selected'])
 
         if new:
             # add new tab
             c, r = self._tab_frame.grid_size()
-            self._tab_labels[tab].grid(in_=self._tab_frame, row=0, column=c)
-            self._visible_tabs.append(tab)
+            self._tab_labels[tab_id].grid(in_=self._tab_frame, row=0, column=c)
+            self._visible_tabs.append(tab_id)
         self.update_idletasks()
         self._on_configure()
         # ensure tab visibility
-        self.see(tab)
+        self.see(tab_id)
         # display body
         if update:
-            sticky = self._tab_options[tab]['sticky']
-            pad = self._tab_options[tab]['padding']
-            self._tabs[tab].grid(in_=self._body, sticky=sticky, padx=pad, pady=pad)
+            sticky = self._tab_options[tab_id]['sticky']
+            pad = self._tab_options[tab_id]['padding']
+            self._tabs[tab_id].grid(in_=self._body, sticky=sticky, padx=pad, pady=pad)
         else:
-            self._tabs[tab].grid(in_=self._body)
+            self._tabs[tab_id].grid(in_=self._body)
         self.update_idletasks()
+        self.event_generate('<<NotebookTabChanged>>')
 
-    def see(self, tab):
+    def see(self, tab_id):
         """Make tab label visible."""
-        if tab is None:
+        if tab_id is None:
             return
-        elif not isinstance(tab, int):
-            tab = self.index(tab)
+        tab = self.index(tab_id)
         w = self._tab_frame.winfo_reqwidth()
         label = self._tab_labels[tab]
         x1 = label.winfo_x() / w
@@ -384,9 +390,8 @@ class Notebook(ttk.Frame):
             self._btn_right.state(['!disabled'])
             self._btn_left.state(['!disabled'])
 
-    def hide(self, tab):
-        if not isinstance(tab, int):
-            tab = self.index(tab)
+    def hide(self, tab_id):
+        tab = self.index(tab_id)
         if tab in self._visible_tabs:
             self._visible_tabs.remove(tab)
             self._hidden_tabs.append(tab)
@@ -400,9 +405,8 @@ class Notebook(ttk.Frame):
             self.update_idletasks()
             self._on_configure()
 
-    def forget(self, tab):
-        if not isinstance(tab, int):
-            tab = self.index(tab)
+    def forget(self, tab_id):
+        tab = self.index(tab_id)
         if tab in self._hidden_tabs:
             self._hidden_tabs.remove(tab)
         elif tab in self._visible_tabs:
@@ -421,21 +425,13 @@ class Notebook(ttk.Frame):
         self.update_idletasks()
         self._on_configure()
 
-    def select(self, tab=None):
-        if tab is None:
-            return str(self._tabs[self._current_tab])
-        elif str(tab) in self._indexes:
-            self.show(self._indexes[str(tab)])
-        elif tab in self._tabs:
-            self.show(tab)
-        else:
-            raise ValueError('No such tab in the notebook: %s' % tab)
+    def select(self, tab_id=None):
+        if tab_id is None:
+            return self._current_tab
+        self.show(self.index(tab_id))
 
-    def tab(self, tab, option=None, **kw):
-        if str(tab) in self._indexes:
-            tab = self._indexes[str(tab)]
-        elif tab not in self._tabs:
-            raise ValueError('No such tab in the notebook: %s' % tab)
+    def tab(self, tab_id, option=None, **kw):
+        tab = self.index(tab_id)
         if option:
             return self._tab_options[tab][option]
         else:
@@ -446,15 +442,18 @@ class Notebook(ttk.Frame):
             if sticky is not None or padding is not None and self._current_tab == tab:
                 self.show(tab, update=True)
 
+    def tabs(self):
+        return tuple(self._visible_tabs)
 
-if __name__ == '__main__':
-    root = tk.Tk()
-    colors = ['red', 'blue', 'cyan', 'white', 'yellow', 'green', 'brown', 'orange']
-    s = ttk.Style(root)
-    s.theme_use('clam')
 
-    n = Notebook(root)
-    n.pack(expand=True, fill='both')
-    for i, c in enumerate(colors):
-        f = tk.Frame(root, bg=c, width=200, height=200)
-        n.add(f, text='frame %i %s' % (i, c))
+#if __name__ == '__main__':
+#    root = tk.Tk()
+#    colors = ['red', 'blue', 'cyan', 'white', 'yellow', 'green', 'brown', 'orange']
+#    s = ttk.Style(root)
+#    s.theme_use('clam')
+#
+#    n = Notebook(root)
+#    n.pack(expand=True, fill='both')
+#    for i, c in enumerate(colors):
+#        f = tk.Frame(root, bg=c, width=200, height=200)
+#        n.add(f, text='frame %i %s' % (i, c))

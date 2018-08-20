@@ -20,8 +20,7 @@ settings.case_insensitive_completion = False
 
 class Editor(ttk.Frame):
     def __init__(self, master=None):
-        ttk.Frame.__init__(self, master, class_='Editor', style='border.TFrame',
-                           padding=(1, 0, 0, 0))
+        ttk.Frame.__init__(self, master, class_='Editor')
 
         self.columnconfigure(2, weight=1)
         self.rowconfigure(0, weight=1)
