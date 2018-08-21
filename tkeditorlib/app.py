@@ -1,8 +1,7 @@
-#from tkeditorlib.editor import Editor
 from tkeditorlib.editornotebook import EditorNotebook
 from tkeditorlib.syntax_check import check_file
 from tkeditorlib.filestructure import CodeStructure
-#from tkeditorlib.notebook import Notebook
+from tkeditorlib.constants import ICON
 import tkinter as tk
 from tkinter import ttk
 from tkinter.messagebox import askyesnocancel, showerror
@@ -16,22 +15,46 @@ class App(tk.Tk):
     def __init__(self, file=None):
         tk.Tk.__init__(self, className='TkEditor')
         self.title('TkEditor')
+        self._icon = tk.PhotoImage(file=ICON, master=self)
+        self.iconphoto(True, self._icon)
+
         style = ttk.Style(self)
         style.theme_use('clam')
+        style.layout('Down.TButton',
+                     [('Button.padding',
+                       {'sticky': 'nswe',
+                        'children': [('Button.downarrow', {'sticky': 'nswe'})]})])
+        style.layout('Up.TButton',
+                     [('Button.padding',
+                       {'sticky': 'nswe',
+                        'children': [('Button.uparrow', {'sticky': 'nswe'})]})])
+        style.layout('close.TButton',
+                     [('Button.border',
+                       {'sticky': 'nswe',
+                        'border': '1',
+                        'children': [('Button.padding',
+                                      {'sticky': 'nswe',
+                                       'children': [('Button.label', {'sticky': 'nswe'})]})]})])
         style.configure('border.TFrame', borderwidth=1, relief='sunken')
-        style.layout('flat.Treeview', [('Treeview.treearea', {'sticky': 'nswe'})])
+        style.configure('Up.TButton', arrowsize=20)
+        style.configure('Down.TButton', arrowsize=20)
+        style.configure('close.TButton', borderwidth=1, relief='flat')
+        style.map('close.TButton', relief=[('active', 'raised')])
+        style.layout('flat.Treeview',
+                     [('Treeview.padding',
+                       {'sticky': 'nswe',
+                        'children': [('Treeview.treearea', {'sticky': 'nswe'})]})])
         bg = style.lookup('TFrame', 'background', default='light grey')
-        self.configure(bg=bg)
+        self.configure(bg=bg, padx=6, pady=2)
         self.file = ''
 
         pane = ttk.PanedWindow(self, orient='horizontal')
         self.codestruct = CodeStructure(pane)
-#        self.editor = Editor(pane)
         self.editor = EditorNotebook(pane)
         # placement
         pane.add(self.codestruct, weight=1)
         pane.add(self.editor, weight=3)
-        pane.pack(fill='both', expand=True)
+        pane.pack(fill='both', expand=True, pady=4)
 
         # --- menu
         menu = tk.Menu(self, tearoff=False, bg=bg)
@@ -76,7 +99,7 @@ class App(tk.Tk):
 
     def _on_tab_changed(self, event):
         self.codestruct.set_callback(self.editor.goto_item)
-        self.codestruct.populate(self.editor.get())
+        self.codestruct.populate(self.editor.filename, self.editor.get())
 
     def _edit_modified(self, *args):
         # TODO: adapt to notebook
@@ -99,7 +122,7 @@ class App(tk.Tk):
         self.editor.new()
         self.editor.edit_reset()
         self._edit_modified(0)
-        self.codestruct.populate('')
+        self.codestruct.populate('new.py', '')
 
     def open(self, file=None):
         if file is None:
@@ -121,7 +144,7 @@ class App(tk.Tk):
             self.editor.insert('1.0', txt)
             self.editor.edit_reset()
             self._edit_modified(0)
-            self.codestruct.populate(self.editor.get())
+            self.codestruct.populate(self.editor.filename, self.editor.get())
             self.check_syntax()
 
     def saveas(self, event=None):
@@ -145,7 +168,7 @@ class App(tk.Tk):
         saved = self.editor.save(tab)
         if update and saved:
             self._edit_modified(0)
-            self.codestruct.populate(self.editor.get(strip=False))
+            self.codestruct.populate(self.editor.filename, self.editor.get(strip=False))
             self.check_syntax()
         return saved
 

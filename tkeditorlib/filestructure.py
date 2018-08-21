@@ -17,7 +17,8 @@ from io import BytesIO
 
 class CodeTree(Treeview):
     def __init__(self, master):
-        Treeview.__init__(self, master, show='tree', selectmode='none', style='flat.Treeview')
+        Treeview.__init__(self, master, show='tree', selectmode='none',
+                          style='flat.Treeview', padding=4)
         self._img_class = PhotoImage(file=IM_CLASS, master=self)
         self._img_fct = PhotoImage(file=IM_FCT, master=self)
         self._img_hfct = PhotoImage(file=IM_HFCT, master=self)
@@ -97,10 +98,11 @@ class CodeTree(Treeview):
 class CodeStructure(Frame):
     def __init__(self, master):
         Frame.__init__(self, master, style='border.TFrame',
-                       padding=(0, 0, 1, 0))
-        self.rowconfigure(0, weight=1)
+                       padding=2)
+        self.rowconfigure(1, weight=1)
         self.columnconfigure(0, weight=1)
 
+        self.filename = Label(self, padding=(4, 2))
         self.codetree = CodeTree(self)
         sx = Scrollbar(self, orient='horizontal', command=self.codetree.xview)
         sy = Scrollbar(self, orient='vertical', command=self.codetree.yview)
@@ -114,11 +116,12 @@ class CodeStructure(Frame):
         self.codetree.configure(xscrollcommand=sx.set,
                                 yscrollcommand=sy.set)
 
-        self.codetree.grid(row=0, column=0, sticky='ewns')
-        sx.grid(row=1, column=0, sticky='ew')
-        sy.grid(row=0, column=1, sticky='ns')
-        Separator(self, orient='horizontal').grid(row=2, column=0, columnspan=2, sticky='ew')
-        self.goto_frame.grid(row=3, column=0, columnspan=2, sticky='nsew')
+        self.filename.grid(row=0, column=0, sticky='w')
+        self.codetree.grid(row=1, column=0, sticky='ewns')
+        sx.grid(row=2, column=0, sticky='ew')
+        sy.grid(row=1, column=1, sticky='ns')
+        Separator(self, orient='horizontal').grid(row=3, column=0, columnspan=2, sticky='ew')
+        self.goto_frame.grid(row=4, column=0, columnspan=2, sticky='nsew')
 
         self.set_callback = self.codetree.set_callback
 
@@ -129,7 +132,8 @@ class CodeStructure(Frame):
     def _reset_goto(self, event):
         self._goto_index = 0
 
-    def populate(self, text):
+    def populate(self, title, text):
+        self.filename.configure(text=title)
         names = list(self.codetree.populate(text))
         names.sort()
         self.goto_entry.set_completion_list(names)

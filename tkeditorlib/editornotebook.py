@@ -18,42 +18,46 @@ class EditorNotebook(Notebook):
         Notebook.__init__(self, master)
         self.files = {}
 
+    @property
+    def filename(self):
+        return self.tab(self.current_tab, 'text')
+
     def insert(self, index, text):
-        if self._current_tab is not None:
-            self._tabs[self._current_tab].insert(index, text)
+        if self.current_tab >= 0:
+            self._tabs[self.current_tab].insert(index, text)
 
     def edit_reset(self):
-        if self._current_tab is not None:
-            self._tabs[self._current_tab].text.edit_reset()
+        if self.current_tab >= 0:
+            self._tabs[self.current_tab].text.edit_reset()
 
     def undo(self):
-        if self._current_tab is not None:
-            self._tabs[self._current_tab].undo()
+        if self.current_tab >= 0:
+            self._tabs[self.current_tab].undo()
 
     def redo(self):
-        if self._current_tab is not None:
-            self._tabs[self._current_tab].redo()
+        if self.current_tab >= 0:
+            self._tabs[self.current_tab].redo()
 
     def find(self):
-        if self._current_tab is not None:
-            self._tabs[self._current_tab].find()
+        if self.current_tab >= 0:
+            self._tabs[self.current_tab].find()
 
     def replace(self):
-        if self._current_tab is not None:
-            self._tabs[self._current_tab].replace()
+        if self.current_tab >= 0:
+            self._tabs[self.current_tab].replace()
 
     def show_syntax_issues(self, results):
-        if self._current_tab is not None:
-            self._tabs[self._current_tab].show_syntax_issues(results)
+        if self.current_tab >= 0:
+            self._tabs[self.current_tab].show_syntax_issues(results)
 
     def goto_item(self, *args):
-        if self._current_tab is not None:
-            self._tabs[self._current_tab].goto_item(*args)
+        if self.current_tab >= 0:
+            self._tabs[self.current_tab].goto_item(*args)
 
     def edit_modified(self, *args, widget=None, generate=False):
         if widget is None:
-            widget = self._tabs[self._current_tab]
-            tab = self._current_tab
+            widget = self._tabs[self.current_tab]
+            tab = self.current_tab
         else:
             tab = self.index(widget)
         widget.text.edit_modified(*args)
@@ -78,7 +82,7 @@ class EditorNotebook(Notebook):
 
     def get(self, tab=None, strip=True):
         if tab is None:
-            tab = self._current_tab
+            tab = self.current_tab
         return self._tabs[tab].get(strip)
 
     def close(self, tab):
@@ -95,7 +99,7 @@ class EditorNotebook(Notebook):
 
     def save(self, tab=None):
         if tab is None:
-            tab = self._current_tab
+            tab = self.current_tab
         if not self.files[tab]:
             res = self.saveas(tab)
         else:
@@ -106,7 +110,7 @@ class EditorNotebook(Notebook):
 
     def saveas(self, tab=None):
         if tab is None:
-            tab = self._current_tab
+            tab = self.current_tab
         initialdir, initialfile = os.path.split(os.path.abspath(self.files[tab]))
         name = asksaveasfilename(self, initialfile=initialfile,
                                  initialdir=initialdir, defaultext='.py',
@@ -119,7 +123,7 @@ class EditorNotebook(Notebook):
             return False
 
     def run(self):
-        tab = self._current_tab
+        tab = self.current_tab
         file = self.files[tab]
         if file:
             filename = os.path.join(os.path.dirname(__file__), 'console.py')

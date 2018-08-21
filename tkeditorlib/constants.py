@@ -16,7 +16,7 @@ IM_SEP = os.path.join(IMG_PATH, 'sep.png')
 IM_WARN = os.path.join(IMG_PATH, 'warning.png')
 IM_ERR = os.path.join(IMG_PATH, 'error.png')
 IM_CLOSE = os.path.join(IMG_PATH, 'close.png')
-IM_CLOSE_ACTIVE = os.path.join(IMG_PATH, 'close_active.png')
+ICON = os.path.join(IMG_PATH, 'icon.png')
 
 
 SYNTAX_HIGHLIGHTING = {

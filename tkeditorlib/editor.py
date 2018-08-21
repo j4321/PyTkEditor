@@ -9,7 +9,7 @@ from tkinter import ttk
 from tkinter import messagebox
 import re
 from tkeditorlib.autoscrollbar import AutoHideScrollbar
-from tkeditorlib.constants import IM_WARN, IM_ERR, SYNTAX_HIGHLIGHTING
+from tkeditorlib.constants import IM_WARN, IM_ERR, SYNTAX_HIGHLIGHTING, IM_CLOSE
 from tkeditorlib.complistbox import CompListbox
 from tkeditorlib.tooltip import TooltipTextWrapper
 from tkeditorlib.filebar import FileBar
@@ -24,6 +24,7 @@ class Editor(ttk.Frame):
 
         self.columnconfigure(2, weight=1)
         self.rowconfigure(0, weight=1)
+        self._im_close = tk.PhotoImage(master=self, file=IM_CLOSE)
 
         self._syntax_icons = {'warning': tk.PhotoImage(master=self, file=IM_WARN),
                               'error': tk.PhotoImage(master=self, file=IM_ERR)}
@@ -77,7 +78,7 @@ class Editor(ttk.Frame):
         self.line_nb.configure(yscrollcommand=sy.set)
         self.syntax_checks.configure(yscrollcommand=sy.set)
 
-        # search and replace
+        # --- search and replace
         self.frame_search = ttk.Frame(self, padding=2)
         self.frame_search.columnconfigure(1, weight=1)
         self.entry_search = ttk.Entry(self.frame_search)
@@ -86,9 +87,13 @@ class Editor(ttk.Frame):
         self.entry_replace = ttk.Entry(self.frame_search)
         self.entry_replace.bind('<Control-f>', self.find)
         search_buttons = ttk.Frame(self.frame_search)
-        ttk.Button(search_buttons, text='▲', padding=0, width=2,
+#        ttk.Button(search_buttons, text='▲', padding=0, width=2,
+#                   command=lambda: self.search(backwards=True)).pack(side='left', padx=2, pady=4)
+#        ttk.Button(search_buttons, text='▼', padding=0, width=2,
+#                   command=lambda: self.search(forwards=True)).pack(side='left', padx=2, pady=4)
+        ttk.Button(search_buttons, style='Up.TButton', padding=0,
                    command=lambda: self.search(backwards=True)).pack(side='left', padx=2, pady=4)
-        ttk.Button(search_buttons, text='▼', padding=0, width=2,
+        ttk.Button(search_buttons, style='Down.TButton', padding=0,
                    command=lambda: self.search(forwards=True)).pack(side='left', padx=2, pady=4)
         self.case_sensitive = ttk.Checkbutton(search_buttons, text='aA')
         self.case_sensitive.state(['selected', '!alternate'])
@@ -110,10 +115,10 @@ class Editor(ttk.Frame):
         frame_find = ttk.Frame(self.frame_search)
         ttk.Button(frame_find, padding=0,
                    command=lambda: self.frame_search.grid_remove(),
-                   text='x', width=2).pack(side='left')
+                   image=self._im_close, style='close.TButton').pack(side='left')
         ttk.Label(frame_find, text='Find:').pack(side='right')
-        # placement
-        frame_find.grid(row=0, column=0, padx=4, pady=4, sticky='ew')
+        # ------- placement
+        frame_find.grid(row=0, column=0, padx=2, pady=4, sticky='ew')
         self.label_replace = ttk.Label(self.frame_search, text='Replace by:')
         self.label_replace.grid(row=1, column=0, sticky='e', pady=4, padx=4)
         self.entry_search.grid(row=0, column=1, sticky='ew', pady=4, padx=2)
@@ -121,7 +126,7 @@ class Editor(ttk.Frame):
         search_buttons.grid(row=0, column=2, sticky='w')
         self.replace_buttons.grid(row=1, column=2, sticky='w')
 
-        # grid
+        # --- grid
         self.text.grid(row=0, column=2, sticky='ewns')
         self.line_nb.grid(row=0, column=1, sticky='ns')
         self.syntax_checks.grid(row=0, column=0, sticky='ns')
@@ -132,11 +137,11 @@ class Editor(ttk.Frame):
         self.frame_search.grid(row=3, column=0, columnspan=5, sticky='ew')
         self.frame_search.grid_remove()
 
-        # syntax highlighting
+        #  --- syntax highlighting
         for tag, opts in SYNTAX_HIGHLIGHTING.items():
             self.text.tag_configure(tag, selectforeground=select_fg, **opts)
 
-        # bindings
+        # --- bindings
         self.text.bind("<KeyRelease>", self.on_key)
         self.text.bind("<ButtonPress>", self._on_press)
         self.text.bind("<Down>", self.on_down)
@@ -550,7 +555,7 @@ class Editor(ttk.Frame):
 
     def replace_all(self):
         res = True
-        self.text.mark_set('insert', 'end')
+        self.text.mark_set('insert', '1.0')
         # replace all occurences in text
         while res:
             self.search(notify_no_match=False, stopindex='end')
@@ -594,7 +599,7 @@ class Editor(ttk.Frame):
             self.see(res)
         else:
             if notify_no_match:
-                messagebox.showinfo("Search complete", "No matches found")
+                messagebox.showinfo("Search complete", "No match found")
 
     def goto_line(self, event):
 
