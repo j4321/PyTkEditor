@@ -21,7 +21,7 @@ class CompListbox(tk.Toplevel):
         frame = ttk.Frame(self, style='border.TFrame', padding=1)
         frame.pack(fill='both')
 
-        self.listbox = tk.Listbox(frame, selectmode='browse', height=5,
+        self.listbox = tk.Listbox(frame, selectmode='browse', height=2,
                                   activestyle='none', bd=0, relief='flat',
                                   highlightthickness=0)
         sy = AutoHideScrollbar(frame, orient='vertical', command=self.listbox.yview)
@@ -58,6 +58,7 @@ class CompListbox(tk.Toplevel):
             self._completions[c.name] = c.complete
         self.listbox.selection_set(0)
         self.listbox.configure(height=min(5, len(completions)))
+        self.update_idletasks()
 
     def get(self):
         return self._completions[self.listbox.selection_get()]

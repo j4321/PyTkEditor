@@ -54,12 +54,15 @@ class App(tk.Tk):
         self.codestruct = CodeStructure(pane)
         self.editor = EditorNotebook(pane)
         console_frame = ttk.Frame(pane)
+        console_frame.columnconfigure(0, weight=1)
+        console_frame.rowconfigure(0, weight=1)
         sy = AutoHideScrollbar(console_frame, orient='vertical')
-        self.console = TextConsole(console_frame, promptcolor='light blue',
-                                   yscrollcommand=sy.set)
+        self.console = TextConsole(console_frame, promptcolor='skyblue',
+                                   yscrollcommand=sy.set, relief='flat',
+                                   background='white', foreground='black')
         sy.configure(command=self.console.yview)
-        sy.pack(fill='y')
-        self.console.pack(fill='both', expand=True)
+        sy.grid(row=0, column=1, sticky='ns')
+        self.console.grid(row=0, column=0, sticky='nswe')
         # placement
         pane.add(self.codestruct, weight=1)
         pane.add(self.editor, weight=3)
@@ -103,6 +106,7 @@ class App(tk.Tk):
         self.bind('<Control-o>', lambda e: self.open())
         self.bind('<Control-Shift-S>', self.saveas)
         self.bind('<F5>', self.run)
+        self.bind('<F9>', lambda e: self.console.execute(self.editor.get_selection()))
         if file:
             self.open(file)
         self.protocol('WM_DELETE_WINDOW', self.quit)
@@ -156,6 +160,7 @@ class App(tk.Tk):
             self._edit_modified(0)
             self.codestruct.populate(self.editor.filename, self.editor.get())
             self.check_syntax()
+            self.editor.goto_start()
 
     def saveas(self, event=None):
         initialdir, initialfile = os.path.split(os.path.abspath(self.file))

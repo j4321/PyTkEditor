@@ -6,6 +6,9 @@ Created on Sun Aug 19 11:34:11 2018
 @author: juliette
 """
 import os
+from screeninfo import get_monitors
+from pygments import token
+from pygments.styles.monokai import MonokaiStyle
 
 IMG_PATH = os.path.join(os.path.dirname(__file__), 'images')
 
@@ -37,3 +40,16 @@ SYNTAX_HIGHLIGHTING = {
     'Token.Operator': dict(foreground='#9A0800', font="DejaVu\ Sans\ Mono 10"),
     'Token.Operator.Word': dict(foreground='#000257', font="DejaVu\ Sans\ Mono 10 bold"),
 }
+
+
+def get_screen(x, y):
+    monitors = [(m.x, m.y, m.x + m.width, m.y + m.height) for m in get_monitors()]
+    i = 0
+    while (i < len(monitors) and
+           not (monitors[i][0] <= x <= monitors[i][2]
+                and monitors[i][1] <= y <= monitors[i][3])):
+        i += 1
+    if i == len(monitors):
+        raise ValueError("(%i, %i) is out of screen" % (x, y))
+    else:
+        return monitors[i]

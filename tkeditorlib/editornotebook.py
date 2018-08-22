@@ -85,6 +85,14 @@ class EditorNotebook(Notebook):
             tab = self.current_tab
         return self._tabs[tab].get(strip)
 
+    def get_selection(self):
+        if self._current_tab >= 0:
+            sel = self._tabs[self._current_tab].text.tag_ranges('sel')
+            if sel:
+                return self._tabs[self._current_tab].text.get('sel.first', 'sel.last')
+            else:
+                return ''
+
     def close(self, tab):
         rep = False
         if self.edit_modified(widget=self._tabs[tab]):
@@ -129,3 +137,8 @@ class EditorNotebook(Notebook):
         if file:
             filename = os.path.join(os.path.dirname(__file__), 'console.py')
             Popen(['xfce4-terminal', '-e', 'python {} {}'.format(filename, file)])
+
+    def goto_start(self):
+        if self._current_tab >= 0:
+            self._tabs[self._current_tab].text.mark_set('insert', '1.0')
+            self._tabs[self._current_tab].see('1.0')

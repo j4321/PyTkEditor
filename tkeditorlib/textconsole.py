@@ -15,6 +15,10 @@ import re
 import readline
 from os.path import expanduser, join
 from tkeditorlib.complistbox import CompListbox
+from tkeditorlib.constants import get_screen, SYNTAX_HIGHLIGHTING
+from contextlib import redirect_stderr, redirect_stdout
+from pygments import lex
+from pygments.lexers import Python3Lexer
 
 
 def save_hist(prev_h_len, histfile):
@@ -65,7 +69,7 @@ class StdoutRedirector(object):
             self.text.write(line)
 
     def flush(self):
-        sys.__stdout__.flush()
+        self.text.update_idletasks()
 
 
 class StderrRedirector(object):
@@ -73,17 +77,15 @@ class StderrRedirector(object):
         self.text = text_widget
 
     def write(self, string):
-        sys.__stderr__.write(string)
         self.text.write('end', string, 'error')
         self.text.see('end')
 
     def writelines(self, lines):
-        sys.__stderr__.writelines(lines)
         for line in lines:
             self.text.write(line)
 
     def flush(self):
-        sys.__stderr__.flush()
+        self.text.update_idletasks()
 
 
 class TextConsole(tk.Text):
@@ -124,14 +126,13 @@ class TextConsole(tk.Text):
 
         self.write_lock = Lock()
 
-        sys.stdout = StdoutRedirector(self)
-        sys.stderr = StderrRedirector(self)
+        self.stdout = StdoutRedirector(self)
+        self.stderr = StderrRedirector(self)
         context = globals().copy()
         self.complete = rlcompleter.Completer(context).complete
         self._comp = CompListbox(self)
         self._comp.set_callback(self._comp_sel)
         readline.set_auto_history(True)
-
 
         self.shell = code.InteractiveConsole(context)
 
@@ -140,6 +141,9 @@ class TextConsole(tk.Text):
         self.tag_configure('prompt', foreground=promptcolor)
         self.tag_configure('output', foreground=output_foreground,
                            background=output_background)
+        #  --- syntax highlighting
+        for tag, opts in SYNTAX_HIGHLIGHTING.items():
+            self.tag_configure(tag, selectforeground=kw['selectforeground'], **opts)
 
         self.insert('end', banner)
         self.insert('end', self._prompt1, 'prompt')
@@ -147,7 +151,8 @@ class TextConsole(tk.Text):
         self.mark_gravity('input', 'left')
 
         self.bind('<Control-Return>', self.on_ctrl_return)
-        self.bind('<Key>', self.on_key)
+        self.bind('<KeyPress>', self.on_key_press)
+        self.bind('<KeyRelease>', self.on_key_release)
         self.bind('<Tab>', self.on_tab)
         self.bind('<Down>', self.on_down)
         self.bind('<Up>', self.on_up)
@@ -167,6 +172,21 @@ class TextConsole(tk.Text):
         txt = self._comp.get()
         self._comp.withdraw()
         self.insert('insert', txt)
+        self.parse(self.get('input', 'end'), 'input')
+
+    def parse(self, text, start):
+        data = text
+        while data and '\n' == data[0]:
+            start = self.index('%s+1c' % start)
+            data = data[1:]
+        self.mark_set('range_start', start)
+        for t in SYNTAX_HIGHLIGHTING:
+            self.tag_remove(t, start, "range_start +%ic" % len(data))
+        for token, content in lex(data, Python3Lexer()):
+            self.mark_set("range_end", "range_start + %ic" % len(content))
+            for t in token.split():
+                self.tag_add(str(t), "range_start", "range_end")
+            self.mark_set("range_start", "range_end")
 
     def write(self, index, chars, *args):
         self.write_lock.acquire()
@@ -195,15 +215,23 @@ class TextConsole(tk.Text):
         sel = self.tag_ranges('sel')
         if sel:
             self.delete('sel.first', 'sel.last')
-        txt = self.clipboard_get().splitlines()
-        if txt:
-            self.insert('insert', txt[0] + '\n')
-            for line in txt[1:]:
-                self.insert('insert', self._prompt2, 'prompt')
-                self.insert('insert', line + '\n')
-            self.delete('insert-1c')
-        self.see('end')
+        txt = self.clipboard_get()
+        self.insert_cmd(txt)
+        self.parse(self.get('input', 'end'), 'input')
         return 'break'
+
+    def insert_cmd(self, cmd):
+        lines = cmd.splitlines()
+        if lines:
+            indent = len(re.search(r'^( )*', lines[0]).group())
+            self.insert('insert', lines[0][indent:])
+            self.parse(self.get('input', 'end'), 'input')
+            self.eval_current()
+            for line in lines[1:]:
+                self.insert('insert', line[indent:])
+                self.parse(self.get('input', 'end'), 'input')
+                self.eval_current()
+        self.see('end')
 
     def prompt(self, result=False):
         if result:
@@ -212,7 +240,12 @@ class TextConsole(tk.Text):
             self.write('end', self._prompt1, 'prompt')
         self.mark_set('input', 'insert')
 
-    def on_key(self, event):
+    def on_key_press(self, event):
+        if self.compare('insert', '<', 'input') and event.keysym not in ['Left', 'Right']:
+            self._hist_item = readline.get_current_history_length() + 1
+            return 'break'
+
+    def on_key_release(self, event):
         if self.compare('insert', '<', 'input') and event.keysym not in ['Left', 'Right']:
             self._hist_item = readline.get_current_history_length() + 1
             return 'break'
@@ -221,6 +254,8 @@ class TextConsole(tk.Text):
                 self._comp_display()
             elif event.keysym not in ['Tab', 'Down', 'Up']:
                 self._comp.withdraw()
+        else:
+            self.parse(self.get('input', 'end'), 'input')
 
     def on_up(self, event):
         if self.compare('insert', '<', 'input'):
@@ -233,8 +268,6 @@ class TextConsole(tk.Text):
             hist_item = self._hist_item
             self._hist_item -= 1
             item = readline.get_history_item(self._hist_item)
-            sys.__stdout__.write('%r %r' % (self._hist_item, item))
-            sys.__stdout__.flush()
             while self._hist_item > 0 and not item.startswith(line):
                 self._hist_item -= 1
                 item = readline.get_history_item(self._hist_item)
@@ -244,6 +277,7 @@ class TextConsole(tk.Text):
                 self.mark_set('insert', index)
             else:
                 self._hist_item = hist_item
+            self.parse(self.get('input', 'end'), 'input')
         return 'break'
 
     def on_down(self, event):
@@ -261,14 +295,13 @@ class TextConsole(tk.Text):
                 item = readline.get_history_item(self._hist_item)
             if item is not None:
                 self.delete('input', 'insert lineend')
-                sys.__stdout__.write('hello %i %r\n' % (self._hist_item, item))
-                sys.__stdout__.flush()
                 self.insert('insert', item)
                 self.mark_set('insert', index)
             else:
                 self._hist_item = readline.get_current_history_length() + 1
                 self.delete('input', 'insert lineend')
                 self.insert('insert', line)
+            self.parse(self.get('input', 'end'), 'input')
         return 'break'
 
     def on_tab(self, event):
@@ -310,39 +343,44 @@ class TextConsole(tk.Text):
             if len(completions) == 1:
                 self.delete('input', 'end')
                 self.insert('input', line.replace(cmd, completions[0]))
+                self.parse(self.get('input', 'end'), 'input')
             else:
                 comp = [Completion(c[len(cmd):], c) for c in completions]
                 self._comp.update(comp)
-                x, y, w, h = self.bbox('insert')
+                xb, yb, w, h = self.bbox('insert')
                 xr = self.winfo_rootx()
                 yr = self.winfo_rooty()
-                self._comp.geometry('+%i+%i' % (xr + x, yr + y + h))
+                hcomp = self._comp.winfo_reqheight()
+                screen = get_screen(xr, yr)
+                y = yr + yb + h
+                x = xr + xb
+                if y + hcomp > screen[3]:
+                    y = yr + yb - hcomp
+                self._comp.geometry('+%i+%i' % (x, y))
                 self._comp.deiconify()
 
-    def on_return(self, event=None):
-        if self.compare('insert', '<', 'input'):
-            return 'break'
-        elif self._comp.winfo_ismapped():
-            self._comp_sel()
-            return "break"
-        else:
-            lines = self.get('input', 'insert lineend').splitlines()
-            self.mark_set('insert', 'insert lineend')
-            if lines:
-                lines = [lines[0].rstrip()] + [line[len(self._prompt2):].rstrip() for line in lines[1:]]
-            line = '\n'.join(lines)
-            if lines:
-                readline.add_history(line)
-                self.insert('insert', '\n')
-            self._hist_item = readline.get_current_history_length() + 1
+    def execute(self, cmd):
+        self.delete('input', 'end')
+        self.insert_cmd(cmd)
+        self.eval_current()
 
-            sys.__stdout__.write('%r\n' % line)
-            res = self.shell.push(line)
-            sys.__stdout__.write('%s\n' % res)
-            sys.__stdout__.write('%s\n' % res)
-            if not res:
-                self.insert('insert', '\n')
-            self.prompt(res)
+    def eval_current(self, auto_indent=False):
+        lines = self.get('input', 'insert lineend').splitlines()
+        self.mark_set('insert', 'insert lineend')
+        if lines:
+            lines = [lines[0].rstrip()] + [line[len(self._prompt2):].rstrip() for line in lines[1:]]
+        line = '\n'.join(lines)
+        if lines:
+            readline.add_history(line)
+        self.insert('insert', '\n')
+        self._hist_item = readline.get_current_history_length() + 1
+        with redirect_stderr(self.stderr):
+            with redirect_stdout(self.stdout):
+                res = self.shell.push(line)
+        if not res and self.compare('insert linestart', '>', 'insert'):
+            self.insert('insert', '\n')
+        self.prompt(res)
+        if auto_indent:
             indent = re.search(r'^( )*', line).group()
             line = line.strip()
             if line and line[-1] == ':':
@@ -350,9 +388,20 @@ class TextConsole(tk.Text):
             self.insert('insert', indent)
         self.see('end')
         self.mark_set('insert', 'end')
+
+    def on_return(self, event=None):
+        if self.compare('insert', '<', 'input'):
+            return 'break'
+        if self._comp.winfo_ismapped():
+            self._comp_sel()
+        else:
+            self.parse(self.get('input', 'end'), 'input')
+            self.eval_current(True)
+            self.see('end')
         return 'break'
 
     def on_ctrl_return(self, event=None):
+        self.parse(self.get('input', 'end'), 'input')
         self.insert('insert', '\n' + self._prompt2, 'prompt')
         return 'break'
 
@@ -368,4 +417,11 @@ class TextConsole(tk.Text):
                 self.delete('insert-4c', 'insert')
             else:
                 self.delete('insert-1c')
+        self.parse(self.get('input', 'end'), 'input')
         return 'break'
+
+
+if __name__ == '__main__':
+    root = tk.Tk()
+    t = TextConsole(root)
+    t.pack()

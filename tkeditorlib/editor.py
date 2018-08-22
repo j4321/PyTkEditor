@@ -9,7 +9,7 @@ from tkinter import ttk
 from tkinter import messagebox
 import re
 from tkeditorlib.autoscrollbar import AutoHideScrollbar
-from tkeditorlib.constants import IM_WARN, IM_ERR, SYNTAX_HIGHLIGHTING, IM_CLOSE
+from tkeditorlib.constants import IM_WARN, IM_ERR, SYNTAX_HIGHLIGHTING, IM_CLOSE, get_screen
 from tkeditorlib.complistbox import CompListbox
 from tkeditorlib.tooltip import TooltipTextWrapper
 from tkeditorlib.filebar import FileBar
@@ -402,13 +402,11 @@ class Editor(ttk.Frame):
     def _comp_display(self):
         index = self.text.index('insert wordend')
         if index[-2:] != '.0':
-#            self.text.mark_set('insert', 'insert wordend')
             line = self.text.get('insert wordstart', 'insert wordend')
             print(line)
             i = len(line) - 1
             while i > -1 and line[i] in self._autoclose.values():
                 i -= 1
-            print(self.text.get('insert wordstart','insert wordstart +%ic' % (i + 1)))
             self.text.mark_set('insert', 'insert wordstart +%ic' % (i + 1))
         row, col = str(self.text.index('insert')).split('.')
         script = jedi.Script(self.text.get('1.0', 'end'), int(row), int(col), 'completion.py')
@@ -418,10 +416,16 @@ class Editor(ttk.Frame):
             self.text.insert('insert', comp[0].complete)
         elif len(comp) > 1:
             self._comp.update(comp)
-            x, y, w, h = self.text.bbox('insert')
+            xb, yb, w, h = self.text.bbox('insert')
             xr = self.text.winfo_rootx()
             yr = self.text.winfo_rooty()
-            self._comp.geometry('+%i+%i' % (xr + x, yr + y + h))
+            hcomp = self._comp.winfo_reqheight()
+            screen = get_screen(xr, yr)
+            y = yr + yb + h
+            x = xr + xb
+            if y + hcomp > screen[3]:
+                y = yr + yb - hcomp
+            self._comp.geometry('+%i+%i' % (x, y))
             self._comp.deiconify()
 
     def _comp_sel(self):
