@@ -2,13 +2,15 @@ from tkeditorlib.editornotebook import EditorNotebook
 from tkeditorlib.syntax_check import check_file
 from tkeditorlib.filestructure import CodeStructure
 from tkeditorlib.constants import ICON
+from tkeditorlib.textconsole import TextConsole
+from tkeditorlib.autoscrollbar import AutoHideScrollbar
 import tkinter as tk
 from tkinter import ttk
-from tkinter.messagebox import askyesnocancel, showerror
+from tkinter.messagebox import showerror
 from tkfilebrowser import askopenfilename, asksaveasfilename
 import traceback
 import os
-from subprocess import Popen
+# from subprocess import Popen
 
 
 class App(tk.Tk):
@@ -51,9 +53,17 @@ class App(tk.Tk):
         pane = ttk.PanedWindow(self, orient='horizontal')
         self.codestruct = CodeStructure(pane)
         self.editor = EditorNotebook(pane)
+        console_frame = ttk.Frame(pane)
+        sy = AutoHideScrollbar(console_frame, orient='vertical')
+        self.console = TextConsole(console_frame, promptcolor='light blue',
+                                   yscrollcommand=sy.set)
+        sy.configure(command=self.console.yview)
+        sy.pack(fill='y')
+        self.console.pack(fill='both', expand=True)
         # placement
         pane.add(self.codestruct, weight=1)
         pane.add(self.editor, weight=3)
+        pane.add(console_frame, weight=2)
         pane.pack(fill='both', expand=True, pady=4)
 
         # --- menu

@@ -331,7 +331,7 @@ class Editor(ttk.Frame):
             if res:
                 lines[i] = res.group()[:-2] + line[len(res.group()):]
             elif not re.match(r'^( )*$', line):
-                lines[i] = '# ' + line
+                lines[i] = re.match(r'( )*', line).group() + '# ' + line.lstrip(' ')
         txt = '\n'.join(lines)
         self.text.insert(index, txt)
         self.parse(txt, index)
@@ -402,7 +402,14 @@ class Editor(ttk.Frame):
     def _comp_display(self):
         index = self.text.index('insert wordend')
         if index[-2:] != '.0':
-            self.text.mark_set('insert', 'insert wordend')
+#            self.text.mark_set('insert', 'insert wordend')
+            line = self.text.get('insert wordstart', 'insert wordend')
+            print(line)
+            i = len(line) - 1
+            while i > -1 and line[i] in self._autoclose.values():
+                i -= 1
+            print(self.text.get('insert wordstart','insert wordstart +%ic' % (i + 1)))
+            self.text.mark_set('insert', 'insert wordstart +%ic' % (i + 1))
         row, col = str(self.text.index('insert')).split('.')
         script = jedi.Script(self.text.get('1.0', 'end'), int(row), int(col), 'completion.py')
         comp = script.completions()
@@ -633,6 +640,7 @@ class Editor(ttk.Frame):
         txt = self.text.get('1.0', 'end')
         if strip:
             index = self.text.index('insert')
+            print(index)
             txt = txt.splitlines()
             for i, line in enumerate(txt):
                 txt[i] = line[:re.search(r'( )*$', line).span()[0]]
@@ -641,6 +649,7 @@ class Editor(ttk.Frame):
             self.text.insert('1.0', txt)
             self.parse_all()
             self.text.mark_set('insert', index)
+            self.see('insert')
         return txt
 
     def get_end(self):
@@ -675,3 +684,4 @@ class Editor(ttk.Frame):
             self.filebar.add_mark(line, category)
             self.textwrapper.add_tooltip(str(line), msg)
         self.syntax_checks.configure(state='disabled')
+

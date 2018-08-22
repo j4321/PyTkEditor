@@ -20,7 +20,7 @@ class CompListbox(tk.Toplevel):
 
         frame = ttk.Frame(self, style='border.TFrame', padding=1)
         frame.pack(fill='both')
-        
+
         self.listbox = tk.Listbox(frame, selectmode='browse', height=5,
                                   activestyle='none', bd=0, relief='flat',
                                   highlightthickness=0)

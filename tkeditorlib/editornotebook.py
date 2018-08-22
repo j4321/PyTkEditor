@@ -106,6 +106,7 @@ class EditorNotebook(Notebook):
             with open(self.files[tab], 'w') as f:
                 f.write(self.get(tab))
             res = True
+            print(self.focus_get())
         return res
 
     def saveas(self, tab=None):

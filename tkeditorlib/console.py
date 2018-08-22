@@ -11,6 +11,7 @@ import readline
 import rlcompleter
 from sys import argv
 
+
 def copen(filename):
     """Opens interactive console and execute the content of filename"""
     context = globals().copy()
@@ -21,6 +22,7 @@ def copen(filename):
         cmds = f.read()
     shell.runcode(cmds)
     shell.interact(banner='')
+
 
 if __name__ == '__main__':
     copen(argv[1])
