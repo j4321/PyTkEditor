@@ -2,7 +2,6 @@
 # -*- coding: utf-8 -*-
 
 import jedi
-from jedi import settings
 from pygments import lex
 from pygments.lexers import Python3Lexer
 import tkinter as tk
@@ -10,16 +9,11 @@ from tkinter import ttk
 from tkinter import messagebox
 import re
 from tkeditorlib.autoscrollbar import AutoHideScrollbar
-from tkeditorlib.constants import IM_WARN, IM_ERR, IM_CLOSE, get_screen, \
-    EDITOR_STYLE, load_style, FONT
+from tkeditorlib.constants import IM_WARN, IM_ERR, IM_CLOSE, get_screen, FONT,\
+    EDITOR_BG, EDITOR_HIGHLIGHT_BG, EDITOR_SYNTAX_HIGHLIGHTING, EDITOR_FG
 from tkeditorlib.complistbox import CompListbox
 from tkeditorlib.tooltip import TooltipTextWrapper
 from tkeditorlib.filebar import FileBar
-
-
-settings.case_insensitive_completion = False
-text_bg, highlight_bg, syntax_highlighting = load_style(EDITOR_STYLE)
-fg = syntax_highlighting.get('Token.Name', {}).get('foreground', 'black')
 
 
 class Editor(ttk.Frame):
@@ -43,23 +37,24 @@ class Editor(ttk.Frame):
         style = ttk.Style(self)
         bg = style.lookup('TFrame', 'background', default='light grey')
         select_fg = style.lookup('TEntry', 'selectforeground', ['focus'])
-#        select_bg = style.lookup('TEntry', 'selectbackground', ['focus'])
+        # select_bg = style.lookup('TEntry', 'selectbackground', ['focus'])
 
-        self.text = tk.Text(self, fg=fg,
-                            bg=text_bg, undo=True,
+        self.text = tk.Text(self, fg=EDITOR_FG,
+                            bg=EDITOR_BG, undo=True,
                             autoseparators=True,
                             relief='flat', borderwidth=0,
                             highlightthickness=0, wrap='none',
-                            selectbackground=highlight_bg,
-                            inactiveselectbackground=highlight_bg,
+                            selectbackground=EDITOR_HIGHLIGHT_BG,
+                            inactiveselectbackground=EDITOR_HIGHLIGHT_BG,
                             selectforeground=select_fg,
-                            insertbackground=fg, font=FONT)
+                            insertbackground=EDITOR_FG, font=FONT)
 
         self.sep = tk.Frame(self.text, bg='gray60')
         self.sep.place(y=0, relheight=1, x=632, width=1)
 
         self.line_nb = tk.Text(self, width=1, cursor='arrow',
                                bg=bg, selectbackground=bg,
+                               inactiveselectbackground=bg,
                                fg='gray40', selectforeground='gray40',
                                highlightthickness=0, relief='flat',
                                font="DejaVu\ Sans\ Mono 10")
@@ -71,6 +66,7 @@ class Editor(ttk.Frame):
         self.syntax_checks = tk.Text(self, width=2, cursor='arrow',
                                      state='disabled',
                                      bg=bg, selectbackground=bg,
+                                     inactiveselectbackground=bg,
                                      fg='gray40', selectforeground='gray40',
                                      highlightthickness=0, relief='flat',
                                      font="DejaVu\ Sans\ Mono 10")
@@ -141,7 +137,7 @@ class Editor(ttk.Frame):
 
         #  --- syntax highlighting
 #        for tag, opts in SYNTAX_HIGHLIGHTING.items():
-        for tag, opts in syntax_highlighting.items():
+        for tag, opts in EDITOR_SYNTAX_HIGHLIGHTING.items():
             self.text.tag_configure(tag, selectforeground=select_fg, **opts)
 
         # --- bindings
@@ -219,7 +215,7 @@ class Editor(ttk.Frame):
             start = self.text.index('%s+1c' % start)
             data = data[1:]
         self.text.mark_set('range_start', start)
-        for t in syntax_highlighting:
+        for t in EDITOR_SYNTAX_HIGHLIGHTING:
             self.text.tag_remove(t, start, "range_start +%ic" % len(data))
         for token, content in lex(data, Python3Lexer()):
             self.text.mark_set("range_end", "range_start + %ic" % len(content))

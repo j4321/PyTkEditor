@@ -8,6 +8,11 @@ Created on Sun Aug 19 11:34:11 2018
 import os
 from screeninfo import get_monitors
 from pygments_custom import get_style_by_name
+from jedi import settings
+
+
+settings.case_insensitive_completion = False
+
 
 IMG_PATH = os.path.join(os.path.dirname(__file__), 'images')
 
@@ -56,3 +61,10 @@ def get_screen(x, y):
         raise ValueError("(%i, %i) is out of screen" % (x, y))
     else:
         return monitors[i]
+
+
+CONSOLE_BG, CONSOLE_HIGHLIGHT_BG, CONSOLE_SYNTAX_HIGHLIGHTING = load_style(CONSOLE_STYLE)
+CONSOLE_FG = CONSOLE_SYNTAX_HIGHLIGHTING.get('Token.Name', {}).get('foreground', 'black')
+
+EDITOR_BG, EDITOR_HIGHLIGHT_BG, EDITOR_SYNTAX_HIGHLIGHTING = load_style(EDITOR_STYLE)
+EDITOR_FG = EDITOR_SYNTAX_HIGHLIGHTING.get('Token.Name', {}).get('foreground', 'black')

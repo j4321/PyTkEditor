@@ -8,24 +8,28 @@ Created on Wed Aug 22 12:28:48 2018
 
 import tkinter as tk
 import code
+import rlcompleter
 import sys
 from threading import Lock
 import re
+import readline
 from os.path import expanduser, join
 from tkeditorlib.complistbox import CompListbox
-from tkeditorlib.constants import get_screen, FONT, CONSOLE_BG,\
+from tkeditorlib.constants import get_screen, FONT, CONSOLE_BG, \
     CONSOLE_HIGHLIGHT_BG, CONSOLE_SYNTAX_HIGHLIGHTING, CONSOLE_FG
 from contextlib import redirect_stderr, redirect_stdout
 from pygments import lex
 from pygments.lexers import Python3Lexer
-import pickle
-import jedi
 
 
-def print2(*args):
-    txt = ' '.join([str(a) for a in args])
-    sys.__stdout__.write(txt + '\n')
-    sys.__stdout__.flush()
+def save_hist(prev_h_len, histfile):
+    new_h_len = readline.get_current_history_length()
+    readline.set_history_length(1000)
+    readline.append_history_file(new_h_len - prev_h_len, histfile)
+
+
+def index_to_tuple(text, index):
+    return tuple(map(int, text.index(index).split(".")))
 
 
 def display_list(L):
@@ -47,60 +51,10 @@ def display_list(L):
     return txt
 
 
-class History:
-    """Python console command history."""
-
-    def __init__(self, histfile, max_size=10000):
-        """ Crée un historique vide """
-        self.histfile = histfile
-        self.max_size = max_size
-        self.history = []
-        try:
-            with open(histfile, 'rb') as file:
-                dp = pickle.Unpickler(file)
-                self.history = dp.load()
-            self._session_start = len(self.history)
-        except (FileNotFoundError, pickle.UnpicklingError):
-            self._session_start = 0
-
-    def save(self):
-        with open(self.histfile, 'rb') as file:
-            dp = pickle.Unpickler(file)
-            prev = dp.load()
-        with open(self.histfile, 'wb') as file:
-            pick = pickle.Pickler(file)
-            hist = prev + self.history[self._session_start:]
-            l = len(hist)
-            if l > self.maxsize:
-                hist = hist[l - self.maxsize:]
-            pick.dump(hist)
-
-    def add_history(self, line):
-        self.history.append(line)
-
-    def replace_history_item(self, pos, line):
-        self.history[pos] = line
-
-    def remove_history_item(self, pos):
-        del self.history[pos]
-
-    def get_history_item(self, pos):
-        try:
-            return self.history[pos]
-        except IndexError:
-            return None
-
-    def get_length(self):
-        return len(self.history)
-
-    def set_max_size(self, max_size):
-        self.max_size = max_size
-
-    def get_max_size(self):
-        return self.max_size
-
-    def get_session_hist(self):
-        return self.history[self._session_start:]
+class Completion:
+    def __init__(self, complete, name):
+        self.name = name
+        self.complete = complete
 
 
 class StdoutRedirector(object):
@@ -153,10 +107,13 @@ class TextConsole(tk.Text):
         kw.setdefault('font', FONT)
         banner = kw.pop('banner', 'Python %s\n' % sys.version)
 
-        histfile = join(expanduser('~'), '.tkeditor_history')
-        self.history = History(histfile)
-        self._hist_item = self.history.get_length()
-        self._hist_match = ''
+        histfile = join(expanduser('~'), '.python_history')
+        try:
+            readline.read_history_file(histfile)
+            prev_h_len = readline.get_current_history_length()
+        except FileNotFoundError:
+            prev_h_len = 0
+        self._hist_item = prev_h_len + 1
 
         self._prompt1 = kw.pop('prompt1')
         self._prompt2 = kw.pop('prompt2')
@@ -172,32 +129,25 @@ class TextConsole(tk.Text):
 
         self.stdout = StdoutRedirector(self)
         self.stderr = StderrRedirector(self)
+        context = globals().copy()
+        self.complete = rlcompleter.Completer(context).complete
         self._comp = CompListbox(self)
         self._comp.set_callback(self._comp_sel)
+        readline.set_auto_history(True)
 
-        # --- shell
-
-        def shell_exit():
-            raise(SystemExit)
-
-        self.shell = code.InteractiveConsole({})
-        self.shell.push('')
-        self.shell.locals['exit'] = shell_exit
-        self.shell.locals['quit'] = shell_exit
-        self._shell_locals = self.shell.locals.copy()
-
-        #  --- syntax highlighting
-        for tag, opts in CONSOLE_SYNTAX_HIGHLIGHTING.items():
-            self.tag_configure(tag, selectforeground=kw['selectforeground'], **opts)
+        self.shell = code.InteractiveConsole(context)
 
         self.tag_configure('error', foreground=error_foreground,
                            background=error_background)
         self.tag_configure('prompt', foreground=promptcolor)
         self.tag_configure('output', foreground=output_foreground,
                            background=output_background)
+        #  --- syntax highlighting
+        for tag, opts in CONSOLE_SYNTAX_HIGHLIGHTING.items():
+            self.tag_configure(tag, selectforeground=kw['selectforeground'], **opts)
 
-        self.insert('end', banner, 'banner')
-        self.prompt()
+        self.insert('end', banner)
+        self.insert('end', self._prompt1, 'prompt')
         self.mark_set('input', 'insert')
         self.mark_gravity('input', 'left')
 
@@ -211,15 +161,9 @@ class TextConsole(tk.Text):
         self.bind('<BackSpace>', self.on_backspace)
         self.bind('<<Copy>>', self.on_copy)
         self.bind('<<Paste>>', self.on_paste)
-        self.bind('<Destroy>', lambda e: self.history.save())
+        self.bind('<Destroy>', lambda e: save_hist(prev_h_len, histfile))
         self.bind('<FocusOut>', lambda e: self._comp.withdraw())
         self.bind("<ButtonPress>", self._on_press)
-
-    def _shell_clear(self):
-        self.shell.locals = self._shell_locals.copy()
-        self.delete('banner.last', 'end')
-        self.insert('insert', '\n')
-        self.prompt()
 
     def _on_press(self, event):
         if self._comp.winfo_ismapped():
@@ -229,14 +173,10 @@ class TextConsole(tk.Text):
         txt = self._comp.get()
         self._comp.withdraw()
         self.insert('insert', txt)
-        self.parse()
+        self.parse(self.get('input', 'end'), 'input')
 
-    def index_to_tuple(self, index):
-        return tuple(map(int, self.index(index).split(".")))
-
-    def parse(self):
-        data = self.get('input', 'end')
-        start = 'input'
+    def parse(self, text, start):
+        data = text
         while data and '\n' == data[0]:
             start = self.index('%s+1c' % start)
             data = data[1:]
@@ -278,45 +218,37 @@ class TextConsole(tk.Text):
             self.delete('sel.first', 'sel.last')
         txt = self.clipboard_get()
         self.insert_cmd(txt)
-        self.parse()
+        self.parse(self.get('input', 'end'), 'input')
         return 'break'
 
     def insert_cmd(self, cmd):
-        input_index = self.index('input')
-        self.delete('input', 'end')
         lines = cmd.splitlines()
         if lines:
             indent = len(re.search(r'^( )*', lines[0]).group())
             self.insert('insert', lines[0][indent:])
+            self.parse(self.get('input', 'end'), 'input')
+            self.eval_current()
             for line in lines[1:]:
-                line = line[indent:]
-                if line.strip() and not line.startswith('    '):
-                    self.parse()
-                    self.eval_current()
-                    input_index = self.index('input')
-                else:
-                    self.insert('insert', '\n')
-                    self.prompt(True)
-                self.insert('insert', line)
-        self.mark_set('input', input_index)
-#        self.delete('insert linestart', 'end')
+                self.insert('insert', line[indent:])
+                self.parse(self.get('input', 'end'), 'input')
+                self.eval_current()
         self.see('end')
 
     def prompt(self, result=False):
         if result:
-            self.write('insert', self._prompt2, 'prompt')
+            self.write('end', self._prompt2, 'prompt')
         else:
-            self.write('insert', self._prompt1, 'prompt')
+            self.write('end', self._prompt1, 'prompt')
         self.mark_set('input', 'insert')
 
     def on_key_press(self, event):
         if self.compare('insert', '<', 'input') and event.keysym not in ['Left', 'Right']:
-            self._hist_item = self.history.get_length()
+            self._hist_item = readline.get_current_history_length() + 1
             return 'break'
 
     def on_key_release(self, event):
         if self.compare('insert', '<', 'input') and event.keysym not in ['Left', 'Right']:
-            self._hist_item = self.history.get_length()
+            self._hist_item = readline.get_current_history_length() + 1
             return 'break'
         elif self._comp.winfo_ismapped():
             if event.char.isalnum():
@@ -324,56 +256,54 @@ class TextConsole(tk.Text):
             elif event.keysym not in ['Tab', 'Down', 'Up']:
                 self._comp.withdraw()
         else:
-            self.parse()
+            self.parse(self.get('input', 'end'), 'input')
 
     def on_up(self, event):
         if self.compare('insert', '<', 'input'):
             self.mark_set('insert', 'end')
-            return 'break'
         elif self._comp.winfo_ismapped():
             self._comp.sel_prev()
-            return 'break'
-        elif self.index('input linestart') == self.index('insert linestart'):
+        else:
             line = self.get('input', 'insert')
-            self._hist_match = line
+            index = self.index('insert')
             hist_item = self._hist_item
             self._hist_item -= 1
-            item = self.history.get_history_item(self._hist_item)
-            while self._hist_item >= 0 and not item.startswith(line):
+            item = readline.get_history_item(self._hist_item)
+            while self._hist_item > 0 and not item.startswith(line):
                 self._hist_item -= 1
-                item = self.history.get_history_item(self._hist_item)
-            if self._hist_item >= 0:
-                index = self.index('insert')
-                self.insert_cmd(item)
+                item = readline.get_history_item(self._hist_item)
+            if self._hist_item > 0:
+                self.delete('input', 'insert lineend')
+                self.insert('insert', item)
                 self.mark_set('insert', index)
             else:
                 self._hist_item = hist_item
-            self.parse()
-            return 'break'
+            self.parse(self.get('input', 'end'), 'input')
+        return 'break'
 
     def on_down(self, event):
         if self.compare('insert', '<', 'input'):
             self.mark_set('insert', 'end')
-            return 'break'
         elif self._comp.winfo_ismapped():
             self._comp.sel_next()
-            return 'break'
-        elif self.compare('insert lineend', '==', 'end-1c'):
-            line = self._hist_match
+        else:
+            line = self.get('input', 'insert')
+            index = self.index('insert')
             self._hist_item += 1
-            item = self.history.get_history_item(self._hist_item)
+            item = readline.get_history_item(self._hist_item)
             while item is not None and not item.startswith(line):
                 self._hist_item += 1
-                item = self.history.get_history_item(self._hist_item)
+                item = readline.get_history_item(self._hist_item)
             if item is not None:
-                self.insert_cmd(item)
-                self.mark_set('insert', 'input+%ic' % len(self._hist_match))
+                self.delete('input', 'insert lineend')
+                self.insert('insert', item)
+                self.mark_set('insert', index)
             else:
-                self._hist_item = self.history.get_length()
-                self.delete('input', 'end')
+                self._hist_item = readline.get_current_history_length() + 1
+                self.delete('input', 'insert lineend')
                 self.insert('insert', line)
-            self.parse()
-            return 'break'
+            self.parse(self.get('input', 'end'), 'input')
+        return 'break'
 
     def on_tab(self, event):
         if self.compare('insert', '<', 'input'):
@@ -400,92 +330,65 @@ class TextConsole(tk.Text):
 
     def _comp_display(self):
         self._comp.withdraw()
+        line = self.get('input', 'end').rstrip('\n')
+        cmd = line.strip()
+        completions = []
+        i = 0
+        c = self.complete(cmd, i)
+        while c is not None:
+            completions.append(c)
+            i += 1
+            c = self.complete(cmd, i)
 
-        index = self.index('insert wordend')
-        if index[-2:] != '.0':
-            line = self.get('insert wordstart', 'insert wordend')
-            i = len(line) - 1
-            while i > -1 and line[i] in [')', ']', '}']:
-                i -= 1
-            self.mark_set('insert', 'insert wordstart +%ic' % (i + 1))
-
-        lines = self.get('insert linestart + %ic' % len(self._prompt1), 'end').rstrip('\n')
-
-        session_code = '\n\n'.join(self.history.get_session_hist()) + '\n\n'
-
-        offset = len(session_code.splitlines())
-        r, c = self.index_to_tuple('insert')
-
-        script = jedi.Script(session_code + lines, offset + 1, c - len(self._prompt1), 'completion.py')
-        comp = script.completions()
-
-        if len(comp) == 1:
-            self.insert('insert', comp[0].complete)
-            self.parse()
-        elif len(comp) > 1:
-            self._comp.update(comp)
-            xb, yb, w, h = self.bbox('insert')
-            xr = self.winfo_rootx()
-            yr = self.winfo_rooty()
-            hcomp = self._comp.winfo_reqheight()
-            screen = get_screen(xr, yr)
-            y = yr + yb + h
-            x = xr + xb
-            if y + hcomp > screen[3]:
-                y = yr + yb - hcomp
-            self._comp.geometry('+%i+%i' % (x, y))
-            self._comp.deiconify()
+        if completions:
+            if len(completions) == 1:
+                self.delete('input', 'end')
+                self.insert('input', line.replace(cmd, completions[0]))
+                self.parse(self.get('input', 'end'), 'input')
+            else:
+                comp = [Completion(c[len(cmd):], c) for c in completions]
+                self._comp.update(comp)
+                xb, yb, w, h = self.bbox('insert')
+                xr = self.winfo_rootx()
+                yr = self.winfo_rooty()
+                hcomp = self._comp.winfo_reqheight()
+                screen = get_screen(xr, yr)
+                y = yr + yb + h
+                x = xr + xb
+                if y + hcomp > screen[3]:
+                    y = yr + yb - hcomp
+                self._comp.geometry('+%i+%i' % (x, y))
+                self._comp.deiconify()
 
     def execute(self, cmd):
         self.delete('input', 'end')
         self.insert_cmd(cmd)
-        self.parse()
-        self.focus_set()
-        if self.eval_current():
-            self.eval_current()
+        self.eval_current()
 
     def eval_current(self, auto_indent=False):
-        add = True
-        if self.shell.buffer:
-            self.shell.buffer.clear()
-            add = False
-        index = self.index('input')
         lines = self.get('input', 'insert lineend').splitlines()
         self.mark_set('insert', 'insert lineend')
         if lines:
             lines = [lines[0].rstrip()] + [line[len(self._prompt2):].rstrip() for line in lines[1:]]
         line = '\n'.join(lines)
         if lines:
-            print2(add, self.history.get_session_hist())
-            if add:
-                self.history.add_history(line)
-            else:
-                self.history.replace_history_item(-1, line)
-            print2('after', self.history.get_session_hist())
+            readline.add_history(line)
         self.insert('insert', '\n')
-        self._hist_item = self.history.get_length()
-
-        try:
-            with redirect_stderr(self.stderr):
-                with redirect_stdout(self.stdout):
-                    res = self.shell.push(line)
-        except SystemExit:
-            self._shell_clear()
-            return
-
+        self._hist_item = readline.get_current_history_length() + 1
+        with redirect_stderr(self.stderr):
+            with redirect_stdout(self.stdout):
+                res = self.shell.push(line)
         if not res and self.compare('insert linestart', '>', 'insert'):
             self.insert('insert', '\n')
         self.prompt(res)
-        if auto_indent and lines:
-            indent = re.search(r'^( )*', lines[-1]).group()
-            line = lines[-1].strip()
+        if auto_indent:
+            indent = re.search(r'^( )*', line).group()
+            line = line.strip()
             if line and line[-1] == ':':
                 indent = indent + '    '
             self.insert('insert', indent)
         self.see('end')
-        if res:
-            self.mark_set('input', index)
-        return res
+        self.mark_set('insert', 'end')
 
     def on_return(self, event=None):
         if self.compare('insert', '<', 'input'):
@@ -493,14 +396,13 @@ class TextConsole(tk.Text):
         if self._comp.winfo_ismapped():
             self._comp_sel()
         else:
-            self.parse()
-#            if self.compare('insert lineend', '==', 'end-1c'):
+            self.parse(self.get('input', 'end'), 'input')
             self.eval_current(True)
             self.see('end')
         return 'break'
 
     def on_ctrl_return(self, event=None):
-        self.parse()
+        self.parse(self.get('input', 'end'), 'input')
         self.insert('insert', '\n' + self._prompt2, 'prompt')
         return 'break'
 
@@ -516,5 +418,11 @@ class TextConsole(tk.Text):
                 self.delete('insert-4c', 'insert')
             else:
                 self.delete('insert-1c')
-        self.parse()
+        self.parse(self.get('input', 'end'), 'input')
         return 'break'
+
+
+if __name__ == '__main__':
+    root = tk.Tk()
+    t = TextConsole(root)
+    t.pack()
