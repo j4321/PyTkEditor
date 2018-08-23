@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+
 import jedi
 from jedi import settings
 from pygments import lex
@@ -9,13 +10,16 @@ from tkinter import ttk
 from tkinter import messagebox
 import re
 from tkeditorlib.autoscrollbar import AutoHideScrollbar
-from tkeditorlib.constants import IM_WARN, IM_ERR, SYNTAX_HIGHLIGHTING, IM_CLOSE, get_screen
+from tkeditorlib.constants import IM_WARN, IM_ERR, IM_CLOSE, get_screen, \
+    EDITOR_STYLE, load_style, FONT
 from tkeditorlib.complistbox import CompListbox
 from tkeditorlib.tooltip import TooltipTextWrapper
 from tkeditorlib.filebar import FileBar
 
 
 settings.case_insensitive_completion = False
+text_bg, highlight_bg, syntax_highlighting = load_style(EDITOR_STYLE)
+fg = syntax_highlighting.get('Token.Name', {}).get('foreground', 'black')
 
 
 class Editor(ttk.Frame):
@@ -39,16 +43,18 @@ class Editor(ttk.Frame):
         style = ttk.Style(self)
         bg = style.lookup('TFrame', 'background', default='light grey')
         select_fg = style.lookup('TEntry', 'selectforeground', ['focus'])
-        select_bg = style.lookup('TEntry', 'selectbackground', ['focus'])
+#        select_bg = style.lookup('TEntry', 'selectbackground', ['focus'])
 
-        self.text = tk.Text(self, fg="black", bg="white", undo=True,
+        self.text = tk.Text(self, fg=fg,
+                            bg=text_bg, undo=True,
                             autoseparators=True,
                             relief='flat', borderwidth=0,
                             highlightthickness=0, wrap='none',
-                            selectbackground=select_bg,
-                            inactiveselectbackground=select_bg,
+                            selectbackground=highlight_bg,
+                            inactiveselectbackground=highlight_bg,
                             selectforeground=select_fg,
-                            insertbackground='black', font="DejaVu\ Sans\ Mono 10")
+                            insertbackground=fg, font=FONT)
+
         self.sep = tk.Frame(self.text, bg='gray60')
         self.sep.place(y=0, relheight=1, x=632, width=1)
 
@@ -87,10 +93,6 @@ class Editor(ttk.Frame):
         self.entry_replace = ttk.Entry(self.frame_search)
         self.entry_replace.bind('<Control-f>', self.find)
         search_buttons = ttk.Frame(self.frame_search)
-#        ttk.Button(search_buttons, text='▲', padding=0, width=2,
-#                   command=lambda: self.search(backwards=True)).pack(side='left', padx=2, pady=4)
-#        ttk.Button(search_buttons, text='▼', padding=0, width=2,
-#                   command=lambda: self.search(forwards=True)).pack(side='left', padx=2, pady=4)
         ttk.Button(search_buttons, style='Up.TButton', padding=0,
                    command=lambda: self.search(backwards=True)).pack(side='left', padx=2, pady=4)
         ttk.Button(search_buttons, style='Down.TButton', padding=0,
@@ -138,7 +140,8 @@ class Editor(ttk.Frame):
         self.frame_search.grid_remove()
 
         #  --- syntax highlighting
-        for tag, opts in SYNTAX_HIGHLIGHTING.items():
+#        for tag, opts in SYNTAX_HIGHLIGHTING.items():
+        for tag, opts in syntax_highlighting.items():
             self.text.tag_configure(tag, selectforeground=select_fg, **opts)
 
         # --- bindings
@@ -216,7 +219,7 @@ class Editor(ttk.Frame):
             start = self.text.index('%s+1c' % start)
             data = data[1:]
         self.text.mark_set('range_start', start)
-        for t in SYNTAX_HIGHLIGHTING:
+        for t in syntax_highlighting:
             self.text.tag_remove(t, start, "range_start +%ic" % len(data))
         for token, content in lex(data, Python3Lexer()):
             self.text.mark_set("range_end", "range_start + %ic" % len(content))
@@ -403,7 +406,6 @@ class Editor(ttk.Frame):
         index = self.text.index('insert wordend')
         if index[-2:] != '.0':
             line = self.text.get('insert wordstart', 'insert wordend')
-            print(line)
             i = len(line) - 1
             while i > -1 and line[i] in self._autoclose.values():
                 i -= 1
@@ -644,7 +646,6 @@ class Editor(ttk.Frame):
         txt = self.text.get('1.0', 'end')
         if strip:
             index = self.text.index('insert')
-            print(index)
             txt = txt.splitlines()
             for i, line in enumerate(txt):
                 txt[i] = line[:re.search(r'( )*$', line).span()[0]]
@@ -670,9 +671,10 @@ class Editor(ttk.Frame):
         self.parse_all()
 
     def see(self, index):
-        self.text.see(index)
-        self.line_nb.see(index)
-        self.syntax_checks.see(index)
+        i = self.text.index(index)
+        self.text.see(i)
+        self.line_nb.see(i)
+        self.syntax_checks.see(i)
 
     def show_syntax_issues(self, results):
         self.syntax_checks.configure(state='normal')

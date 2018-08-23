@@ -15,7 +15,7 @@ import re
 import readline
 from os.path import expanduser, join
 from tkeditorlib.complistbox import CompListbox
-from tkeditorlib.constants import get_screen, SYNTAX_HIGHLIGHTING
+from tkeditorlib.constants import get_screen, CONSOLE_STYLE, load_style, FONT
 from contextlib import redirect_stderr, redirect_stdout
 from pygments import lex
 from pygments.lexers import Python3Lexer
@@ -88,13 +88,17 @@ class StderrRedirector(object):
         self.text.update_idletasks()
 
 
+text_bg, highlight_bg, syntax_highlighting = load_style(CONSOLE_STYLE)
+fg = syntax_highlighting.get('Token.Name', {}).get('foreground', 'black')
+
+
 class TextConsole(tk.Text):
     def __init__(self, master=None, **kw):
         kw.setdefault('wrap', 'word')
-        kw.setdefault('background', 'gray10')
-        kw.setdefault('foreground', 'gray90')
-        kw.setdefault('selectforeground', 'gray10')
-        kw.setdefault('selectbackground', 'gray90')
+        kw.setdefault('background', text_bg)
+        kw.setdefault('foreground', fg)
+        kw.setdefault('selectforeground', fg)
+        kw.setdefault('selectbackground', highlight_bg)
         kw.setdefault('insertbackground', kw['foreground'])
         kw.setdefault('prompt1', '>>> ')
         kw.setdefault('prompt2', '... ')
@@ -103,7 +107,7 @@ class TextConsole(tk.Text):
         kw.setdefault('output_background', kw['background'])
         kw.setdefault('error_foreground', 'red')
         kw.setdefault('error_background', kw['background'])
-        kw.setdefault('font', 'DejaVu\ Sans\ Mono 10')
+        kw.setdefault('font', FONT)
         banner = kw.pop('banner', 'Python %s\n' % sys.version)
 
         histfile = join(expanduser('~'), '.python_history')
@@ -142,7 +146,7 @@ class TextConsole(tk.Text):
         self.tag_configure('output', foreground=output_foreground,
                            background=output_background)
         #  --- syntax highlighting
-        for tag, opts in SYNTAX_HIGHLIGHTING.items():
+        for tag, opts in syntax_highlighting.items():
             self.tag_configure(tag, selectforeground=kw['selectforeground'], **opts)
 
         self.insert('end', banner)
@@ -180,7 +184,7 @@ class TextConsole(tk.Text):
             start = self.index('%s+1c' % start)
             data = data[1:]
         self.mark_set('range_start', start)
-        for t in SYNTAX_HIGHLIGHTING:
+        for t in syntax_highlighting:
             self.tag_remove(t, start, "range_start +%ic" % len(data))
         for token, content in lex(data, Python3Lexer()):
             self.mark_set("range_end", "range_start + %ic" % len(content))

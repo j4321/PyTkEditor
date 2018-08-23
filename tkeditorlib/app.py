@@ -11,7 +11,7 @@ from tkfilebrowser import askopenfilename, asksaveasfilename
 import traceback
 import os
 # from subprocess import Popen
-
+# TODO: save all, open several files
 
 class App(tk.Tk):
     def __init__(self, file=None):
@@ -58,8 +58,7 @@ class App(tk.Tk):
         console_frame.rowconfigure(0, weight=1)
         sy = AutoHideScrollbar(console_frame, orient='vertical')
         self.console = TextConsole(console_frame, promptcolor='skyblue',
-                                   yscrollcommand=sy.set, relief='flat',
-                                   background='white', foreground='black')
+                                   yscrollcommand=sy.set, relief='flat')
         sy.configure(command=self.console.yview)
         sy.grid(row=0, column=1, sticky='ns')
         self.console.grid(row=0, column=0, sticky='nswe')

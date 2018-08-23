@@ -7,8 +7,7 @@ Created on Sun Aug 19 11:34:11 2018
 """
 import os
 from screeninfo import get_monitors
-from pygments import token
-from pygments.styles.monokai import MonokaiStyle
+from pygments_custom import get_style_by_name
 
 IMG_PATH = os.path.join(os.path.dirname(__file__), 'images')
 
@@ -21,25 +20,29 @@ IM_ERR = os.path.join(IMG_PATH, 'error.png')
 IM_CLOSE = os.path.join(IMG_PATH, 'close.png')
 ICON = os.path.join(IMG_PATH, 'icon.png')
 
+FONT = ("DejaVu Sans Mono", 10)
 
-SYNTAX_HIGHLIGHTING = {
-    'Token.Text': dict(foreground='black', font="DejaVu\ Sans\ Mono 10"),
-    'Token.Punctuation': dict(foreground='#9A0800', font="DejaVu\ Sans\ Mono 10"),
-    'Token.Name': dict(foreground='black', font="DejaVu\ Sans\ Mono 10"),
-    'Token.Name.Decorator': dict(foreground='#2675C3', font="DejaVu\ Sans\ Mono 10 italic"),
-    'Token.Name.Exception': dict(foreground='#3089E3', font="DejaVu\ Sans\ Mono 10"),
-    'Token.Name.Class': dict(foreground='#00804B', font="DejaVu\ Sans\ Mono 10 bold"),
-    'Token.Name.Function': dict(foreground='dark orange', font="DejaVu\ Sans\ Mono 10 bold"),
-    'Token.Name.Builtin': dict(foreground='#3089E3', font="DejaVu\ Sans\ Mono 10 "),
-    'Token.Name.Builtin.Pseudo': dict(foreground='#3089E3', font="DejaVu\ Sans\ Mono 10 italic"),
-    'Token.Keyword': dict(foreground='#000257', font="DejaVu\ Sans\ Mono 10 bold"),
-    'Token.Literal.String': dict(foreground='#E32000', font="DejaVu\ Sans\ Mono 10"),
-    'Token.Literal.Number': dict(foreground='#007502', font="DejaVu\ Sans\ Mono 10"),
-    'Token.Comment': dict(foreground='blue', font="DejaVu\ Sans\ Mono 10 italic"),
-    'Token.Comment.Hashbang': dict(foreground='blue', font="DejaVu\ Sans\ Mono 10 bold italic"),
-    'Token.Operator': dict(foreground='#9A0800', font="DejaVu\ Sans\ Mono 10"),
-    'Token.Operator.Word': dict(foreground='#000257', font="DejaVu\ Sans\ Mono 10 bold"),
-}
+EDITOR_STYLE = 'persolight'
+CONSOLE_STYLE = 'perso'
+
+
+def load_style(stylename):
+    s = get_style_by_name(stylename)
+    style = s.list_styles()
+    style_dic = {}
+    for token, opts in style:
+        name = str(token)
+        style_dic[name] = {}
+        fg = opts['color']
+        bg = opts['bgcolor']
+        if fg:
+            style_dic[name]['foreground'] = '#' + fg
+        if bg:
+            style_dic[name]['background'] = '#' + bg
+        font = FONT + tuple(key for key in ('bold', 'italic') if opts[key])
+        style_dic[name]['font'] = font
+        style_dic[name]['underline'] = opts['underline']
+    return s.background_color, s.highlight_color, style_dic
 
 
 def get_screen(x, y):

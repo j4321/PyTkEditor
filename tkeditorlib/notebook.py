@@ -453,7 +453,6 @@ class Notebook(ttk.Frame):
         del self._tabs[tab]
         self.update_idletasks()
         self._on_configure()
-        print(tab, self._tab_menu.entrycget(tab, 'label'))
         self._tab_menu.delete(tab)
 
     def select(self, tab_id=None):
