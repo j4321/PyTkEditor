@@ -108,6 +108,7 @@ class EditorNotebook(Notebook):
             return
         self.wrapper.remove_tooltip(self._tab_labels[tab])
         ed = self._tabs[tab]
+        del self.files[tab]
         self.forget(tab)
         if not self._visible_tabs:
             self.event_generate('<<NotebookEmpty>>')

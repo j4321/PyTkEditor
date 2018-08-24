@@ -87,6 +87,7 @@ class Notebook(ttk.Frame):
         self._visible_tabs = []
         self._hidden_tabs = []
         self._tab_labels = {}
+        self._tab_menu_entries = {}
         self._tabs = {}
         self._tab_options = {}
         self._indexes = {}
@@ -324,14 +325,25 @@ class Notebook(ttk.Frame):
             self._tab_options[ind] = dict(text='', image='', compound='none')
             self._tab_options[ind].update(kwargs)
             self._tab_options[ind].update(dict(padding=padding, sticky=sticky))
-            self._tab_menu.add_radiobutton(label=self._tab_options[ind]['text'],
-                                           variable=self._tab_var, value=ind,
-                                           command=lambda: self.show(ind))
+            self._tab_menu_entries[ind] = self._tab_menu.index('end')
             self._tab_list.state(['!disabled'])
             self.show(self._nb_tab, new=True, update=True)
 
             self._nb_tab += 1
+            self.menu_insert(ind, kwargs.get('text', ''))
         return ind
+
+    def menu_insert(self, tab, text):
+        menu = []
+        for tab in self.tabs():
+            menu.append((self.tab(tab, 'text'), tab))
+        menu.sort()
+        ind = menu.index((text, tab))
+        self._tab_menu.insert_radiobutton(ind, label=text,
+                                          variable=self._tab_var, value=tab,
+                                          command=lambda t=tab: self.show(t))
+        for i, (text, tab) in enumerate(menu):
+            self._tab_menu_entries[tab] = i
 
     def index(self, tab_id):
         if tab_id in self._tabs:
@@ -453,9 +465,12 @@ class Notebook(ttk.Frame):
         del self._tabs[tab]
         self.update_idletasks()
         self._on_configure()
-        print(tab, self._tab_menu.entrycget(tab, 'label'))
-        self._tab_menu.delete(tab)
-        print(self._tab_menu.index('end'))
+        i = self._tab_menu_entries[tab]
+        for t, ind in self._tab_menu_entries.items():
+            if ind > i:
+                self._tab_menu_entries[t] -= 1
+        self._tab_menu.delete(self._tab_menu_entries[tab])
+        del self._tab_menu_entries[tab]
 
     def select(self, tab_id=None):
         if tab_id is None:
