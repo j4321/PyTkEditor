@@ -132,6 +132,10 @@ class CodeStructure(Frame):
     def _reset_goto(self, event):
         self._goto_index = 0
 
+    def clear(self, event=None):
+        self.codetree.delete(*self.codetree.get_children())
+        self.filename.configure(text='')
+
     def populate(self, title, text):
         self.filename.configure(text=title)
         names = list(self.codetree.populate(text))

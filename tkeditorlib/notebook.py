@@ -453,7 +453,9 @@ class Notebook(ttk.Frame):
         del self._tabs[tab]
         self.update_idletasks()
         self._on_configure()
+        print(tab, self._tab_menu.entrycget(tab, 'label'))
         self._tab_menu.delete(tab)
+        print(self._tab_menu.index('end'))
 
     def select(self, tab_id=None):
         if tab_id is None:
@@ -462,7 +464,9 @@ class Notebook(ttk.Frame):
 
     def tab(self, tab_id, option=None, **kw):
         tab = self.index(tab_id)
-        if option:
+        if option == 'widget':
+            return self._tabs[tab]
+        elif option:
             return self._tab_options[tab][option]
         else:
             self._tab_options[tab].update(kw)

@@ -7,11 +7,11 @@ from tkeditorlib.autoscrollbar import AutoHideScrollbar
 import tkinter as tk
 from tkinter import ttk
 from tkinter.messagebox import showerror
-from tkfilebrowser import askopenfilename, asksaveasfilename
+from tkfilebrowser import askopenfilenames, asksaveasfilename
 import traceback
 import os
-# from subprocess import Popen
-# TODO: save all, open several files
+# TODO: Fix tab menu: use alphabetical ordering
+
 
 class App(tk.Tk):
     def __init__(self, file=None):
@@ -74,13 +74,18 @@ class App(tk.Tk):
         self.menu_file = tk.Menu(menu, tearoff=False, bg=bg)
         self.menu_file.add_command(label='New', command=self.new,
                                    accelerator='Ctrl+N')
+        self.menu_file.add_separator()
         self.menu_file.add_command(label='Open', command=self.open,
                                    accelerator='Ctrl+O')
+        self.menu_file.add_separator()
         self.menu_file.add_command(label='Save', command=self.save, state='disabled',
                                    accelerator='Ctrl+S')
         self.menu_file.add_command(label='Save As', command=self.saveas,
+                                   accelerator='Ctrl+Alt+S')
+        self.menu_file.add_command(label='Save all', command=self.saveall,
                                    accelerator='Ctrl+Shift+S')
         self.menu_file.add_separator()
+        self.menu_file.add_command(label='Close all files', command=self.editor.closeall)
         self.menu_file.add_command(label='Quit', command=self.quit)
         # edit
         menu_edit = tk.Menu(menu, tearoff=False, bg=bg)
@@ -97,13 +102,16 @@ class App(tk.Tk):
         menu.add_command(label='Run', command=self.run)
         self.configure(menu=menu)
 
+        self.editor.bind('<<NotebookEmpty>>', self.codestruct.clear)
         self.editor.bind('<<NotebookTabChanged>>', self._on_tab_changed)
         self.editor.bind('<<Modified>>', lambda e: self._edit_modified())
 
+        self.bind_class('Text', '<Control-o>', lambda e: None)
         self.bind('<Control-n>', self.new)
         self.bind('<Control-s>', self.save)
         self.bind('<Control-o>', lambda e: self.open())
-        self.bind('<Control-Shift-S>', self.saveas)
+        self.bind('<Control-Shift-S>', self.saveall)
+        self.bind('<Control-Alt-S>', self.saveas)
         self.bind('<F5>', self.run)
         self.bind('<F9>', lambda e: self.console.execute(self.editor.get_selection()))
         if file:
@@ -112,21 +120,16 @@ class App(tk.Tk):
 
     def _on_tab_changed(self, event):
         self.codestruct.set_callback(self.editor.goto_item)
-        self.codestruct.populate(self.editor.filename, self.editor.get())
+        self.codestruct.populate(self.editor.filename, self.editor.get(strip=False))
 
-    def _edit_modified(self, *args):
-        # TODO: adapt to notebook
-        self.editor.edit_modified(*args)
-        file = self.file if self.file else 'TkEditor'
-        if self.editor.edit_modified():
-            self.title('%s*' % file)
-            self.menu_file.entryconfigure(2, state='normal')
+    def _edit_modified(self, *args, tab=None):
+        self.editor.edit_modified(*args, tab=tab)
+        if self.editor.edit_modified(tab=tab):
+            self.menu_file.entryconfigure('Save', state='normal')
         else:
-            self.title('%s' % file)
-            self.menu_file.entryconfigure(2, state='disabled')
+            self.menu_file.entryconfigure('Save', state='disabled')
 
     def quit(self):
-        # to adapt
         for tab in self.editor.tabs():
             self.editor.close(tab)
         self.destroy()
@@ -137,29 +140,37 @@ class App(tk.Tk):
         self._edit_modified(0)
         self.codestruct.populate('new.py', '')
 
+    def open_file(self, file):
+        files = list(self.editor.files.values())
+        if file in files:
+            self.editor.select(list(self.editor.files.keys())[files.index(file)])
+        else:
+            try:
+                with open(file) as f:
+                    txt = f.read()
+            except Exception:
+                showerror('Error', traceback.format_exc())
+            else:
+                self.editor.new(file)
+                self.editor.insert('1.0', txt)
+                self.editor.edit_reset()
+                self._edit_modified(0)
+                self.codestruct.populate(self.editor.filename, self.editor.get(strip=False))
+                self.check_syntax()
+                self.editor.goto_start()
+
     def open(self, file=None):
-        if file is None:
+        if file:
+            self.open_file(file)
+        else:
             tab = self.editor.select()
             file = self.editor.files.get(tab, '')
             initialdir, initialfile = os.path.split(os.path.abspath(file))
-            file = askopenfilename(self, initialfile=initialfile,
-                                   initialdir=initialdir,
-                                   filetypes=[('Python', '*.py'), ('All files', '*')])
-        if not file:
-            return
-        try:
-            with open(file) as f:
-                txt = f.read()
-        except Exception:
-            showerror('Error', traceback.format_exc())
-        else:
-            self.editor.new(file)
-            self.editor.insert('1.0', txt)
-            self.editor.edit_reset()
-            self._edit_modified(0)
-            self.codestruct.populate(self.editor.filename, self.editor.get())
-            self.check_syntax()
-            self.editor.goto_start()
+            files = askopenfilenames(self, initialfile=initialfile,
+                                     initialdir=initialdir,
+                                     filetypes=[('Python', '*.py'), ('All files', '*')])
+        for file in files:
+            self.open_file(file)
 
     def saveas(self, event=None):
         initialdir, initialfile = os.path.split(os.path.abspath(self.file))
@@ -174,17 +185,20 @@ class App(tk.Tk):
         else:
             return False
 
-    def save(self, event=None, tab=None):
-        update = False
+    def save(self, event=None, tab=None, update=False):
         if tab is None:
             tab = self.editor.select()
             update = True
         saved = self.editor.save(tab)
         if update and saved:
-            self._edit_modified(0)
+            self._edit_modified(0, tab=tab)
             self.codestruct.populate(self.editor.filename, self.editor.get(strip=False))
             self.check_syntax()
         return saved
+
+    def saveall(self, event=None):
+        for tab in self.editor.tabs():
+            self.save(tab=tab, update=True)
 
     def run(self, event=None):
         if self.save():

@@ -7,9 +7,10 @@ Created on Mon Aug 20 20:25:11 2018
 """
 from tkeditorlib.notebook import Notebook
 from tkeditorlib.editor import Editor
+from tkeditorlib.tooltip import TooltipNotebookWrapper
 import os
-from tkinter.messagebox import askyesnocancel, showerror
-from tkfilebrowser import askopenfilename, asksaveasfilename
+from tkinter.messagebox import askyesnocancel
+from tkfilebrowser import asksaveasfilename
 from subprocess import Popen
 
 
@@ -17,6 +18,8 @@ class EditorNotebook(Notebook):
     def __init__(self, master):
         Notebook.__init__(self, master)
         self.files = {}
+        self.wrapper = TooltipNotebookWrapper(self, background='light yellow',
+                                              foreground='black')
 
     @property
     def filename(self):
@@ -54,10 +57,11 @@ class EditorNotebook(Notebook):
         if self.current_tab >= 0:
             self._tabs[self.current_tab].goto_item(*args)
 
-    def edit_modified(self, *args, widget=None, generate=False):
+    def edit_modified(self, *args, widget=None, generate=False, tab=None):
         if widget is None:
-            widget = self._tabs[self.current_tab]
-            tab = self.current_tab
+            if tab is None:
+                tab = self.current_tab
+            widget = self._tabs[tab]
         else:
             tab = self.index(widget)
         widget.text.edit_modified(*args)
@@ -78,6 +82,7 @@ class EditorNotebook(Notebook):
         tab = self.add(editor, text=title)
         self.tab(tab, closecmd=lambda: self.close(tab))
         self.files[tab] = file
+        self.wrapper.add_tooltip(tab, file if file else title)
         editor.text.bind('<<Modified>>', lambda e: self.edit_modified(widget=editor, generate=True))
 
     def get(self, tab=None, strip=True):
@@ -101,9 +106,16 @@ class EditorNotebook(Notebook):
             self.save(tab)
         elif rep is None:
             return
+        self.wrapper.remove_tooltip(self._tab_labels[tab])
         ed = self._tabs[tab]
         self.forget(tab)
+        if not self._visible_tabs:
+            self.event_generate('<<NotebookEmpty>>')
         ed.destroy()
+
+    def closeall(self):
+        for tab in self.tabs():
+            self.close(tab)
 
     def save(self, tab=None):
         if tab is None:
@@ -125,6 +137,8 @@ class EditorNotebook(Notebook):
                                  filetypes=[('Python', '*.py'), ('All files', '*')])
         if name:
             self.files[tab] = name
+            self._tab_labels[tab].tab_configure(text=os.path.split(name)[1])
+            self.wrapper.set_tooltip_text(self._tab_labels[tab], name)
             self.save(tab)
             return True
         else:

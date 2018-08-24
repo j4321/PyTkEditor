@@ -53,20 +53,23 @@ class History:
     def __init__(self, histfile, max_size=10000):
         """ Crée un historique vide """
         self.histfile = histfile
-        self.max_size = max_size
+        self.maxsize = max_size
         self.history = []
         try:
             with open(histfile, 'rb') as file:
                 dp = pickle.Unpickler(file)
                 self.history = dp.load()
             self._session_start = len(self.history)
-        except (FileNotFoundError, pickle.UnpicklingError):
+        except (FileNotFoundError, pickle.UnpicklingError, EOFError):
             self._session_start = 0
 
     def save(self):
-        with open(self.histfile, 'rb') as file:
-            dp = pickle.Unpickler(file)
-            prev = dp.load()
+        try:
+            with open(self.histfile, 'rb') as file:
+                dp = pickle.Unpickler(file)
+                prev = dp.load()
+        except (FileNotFoundError, pickle.UnpicklingError, EOFError):
+            prev = []
         with open(self.histfile, 'wb') as file:
             pick = pickle.Pickler(file)
             hist = prev + self.history[self._session_start:]
@@ -93,11 +96,11 @@ class History:
     def get_length(self):
         return len(self.history)
 
-    def set_max_size(self, max_size):
-        self.max_size = max_size
+    def set_max_size(self, maxsize):
+        self.maxsize = maxsize
 
     def get_max_size(self):
-        return self.max_size
+        return self.maxsize
 
     def get_session_hist(self):
         return self.history[self._session_start:]
@@ -456,12 +459,10 @@ class TextConsole(tk.Text):
             lines = [lines[0].rstrip()] + [line[len(self._prompt2):].rstrip() for line in lines[1:]]
         line = '\n'.join(lines)
         if lines:
-            print2(add, self.history.get_session_hist())
             if add:
                 self.history.add_history(line)
             else:
                 self.history.replace_history_item(-1, line)
-            print2('after', self.history.get_session_hist())
         self.insert('insert', '\n')
         self._hist_item = self.history.get_length()
 
