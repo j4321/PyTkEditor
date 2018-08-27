@@ -162,6 +162,7 @@ class TextConsole(tk.Text):
         self.mark_gravity('input', 'left')
 
         self.bind('<Control-Return>', self.on_ctrl_return)
+        self.bind('<Shift-Return>', self.on_shift_return)
         self.bind('<KeyPress>', self.on_key_press)
         self.bind('<KeyRelease>', self.on_key_release)
         self.bind('<Tab>', self.on_tab)
@@ -407,6 +408,7 @@ class TextConsole(tk.Text):
             line = '\n'.join(lines)
 
             self.insert('insert', '\n')
+            print('%r' % line)
             try:
                 self.shell_client.send(encrypt(line, self._pwd, self._iv))
                 self.configure(state='disabled')
@@ -428,6 +430,8 @@ class TextConsole(tk.Text):
         except socket.error:
             self.after(10, self._check_result, auto_indent, lines, index)
         else:
+            if not cmd:
+                return
             res, output, err = eval(cmd)
             self.configure(state='normal')
 
@@ -455,6 +459,16 @@ class TextConsole(tk.Text):
             elif lines:
                 self.history.add_history('\n'.join(lines))
                 self._hist_item = self.history.get_length()
+
+    def on_shift_return(self, event):
+        if self.compare('insert', '<', 'input'):
+            return 'break'
+        else:
+            self.mark_set('insert', 'end')
+            self.parse()
+            self.insert('insert', '\n')
+            self.insert('insert', self._prompt2, 'prompt')
+            self.eval_current(True)
 
     def on_return(self, event=None):
         if self.compare('insert', '<', 'input'):

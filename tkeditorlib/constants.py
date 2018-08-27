@@ -11,6 +11,7 @@ from pygments.styles import get_style_by_name
 from jedi import settings
 import hashlib
 from Crypto.Cipher import AES
+import configparser
 
 
 settings.case_insensitive_completion = False
@@ -27,11 +28,6 @@ IM_ERR = os.path.join(IMG_PATH, 'error.png')
 IM_CLOSE = os.path.join(IMG_PATH, 'close.png')
 ICON = os.path.join(IMG_PATH, 'icon.png')
 
-FONT = ("DejaVu Sans Mono", 10)
-
-EDITOR_STYLE = 'persolight'
-CONSOLE_STYLE = 'perso'
-
 if os.access(PATH, os.W_OK):
     LOCAL_PATH = os.path.join(PATH, 'config')
 else:
@@ -39,6 +35,36 @@ else:
 
 if not os.path.exists(LOCAL_PATH):
     os.mkdir(LOCAL_PATH)
+
+CONFIG_PATH = os.path.join(LOCAL_PATH, 'tkeditor.ini')
+
+CONFIG = configparser.ConfigParser()
+
+if os.path.exists(CONFIG_PATH):
+    CONFIG.read(CONFIG_PATH)
+else:
+    CONFIG.add_section('General')
+    CONFIG.set('General', 'theme', "light")
+    CONFIG.set('General', 'fontfamily', "DejaVu Sans Mono")
+    CONFIG.set('General', 'fontsize', "10")
+    CONFIG.set('General', 'opened_files', "")
+    CONFIG.set('General', 'recent_files', "")
+    CONFIG.add_section('Editor')
+    CONFIG.set('Editor', 'style', "colorful")
+    CONFIG.add_section('Console')
+    CONFIG.set('Console', 'style', "monokai")
+
+
+def save_config():
+    with open(CONFIG_PATH, 'w') as f:
+        CONFIG.write(f)
+
+
+FONT = (CONFIG.get("General", "fontfamily"),
+        CONFIG.getint("General", "fontsize"))
+
+EDITOR_STYLE = CONFIG.get('Editor', 'style')
+CONSOLE_STYLE = CONFIG.get('Console', 'style')
 
 
 def load_style(stylename):

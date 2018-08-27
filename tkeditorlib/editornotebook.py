@@ -20,6 +20,7 @@ class EditorNotebook(Notebook):
         self.files = {}
         self.wrapper = TooltipNotebookWrapper(self, background='light yellow',
                                               foreground='black')
+        self.last_closed = []
 
     @property
     def filename(self):
@@ -81,6 +82,8 @@ class EditorNotebook(Notebook):
         editor = Editor(self)
         tab = self.add(editor, text=title)
         self.tab(tab, closecmd=lambda: self.close(tab))
+        if file in self.last_closed:
+            self.last_closed.remove(file)
         self.files[tab] = file
         self._tabs[tab].file = file
         self.wrapper.add_tooltip(tab, file if file else title)
@@ -99,6 +102,10 @@ class EditorNotebook(Notebook):
             else:
                 return ''
 
+    def get_last_closed(self):
+        if self.last_closed:
+            return self.last_closed.pop()
+
     def close(self, tab):
         rep = False
         if self.edit_modified(widget=self._tabs[tab]):
@@ -109,6 +116,8 @@ class EditorNotebook(Notebook):
             return
         self.wrapper.remove_tooltip(self._tab_labels[tab])
         ed = self._tabs[tab]
+        if self.files[tab]:
+            self.last_closed.append(self.files[tab])
         del self.files[tab]
         self.forget(tab)
         if not self._visible_tabs:

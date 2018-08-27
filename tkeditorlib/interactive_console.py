@@ -9,11 +9,12 @@ Created on Mon Aug 27 08:55:30 2018
 from code import InteractiveConsole
 from contextlib import redirect_stdout
 from io import StringIO
-from os import remove
+from os import remove, chdir
+from os.path import dirname
 import socket
 import sys
 import signal
-from tkeditorlib.constants import PWD_FILE, IV_FILE, decrypt, encrypt
+from constants import PWD_FILE, IV_FILE, decrypt, encrypt
 import tkinter
 import time
 
