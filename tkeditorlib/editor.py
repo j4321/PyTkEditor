@@ -34,6 +34,8 @@ class Editor(ttk.Frame):
         self._comp = CompListbox(self)
         self._comp.set_callback(self._comp_sel)
 
+        self.file = ''
+
         style = ttk.Style(self)
         bg = style.lookup('TFrame', 'background', default='light grey')
         select_fg = style.lookup('TEntry', 'selectforeground', ['focus'])
@@ -264,7 +266,7 @@ class Editor(ttk.Frame):
         sel = self.text.tag_ranges('sel')
         if sel:
             text = self.text.get('sel.first', 'sel.last')
-            index = self.text.insert('sel.first')
+            index = self.text.index('sel.first')
             self.text.insert('sel.first', event.char)
             self.text.insert('sel.last', self._autoclose[event.char])
             self.text.mark_set('insert', 'sel.last+1c')
@@ -407,7 +409,7 @@ class Editor(ttk.Frame):
                 i -= 1
             self.text.mark_set('insert', 'insert wordstart +%ic' % (i + 1))
         row, col = str(self.text.index('insert')).split('.')
-        script = jedi.Script(self.text.get('1.0', 'end'), int(row), int(col), 'completion.py')
+        script = jedi.Script(self.text.get('1.0', 'end'), int(row), int(col), self.file)
         comp = script.completions()
         self._comp.withdraw()
         if len(comp) == 1:

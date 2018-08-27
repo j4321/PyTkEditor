@@ -12,17 +12,18 @@ import rlcompleter
 from sys import argv
 
 
-def copen(filename):
+def copen(filename=None):
     """Opens interactive console and execute the content of filename"""
     context = globals().copy()
     readline.set_completer(rlcompleter.Completer(context).complete)
     readline.parse_and_bind("tab: complete")
     shell = code.InteractiveConsole(context)
-    with open(filename) as f:
-        cmds = f.read()
-    shell.runcode(cmds)
+    if filename:
+        with open(filename) as f:
+            cmds = f.read()
+        shell.runcode(cmds)
     shell.interact(banner='')
 
 
 if __name__ == '__main__':
-    copen(argv[1])
+    copen(argv[1:])

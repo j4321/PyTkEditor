@@ -7,14 +7,16 @@ Created on Sun Aug 19 11:34:11 2018
 """
 import os
 from screeninfo import get_monitors
-from pygments_custom import get_style_by_name
+from pygments.styles import get_style_by_name
 from jedi import settings
+import hashlib
+from Crypto.Cipher import AES
 
 
 settings.case_insensitive_completion = False
 
-
-IMG_PATH = os.path.join(os.path.dirname(__file__), 'images')
+PATH = os.path.dirname(__file__)
+IMG_PATH = os.path.join(PATH, 'images')
 
 IM_CLASS = os.path.join(IMG_PATH, 'c.png')
 IM_FCT = os.path.join(IMG_PATH, 'f.png')
@@ -29,6 +31,14 @@ FONT = ("DejaVu Sans Mono", 10)
 
 EDITOR_STYLE = 'persolight'
 CONSOLE_STYLE = 'perso'
+
+if os.access(PATH, os.W_OK):
+    LOCAL_PATH = os.path.join(PATH, 'config')
+else:
+    LOCAL_PATH = os.path.join(os.path.expanduser('~'), '.tkeditor')
+
+if not os.path.exists(LOCAL_PATH):
+    os.mkdir(LOCAL_PATH)
 
 
 def load_style(stylename):
@@ -68,3 +78,20 @@ CONSOLE_FG = CONSOLE_SYNTAX_HIGHLIGHTING.get('Token.Name', {}).get('foreground',
 
 EDITOR_BG, EDITOR_HIGHLIGHT_BG, EDITOR_SYNTAX_HIGHLIGHTING = load_style(EDITOR_STYLE)
 EDITOR_FG = EDITOR_SYNTAX_HIGHLIGHTING.get('Token.Name', {}).get('foreground', 'black')
+
+PWD_FILE = os.path.join(LOCAL_PATH, '.pwd')
+IV_FILE = os.path.join(LOCAL_PATH, '.iv')
+
+
+def decrypt(msg, pwd, iv):
+    """Returns the login and password for the mailbox that where encrypted using pwd."""
+    key = hashlib.sha256(pwd.encode()).digest()
+    cipher = AES.new(key, AES.MODE_CFB, iv)
+    return cipher.decrypt(msg).decode()
+
+
+def encrypt(msg, pwd, iv):
+    """Encrypt the mailbox connection information using pwd."""
+    key = hashlib.sha256(pwd.encode()).digest()
+    cipher = AES.new(key, AES.MODE_CFB, iv)
+    return cipher.encrypt(msg)

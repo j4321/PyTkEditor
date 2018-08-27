@@ -82,6 +82,7 @@ class EditorNotebook(Notebook):
         tab = self.add(editor, text=title)
         self.tab(tab, closecmd=lambda: self.close(tab))
         self.files[tab] = file
+        self._tabs[tab].file = file
         self.wrapper.add_tooltip(tab, file if file else title)
         editor.text.bind('<<Modified>>', lambda e: self.edit_modified(widget=editor, generate=True))
 
@@ -138,6 +139,7 @@ class EditorNotebook(Notebook):
                                  filetypes=[('Python', '*.py'), ('All files', '*')])
         if name:
             self.files[tab] = name
+            self._tabs[tab].file = name
             self._tab_labels[tab].tab_configure(text=os.path.split(name)[1])
             self.wrapper.set_tooltip_text(self._tab_labels[tab], name)
             self.save(tab)

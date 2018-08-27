@@ -7,44 +7,25 @@ Created on Wed Aug 22 12:28:48 2018
 """
 
 import tkinter as tk
-import code
 import sys
-from threading import Lock
 import re
-from os.path import expanduser, join
+from os import kill, chmod
+from os.path import expanduser, join, dirname
 from tkeditorlib.complistbox import CompListbox
-from tkeditorlib.constants import get_screen, FONT, CONSOLE_BG,\
-    CONSOLE_HIGHLIGHT_BG, CONSOLE_SYNTAX_HIGHLIGHTING, CONSOLE_FG
-from contextlib import redirect_stderr, redirect_stdout
+from tkeditorlib.constants import get_screen, FONT, CONSOLE_BG, CONSOLE_FG,\
+    CONSOLE_HIGHLIGHT_BG, CONSOLE_SYNTAX_HIGHLIGHTING, PWD_FILE, IV_FILE, \
+    decrypt, encrypt
 from pygments import lex
 from pygments.lexers import Python3Lexer
 import pickle
 import jedi
-
-
-def print2(*args):
-    txt = ' '.join([str(a) for a in args])
-    sys.__stdout__.write(txt + '\n')
-    sys.__stdout__.flush()
-
-
-def display_list(L):
-    txt = ""
-    line = ""
-    n = max([len(w) for w in L])
-    n = max(n, 18) + 2
-    fmt = "%-" + str(n) + "s"
-    for e in sorted(L):
-        e = str(e)
-        if len(line) > 60:
-            txt += line + '\n'
-            line = ""
-        else:
-            line += fmt % e
-    if len(line):
-        txt += line
-        # txt += '\n'
-    return txt
+import socket
+from subprocess import Popen
+import signal
+import string
+import secrets
+from Crypto.Cipher import AES
+from Crypto import Random
 
 
 class History:
@@ -106,38 +87,6 @@ class History:
         return self.history[self._session_start:]
 
 
-class StdoutRedirector(object):
-    def __init__(self, text_widget):
-        self.text = text_widget
-
-    def write(self, string):
-        self.text.write('end', string, 'output')
-        self.text.see('end')
-
-    def writelines(self, lines):
-        for line in lines:
-            self.text.write(line)
-
-    def flush(self):
-        self.text.update_idletasks()
-
-
-class StderrRedirector(object):
-    def __init__(self, text_widget):
-        self.text = text_widget
-
-    def write(self, string):
-        self.text.write('end', string, 'error')
-        self.text.see('end')
-
-    def writelines(self, lines):
-        for line in lines:
-            self.text.write(line)
-
-    def flush(self):
-        self.text.update_idletasks()
-
-
 class TextConsole(tk.Text):
     def __init__(self, master=None, **kw):
         kw.setdefault('wrap', 'word')
@@ -151,7 +100,7 @@ class TextConsole(tk.Text):
         kw.setdefault('promptcolor', kw['foreground'])
         kw.setdefault('output_foreground', kw['foreground'])
         kw.setdefault('output_background', kw['background'])
-        kw.setdefault('error_foreground', 'red')
+        kw.setdefault('error_foreground', 'tomato')
         kw.setdefault('error_background', kw['background'])
         kw.setdefault('font', FONT)
         banner = kw.pop('banner', 'Python %s\n' % sys.version)
@@ -171,23 +120,31 @@ class TextConsole(tk.Text):
 
         tk.Text.__init__(self, master, **kw)
 
-        self.write_lock = Lock()
-
-        self.stdout = StdoutRedirector(self)
-        self.stderr = StderrRedirector(self)
         self._comp = CompListbox(self)
         self._comp.set_callback(self._comp_sel)
 
-        # --- shell
+        self._pwd = ''.join(secrets.choice(string.ascii_letters + string.digits) for i in range(1024))
+        with open(PWD_FILE, 'w') as f:
+            f.write(self._pwd)
+        chmod(PWD_FILE, 0o600)
 
-        def shell_exit():
-            raise(SystemExit)
+        self._iv = Random.new().read(AES.block_size)
 
-        self.shell = code.InteractiveConsole({})
-        self.shell.push('')
-        self.shell.locals['exit'] = shell_exit
-        self.shell.locals['quit'] = shell_exit
-        self._shell_locals = self.shell.locals.copy()
+        with open(IV_FILE, 'wb') as f:
+            f.write(self._iv)
+        chmod(IV_FILE, 0o600)
+
+        # --- shell socket
+        self.shell_socket = socket.socket()
+        self.shell_socket.bind((socket.gethostname(), 0))
+        host, port = self.shell_socket.getsockname()
+        self.shell_socket.listen(5)
+        p = Popen(['python',
+                   join(dirname(__file__), 'interactive_console.py'),
+                   host, str(port)])
+        self.shell_pid = p.pid
+        self.shell_client, addr = self.shell_socket.accept()
+        self.shell_client.setblocking(False)
 
         #  --- syntax highlighting
         for tag, opts in CONSOLE_SYNTAX_HIGHLIGHTING.items():
@@ -212,14 +169,18 @@ class TextConsole(tk.Text):
         self.bind('<Up>', self.on_up)
         self.bind('<Return>', self.on_return)
         self.bind('<BackSpace>', self.on_backspace)
-        self.bind('<<Copy>>', self.on_copy)
+        self.bind('<Control-c>', self.on_ctrl_c)
         self.bind('<<Paste>>', self.on_paste)
         self.bind('<Destroy>', lambda e: self.history.save())
         self.bind('<FocusOut>', lambda e: self._comp.withdraw())
         self.bind("<ButtonPress>", self._on_press)
 
+    def _on_destroy(self):
+        self.history.save()
+        self.shell_client.close()
+        self.shell_socket.close()
+
     def _shell_clear(self):
-        self.shell.locals = self._shell_locals.copy()
         self.delete('banner.last', 'end')
         self.insert('insert', '\n')
         self.prompt()
@@ -252,12 +213,7 @@ class TextConsole(tk.Text):
                 self.tag_add(str(t), "range_start", "range_end")
             self.mark_set("range_start", "range_end")
 
-    def write(self, index, chars, *args):
-        self.write_lock.acquire()
-        self.insert(index, chars, *args)
-        self.write_lock.release()
-
-    def on_copy(self, event):
+    def on_ctrl_c(self, event):
         sel = self.tag_ranges('sel')
         if sel:
             txt = self.get('sel.first', 'sel.last').splitlines()
@@ -271,6 +227,8 @@ class TextConsole(tk.Text):
                     lines.append(line)
             self.clipboard_clear()
             self.clipboard_append('\n'.join(lines))
+        elif self.cget('state') == 'disabled':
+            kill(self.shell_pid, signal.SIGINT)
         return 'break'
 
     def on_paste(self, event):
@@ -293,23 +251,17 @@ class TextConsole(tk.Text):
             self.insert('insert', lines[0][indent:])
             for line in lines[1:]:
                 line = line[indent:]
-                if line.strip() and not line.startswith('    '):
-                    self.parse()
-                    self.eval_current()
-                    input_index = self.index('input')
-                else:
-                    self.insert('insert', '\n')
-                    self.prompt(True)
+                self.insert('insert', '\n')
+                self.prompt(True)
                 self.insert('insert', line)
-        self.mark_set('input', input_index)
-#        self.delete('insert linestart', 'end')
+                self.mark_set('input', input_index)
         self.see('end')
 
     def prompt(self, result=False):
         if result:
-            self.write('insert', self._prompt2, 'prompt')
+            self.insert('insert', self._prompt2, 'prompt')
         else:
-            self.write('insert', self._prompt1, 'prompt')
+            self.insert('insert', self._prompt1, 'prompt')
         self.mark_set('input', 'insert')
 
     def on_key_press(self, event):
@@ -444,49 +396,65 @@ class TextConsole(tk.Text):
         self.insert_cmd(cmd)
         self.parse()
         self.focus_set()
-        if self.eval_current():
-            self.eval_current()
+        self.eval_current()
 
     def eval_current(self, auto_indent=False):
-        add = True
-        if self.shell.buffer:
-            self.shell.buffer.clear()
-            add = False
         index = self.index('input')
         lines = self.get('input', 'insert lineend').splitlines()
         self.mark_set('insert', 'insert lineend')
         if lines:
             lines = [lines[0].rstrip()] + [line[len(self._prompt2):].rstrip() for line in lines[1:]]
-        line = '\n'.join(lines)
-        if lines:
-            if add:
-                self.history.add_history(line)
-            else:
-                self.history.replace_history_item(-1, line)
-        self.insert('insert', '\n')
-        self._hist_item = self.history.get_length()
+            line = '\n'.join(lines)
 
-        try:
-            with redirect_stderr(self.stderr):
-                with redirect_stdout(self.stdout):
-                    res = self.shell.push(line)
-        except SystemExit:
-            self._shell_clear()
-            return
-
-        if not res and self.compare('insert linestart', '>', 'insert'):
             self.insert('insert', '\n')
-        self.prompt(res)
-        if auto_indent and lines:
-            indent = re.search(r'^( )*', lines[-1]).group()
-            line = lines[-1].strip()
-            if line and line[-1] == ':':
-                indent = indent + '    '
-            self.insert('insert', indent)
-        self.see('end')
-        if res:
-            self.mark_set('input', index)
-        return res
+            try:
+                self.shell_client.send(encrypt(line, self._pwd, self._iv))
+                self.configure(state='disabled')
+            except SystemExit:
+                self._shell_clear()
+                return
+            except Exception as e:
+                print(e)
+                return
+
+            self.after(1, self._check_result, auto_indent, lines, index)
+        else:
+            self.insert('insert', '\n')
+            self.prompt()
+
+    def _check_result(self, auto_indent, lines, index):
+        try:
+            cmd = decrypt(self.shell_client.recv(65536), self._pwd, self._iv)
+        except socket.error:
+            self.after(10, self._check_result, auto_indent, lines, index)
+        else:
+            res, output, err = eval(cmd)
+            self.configure(state='normal')
+
+            if err.strip():
+                if err == 'SystemExit\n':
+                    self._shell_clear()
+                    return
+                else:
+                    self.insert('end', err, 'error')
+            elif output.strip():
+                self.insert('end', output, 'output')
+
+            if not res and self.compare('insert linestart', '>', 'insert'):
+                self.insert('insert', '\n')
+            self.prompt(res)
+            if auto_indent and lines:
+                indent = re.search(r'^( )*', lines[-1]).group()
+                line = lines[-1].strip()
+                if line and line[-1] == ':':
+                    indent = indent + '    '
+                self.insert('insert', indent)
+            self.see('end')
+            if res:
+                self.mark_set('input', index)
+            elif lines:
+                self.history.add_history('\n'.join(lines))
+                self._hist_item = self.history.get_length()
 
     def on_return(self, event=None):
         if self.compare('insert', '<', 'input'):
@@ -495,7 +463,6 @@ class TextConsole(tk.Text):
             self._comp_sel()
         else:
             self.parse()
-#            if self.compare('insert lineend', '==', 'end-1c'):
             self.eval_current(True)
             self.see('end')
         return 'break'
@@ -519,3 +486,4 @@ class TextConsole(tk.Text):
                 self.delete('insert-1c')
         self.parse()
         return 'break'
+
