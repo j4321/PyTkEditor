@@ -140,6 +140,7 @@ class CodeStructure(Frame):
         self.filename.configure(text=title)
         names = list(self.codetree.populate(text))
         names.sort()
+        self.goto_entry.delete(0, "end")
         self.goto_entry.set_completion_list(names)
 
     def goto(self, event):

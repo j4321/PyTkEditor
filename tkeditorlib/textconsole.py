@@ -10,7 +10,7 @@ import tkinter as tk
 import sys
 import re
 from os import kill, chmod
-from os.path import expanduser, join, dirname
+from os.path import join, dirname
 from tkeditorlib.complistbox import CompListbox
 from tkeditorlib.constants import get_screen, FONT, CONSOLE_BG, CONSOLE_FG,\
     CONSOLE_HIGHLIGHT_BG, CONSOLE_SYNTAX_HIGHLIGHTING, PWD_FILE, IV_FILE, \
@@ -145,7 +145,7 @@ class TextConsole(tk.Text):
         self.shell_client, addr = self.shell_socket.accept()
         self.shell_client.setblocking(False)
 
-        #  --- syntax highlighting
+        # --- syntax highlighting
         for tag, opts in CONSOLE_SYNTAX_HIGHLIGHTING.items():
             self.tag_configure(tag, selectforeground=kw['selectforeground'], **opts)
 
@@ -238,7 +238,8 @@ class TextConsole(tk.Text):
         if sel:
             self.delete('sel.first', 'sel.last')
         txt = self.clipboard_get()
-        self.insert_cmd(txt)
+        self.insert("insert", txt)
+        self.insert_cmd(self.get("input", "end"))
         self.parse()
         return 'break'
 
