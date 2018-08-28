@@ -6,7 +6,7 @@ Created on Sat Aug 18 15:04:09 2018
 @author: juliette
 """
 from tkinter import PhotoImage
-from tkinter.ttk import Treeview, Frame, Label, Separator
+from tkinter.ttk import Treeview, Frame, Label
 from tkinter.font import Font
 from tokenize import tokenize, TokenError
 from tkeditorlib.autoscrollbar import AutoHideScrollbar as Scrollbar
@@ -91,7 +91,7 @@ class CodeTree(Treeview):
                 self.insert(parent, 'end', text=name,
                             tag=(obj_type, name),
                             values=('%i.%i' % token.start, '%i.%i' % token.end))
-        self.column('#0', width=max_length)
+        self.column('#0', width=max_length, minwidth=max_length)
         return names
 
 
@@ -120,7 +120,7 @@ class CodeStructure(Frame):
         self.codetree.grid(row=1, column=0, sticky='ewns')
         sx.grid(row=2, column=0, sticky='ew')
         sy.grid(row=1, column=1, sticky='ns')
-        Separator(self, orient='horizontal').grid(row=3, column=0, columnspan=2, sticky='ew')
+        Frame(self, style='separator.TFrame', height=1).grid(row=3, column=0, columnspan=2, sticky='ew')
         self.goto_frame.grid(row=4, column=0, columnspan=2, sticky='nsew')
 
         self.set_callback = self.codetree.set_callback

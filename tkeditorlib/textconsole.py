@@ -14,7 +14,7 @@ from os.path import expanduser, join, dirname
 from tkeditorlib.complistbox import CompListbox
 from tkeditorlib.constants import get_screen, FONT, CONSOLE_BG, CONSOLE_FG,\
     CONSOLE_HIGHLIGHT_BG, CONSOLE_SYNTAX_HIGHLIGHTING, PWD_FILE, IV_FILE, \
-    decrypt, encrypt
+    decrypt, encrypt, HISTFILE
 from pygments import lex
 from pygments.lexers import Python3Lexer
 import pickle
@@ -105,8 +105,7 @@ class TextConsole(tk.Text):
         kw.setdefault('font', FONT)
         banner = kw.pop('banner', 'Python %s\n' % sys.version)
 
-        histfile = join(expanduser('~'), '.tkeditor_history')
-        self.history = History(histfile)
+        self.history = History(HISTFILE)
         self._hist_item = self.history.get_length()
         self._hist_match = ''
 

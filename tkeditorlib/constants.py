@@ -25,7 +25,6 @@ IM_HFCT = os.path.join(IMG_PATH, 'hf.png')
 IM_SEP = os.path.join(IMG_PATH, 'sep.png')
 IM_WARN = os.path.join(IMG_PATH, 'warning.png')
 IM_ERR = os.path.join(IMG_PATH, 'error.png')
-IM_CLOSE = os.path.join(IMG_PATH, 'close.png')
 ICON = os.path.join(IMG_PATH, 'icon.png')
 
 if os.access(PATH, os.W_OK):
@@ -36,6 +35,7 @@ else:
 if not os.path.exists(LOCAL_PATH):
     os.mkdir(LOCAL_PATH)
 
+HISTFILE = os.path.join(LOCAL_PATH, 'tkeditor.history')
 CONFIG_PATH = os.path.join(LOCAL_PATH, 'tkeditor.ini')
 
 CONFIG = configparser.ConfigParser()
@@ -63,8 +63,79 @@ def save_config():
 FONT = (CONFIG.get("General", "fontfamily"),
         CONFIG.getint("General", "fontsize"))
 
+# --- style
+
 EDITOR_STYLE = CONFIG.get('Editor', 'style')
 CONSOLE_STYLE = CONFIG.get('Console', 'style')
+
+if CONFIG.get('General', 'theme') == 'dark':
+    BG = '#454545'
+    ACTIVEBG = '#525252'
+    PRESSEDBG = '#262626'
+    FG = '#dddddd'
+    FIELDBG = '#303030'
+    LIGHTCOLOR = BG
+    DARKCOLOR = BG
+    BORDERCOLOR = '#131313'
+    SELECTBG = '#1f1f1f'
+    SELECTFG = FG
+    DISABLEDFG = '#ACACAC'
+    DISABLEDBG = BG
+    IM_CLOSE = os.path.join(IMG_PATH, 'close_dark.png')
+#    DISABLEDBG = '#595959'
+else:
+    BG = '#dddddd'
+    ACTIVEBG = '#efefef'
+    PRESSEDBG = '#c1c1c1'
+    FG = 'black'
+    FIELDBG = 'white'
+    LIGHTCOLOR = '#ededed'
+    DARKCOLOR = '#cfcdc8'
+    BORDERCOLOR = '#888888'
+    SELECTBG = PRESSEDBG
+    SELECTFG = 'white'
+    DISABLEDFG = '#999999'
+    DISABLEDBG = BG
+    IM_CLOSE = os.path.join(IMG_PATH, 'close.png')
+#    DISABLEDBG = ''
+
+BUTTON_STYLE_CONFIG = {'bordercolor': BORDERCOLOR,
+                       'background': BG,
+                       'fieldbackground': FIELDBG,
+                       'indicatorbackground': FIELDBG,
+                       'indicatorforeground': FG,
+                       'foreground': FG,
+                       'arrowcolor': FG,
+                       'insertcolor': FG,
+                       'upperbordercolor': BORDERCOLOR,
+                       'lowerbordercolor': BORDERCOLOR,
+                       'lightcolor': LIGHTCOLOR,
+                       'darkcolor': DARKCOLOR}
+
+BUTTON_STYLE_MAP = {'background': [('active', ACTIVEBG),
+                                   ('disabled', DISABLEDBG),
+                                   ('pressed', PRESSEDBG)],
+                    'lightcolor': [('pressed', DARKCOLOR)],
+                    'darkcolor': [('pressed', LIGHTCOLOR)],
+                    'bordercolor': [('focus', SELECTBG)],
+                    'foreground': [('disabled', DISABLEDFG)],
+                    'fieldbackground': [('disabled', FIELDBG)],
+                    'selectbackground': [('focus', SELECTBG)],
+                    'selectforeground': [('focus', SELECTFG)]}
+
+STYLE_CONFIG = {'bordercolor': BORDERCOLOR,
+                'background': BG,
+                'foreground': FG,
+                'arrowcolor': FG,
+                'gripcount': 0,
+                'lightcolor': LIGHTCOLOR,
+                'darkcolor': DARKCOLOR,
+                'troughcolor': PRESSEDBG}
+
+STYLE_MAP = {'background': [('active', ACTIVEBG), ('disabled', BG)],
+             'lightcolor': [('pressed', DARKCOLOR)],
+             'darkcolor': [('pressed', LIGHTCOLOR)],
+             'foreground': [('disabled', DISABLEDFG)]}
 
 
 def load_style(stylename):
@@ -86,6 +157,14 @@ def load_style(stylename):
     return s.background_color, s.highlight_color, style_dic
 
 
+CONSOLE_BG, CONSOLE_HIGHLIGHT_BG, CONSOLE_SYNTAX_HIGHLIGHTING = load_style(CONSOLE_STYLE)
+CONSOLE_FG = CONSOLE_SYNTAX_HIGHLIGHTING.get('Token.Name', {}).get('foreground', 'black')
+
+EDITOR_BG, EDITOR_HIGHLIGHT_BG, EDITOR_SYNTAX_HIGHLIGHTING = load_style(EDITOR_STYLE)
+EDITOR_FG = EDITOR_SYNTAX_HIGHLIGHTING.get('Token.Name', {}).get('foreground', 'black')
+
+
+# --- screen size
 def get_screen(x, y):
     monitors = [(m.x, m.y, m.x + m.width, m.y + m.height) for m in get_monitors()]
     i = 0
@@ -99,12 +178,7 @@ def get_screen(x, y):
         return monitors[i]
 
 
-CONSOLE_BG, CONSOLE_HIGHLIGHT_BG, CONSOLE_SYNTAX_HIGHLIGHTING = load_style(CONSOLE_STYLE)
-CONSOLE_FG = CONSOLE_SYNTAX_HIGHLIGHTING.get('Token.Name', {}).get('foreground', 'black')
-
-EDITOR_BG, EDITOR_HIGHLIGHT_BG, EDITOR_SYNTAX_HIGHLIGHTING = load_style(EDITOR_STYLE)
-EDITOR_FG = EDITOR_SYNTAX_HIGHLIGHTING.get('Token.Name', {}).get('foreground', 'black')
-
+# --- encryption
 PWD_FILE = os.path.join(LOCAL_PATH, '.pwd')
 IV_FILE = os.path.join(LOCAL_PATH, '.iv')
 
@@ -120,4 +194,4 @@ def encrypt(msg, pwd, iv):
     """Encrypt the mailbox connection information using pwd."""
     key = hashlib.sha256(pwd.encode()).digest()
     cipher = AES.new(key, AES.MODE_CFB, iv)
-    return cipher.encrypt(msg)
+    return cipher.encrypt(msg.encode())

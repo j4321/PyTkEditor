@@ -7,7 +7,8 @@ Created on Sun Aug 19 16:02:58 2018
 """
 from tkinter import ttk
 import tkinter as tk
-from tkeditorlib.constants import IM_CLOSE
+from tkeditorlib.constants import IM_CLOSE, BG, LIGHTCOLOR, DARKCOLOR,\
+    DISABLEDFG, ACTIVEBG, STYLE_CONFIG, FIELDBG
 
 
 class Tab(ttk.Frame):
@@ -28,15 +29,6 @@ class Tab(ttk.Frame):
         self.frame.place(bordermode='inside', anchor='nw', x=0, y=0,
                          relwidth=1, relheight=1)
         self.tab_nb = tab_nb
-
-    @property
-    def tab_nb(self):
-        return self.label.tab_nb
-
-    @tab_nb.setter
-    def tab_nb(self, tab_nb):
-        self.label.tab_nb = tab_nb
-        self.frame.tab_nb = tab_nb
 
     def state(self, *args):
         res = ttk.Frame.state(self, *args)
@@ -96,7 +88,6 @@ class Notebook(ttk.Frame):
         self._dragged_tab = None
 
         style = ttk.Style(self)
-        bg = style.lookup('TFrame', 'background')
         # --- init style
         if not Notebook._initialized:
             Notebook._img_close = tk.PhotoImage(file=IM_CLOSE)
@@ -116,33 +107,31 @@ class Notebook(ttk.Frame):
         self._body.columnconfigure(0, weight=1)
         self._body.grid_propagate(False)
         # tab labels
-        self._canvas = tk.Canvas(self, bg=bg, highlightthickness=0,
+        self._canvas = tk.Canvas(self, bg=BG, highlightthickness=0,
                                  borderwidth=0, takefocus=False)  # to scroll through tab labels
-        self._tab_frame2 = ttk.Frame(self)  # to display tab labels
-        self._tab_frame = ttk.Frame(self._tab_frame2, height=25)  # to display tab labels
-        self._sep = ttk.Separator(self._tab_frame2, orient='horizontal')
-        self._sep.place(anchor='sw', x=0, rely=1, relwidth=1, height=1)
+        self._tab_frame2 = ttk.Frame(self, height=25)  # to display tab labels
+        self._tab_frame = ttk.Frame(self._tab_frame2)  # to display tab labels
+        self._sep = ttk.Frame(self._tab_frame2, style='separator.TFrame', height=1)
+        self._sep.place(bordermode='outside', anchor='sw', x=0, rely=1, relwidth=1, height=1)
         self._tab_frame.pack(side='left')
 
         self._canvas.create_window(0, 0, anchor='nw', window=self._tab_frame2, tags='window')
         self._canvas.configure(height=self._tab_frame.winfo_reqheight())
         # dragging dummy
         self._dummy_frame = ttk.Frame(self._tab_frame)
-        self._dummy_sep = ttk.Separator(self._tab_frame, orient='horizontal')
+        self._dummy_sep = ttk.Frame(self._tab_frame, style='separator.TFrame', height=1)
         self._dummy_sep.place(in_=self._dummy_frame, x=0, relwidth=1, height=1,
                               y=0, anchor='sw', bordermode='outside')
         # tab navigation
-        self._tab_menu = tk.Menu(self, tearoff=False, bg='white', relief='sunken',
-                                 activebackground=style.lookup('TEntry', 'selectbackground', ['focus']),
-                                 activeforeground=style.lookup('TEntry', 'selectforeground', ['focus']))
+        self._tab_menu = tk.Menu(self, tearoff=False, relief='sunken')
         self._tab_list = ttk.Menubutton(self, width=1, menu=self._tab_menu,
                                         style='Notebook.TMenubutton', padding=0)
         self._tab_list.state(['disabled'])
 
         self._btn_left = ttk.Button(self, style='Notebook.Left.Button',
-                                    command=self.show_prev)
+                                    command=self.select_prev)
         self._btn_right = ttk.Button(self, style='Notebook.Right.Button',
-                                     command=self.show_next)
+                                     command=self.select_next)
 
         # --- grid
         self._tab_list.grid(row=0, column=0, sticky='ns', pady=(0, 1))
@@ -150,6 +139,18 @@ class Notebook(ttk.Frame):
         self._canvas.grid(row=0, column=2, sticky='ew')
         self._btn_right.grid(row=0, column=3, sticky='ns', pady=(0, 1))
         self._body.grid(row=1, columnspan=4, sticky='ewns', padx=1, pady=1)
+
+        ttk.Frame(self, height=1,
+                  style='separator.TFrame').place(x=1, anchor='nw',
+                                                  rely=1, height=1,
+                                                  relwidth=1)
+
+        self._border_left = ttk.Frame(self, width=1, style='separator.TFrame')
+        self._border_right = ttk.Frame(self, width=1, style='separator.TFrame')
+        self._border_left.place(bordermode='outside', in_=self._body, x=-1, y=-2,
+                                width=1, height=self._body.winfo_reqheight() + 2, relheight=1)
+        self._border_right.place(bordermode='outside', in_=self._body, relx=1, y=-2,
+                                 width=1, height=self._body.winfo_reqheight() + 2, relheight=1)
 
         # --- bindings
         self._tab_frame.bind('<Configure>', self._on_configure)
@@ -159,11 +160,16 @@ class Notebook(ttk.Frame):
 
     def _on_configure(self, event=None):
         self.update_idletasks()
+        # ensure that canvas has the same height as the tabs
         h = self._tab_frame.winfo_reqheight()
         self._canvas.configure(height=h)
+        # update canvas scrollregion
         self._canvas.configure(scrollregion=self._canvas.bbox('all'))
+        # ensure that _tab_frame2 fills the canvas if _tab_frame is smaller
         self._canvas.itemconfigure('window', width=max(self._canvas.winfo_width(), self._tab_frame.winfo_reqwidth()))
+        # ensure visibility of current tab
         self.see(self.current_tab)
+        # check wheter next/prev buttons needs to be displayed
         if self._tab_frame.winfo_reqwidth() < self._canvas.winfo_width():
             self._btn_left.grid_remove()
             self._btn_right.grid_remove()
@@ -186,7 +192,6 @@ class Notebook(ttk.Frame):
         style.layout('Notebook.Tab', style.layout('TFrame'))
         style.layout('Notebook.Tab.Frame', style.layout('TFrame'))
         style.layout('Notebook.Tab.Label', style.layout('TLabel'))
-        style.map('Notebook.Tab.Close', relief=[('active', 'raised')])
         style.layout('Notebook.Tab.Close',
                      [('Close.padding',
                        {'sticky': 'nswe',
@@ -203,72 +208,78 @@ class Notebook(ttk.Frame):
                      [('Button.padding',
                        {'sticky': 'nswe',
                         'children': [('Button.rightarrow', {'sticky': 'nswe'})]})])
-        bg = style.lookup('TNotebook.Tab', 'background')
-        style.configure('Notebook', relief='raised', borderwidth=1, padding=1)
+        style.configure('Notebook', padding=1, **STYLE_CONFIG)
         style.configure('Notebook.Tab', relief='raised', borderwidth=1,
-                        background=bg)
+                        **STYLE_CONFIG)
         style.configure('Notebook.Tab.Frame', relief='flat', borderwidth=0,
-                        background=bg)
+                        **STYLE_CONFIG)
         style.configure('Notebook.Tab.Label', relief='flat', borderwidth=1,
-                        background=bg, padding=0)
+                        padding=0, **STYLE_CONFIG)
         style.configure('Notebook.Tab.Close', relief='flat', borderwidth=1,
-                        background=bg, padding=0)
+                        padding=0, **STYLE_CONFIG)
+        style.configure('Notebook.Tab.Frame', background=FIELDBG)
+        style.configure('Notebook.Tab.Label', background=FIELDBG)
+        style.configure('Notebook.Tab.Close', background=FIELDBG)
 
         style.map('Notebook.Tab.Frame',
-                  **{'lightcolor': [('selected', '!disabled', '#eeebe7')],
-                     'background': [('selected', '!disabled', '#dcdad5')]})
+                  **{'background': [('selected', '!disabled', BG)]})
         style.map('Notebook.Tab.Label',
-                  **{'lightcolor': [('selected', '!disabled', '#eeebe7')],
-                     'background': [('selected', '!disabled', '#dcdad5')]})
+                  **{'background': [('selected', '!disabled', BG)]})
         style.map('Notebook.Tab.Close',
-                  **{'background': [('selected', '#dcdad5'),
-                                    ('pressed', bg),
-                                    ('active', '#dcdad5')],
+                  **{'background': [('selected', BG),
+                                    ('pressed', DARKCOLOR),
+                                    ('active', ACTIVEBG)],
                      'relief': [('hover', '!disabled', 'raised'),
+                                ('active', '!disabled', 'raised'),
                                 ('pressed', '!disabled', 'sunken')],
-                     'lightcolor': [('pressed', '#bab5ab')],
-                     'darkcolor': [('pressed', '#bab5ab')]})
+                     'lightcolor': [('pressed', DARKCOLOR)],
+                     'darkcolor': [('pressed', LIGHTCOLOR)]})
         style.map('Notebook.Tab',
-                  **{'lightcolor': [('selected', '!disabled', '#eeebe7')],
-                     'background': [('selected', '!disabled', '#dcdad5')]})
+                  **{'background': [('selected', '!disabled', ACTIVEBG)]})
 
-        style.map('Notebook.TMenubutton', arrowcolor=[('disabled', 'gray50')])
-        style.map('Notebook.Left.Button', arrowcolor=[('disabled', 'gray50')])
-        style.map('Notebook.Right.Button', arrowcolor=[('disabled', 'gray50')])
+        style.map('Notebook.TMenubutton', arrowcolor=[('disabled', DISABLEDFG)])
+        style.map('Notebook.Left.Button', arrowcolor=[('disabled', DISABLEDFG)])
+        style.map('Notebook.Right.Button', arrowcolor=[('disabled', DISABLEDFG)])
 
-    def _on_press(self, event):
-        self.show(event.widget.tab_nb)
-        tab = event.widget.tab_nb
+    def _on_press(self, event, tab):
+        self.show(tab)
+
+        # prepare dragging
         widget = self._tab_labels[tab]
         x = widget.winfo_x()
         y = widget.winfo_y()
+        # replace tab by blank space (dummy)
         self._dummy_frame.configure(width=widget.winfo_reqwidth(),
                                     height=widget.winfo_reqheight())
         self._dummy_frame.grid(**widget.grid_info())
         self.update_idletasks()
-        self._dummy_sep.place(in_=self._dummy_frame, y=self._dummy_frame.winfo_height())
+        self._dummy_sep.place_configure(in_=self._dummy_frame, y=self._dummy_frame.winfo_height())
         widget.grid_remove()
+        # place tab above the rest to drag it
         widget.place(bordermode='outside', x=x, y=y)
         widget.lift()
         self._dragged_tab = widget
-        self._dx = - event.x_root
-        self._y = event.y_root
+        self._dx = - event.x_root  # - current mouse x position on screen
+        self._y = event.y_root   # current y mouse position on screen
         self._distance_to_dragged_border = widget.winfo_rootx() - event.x_root
         widget.bind_all('<Motion>', self._on_drag)
 
     def _on_drag(self, event):
         self._dragged_tab.place_configure(x=self._dragged_tab.winfo_x() + event.x_root + self._dx)
         x_border = event.x_root + self._distance_to_dragged_border
+        # get tab below dragged_tab
         if event.x_root > - self._dx:
             # move towards right
             w = self._dragged_tab.winfo_width()
             tab_below = self._tab_frame.winfo_containing(x_border + w + 2, self._y)
         else:
+            # move towards left
             tab_below = self._tab_frame.winfo_containing(x_border - 2, self._y)
         if tab_below and tab_below.master in self._tab_labels.values():
             tab_below = tab_below.master
         elif tab_below not in self._tab_labels:
             tab_below = None
+
         if tab_below and abs(x_border - tab_below.winfo_rootx()) < tab_below.winfo_width() / 2:
             # swap
             self._swap(tab_below)
@@ -276,6 +287,7 @@ class Notebook(ttk.Frame):
         self._dx = - event.x_root
 
     def _swap(self, tab):
+        """Swap dragged_tab with tab."""
         g1, g2 = self._dummy_frame.grid_info(), tab.grid_info()
         self._dummy_frame.grid(**g2)
         tab.grid(**g1)
@@ -286,6 +298,7 @@ class Notebook(ttk.Frame):
         self.see(self._dragged_tab.tab_nb)
 
     def _on_click(self, event):
+        """Stop dragging."""
         if self._dragged_tab:
             self._dragged_tab.unbind_all('<Motion>')
             self._dragged_tab.grid(**self._dummy_frame.grid_info())
@@ -301,7 +314,55 @@ class Notebook(ttk.Frame):
         self._current_tab = tab_nb
         self._tab_var.set(tab_nb)
 
+    def show(self, tab_id, new=False, update=False):
+        # hide current tab body
+        if self._current_tab >= 0:
+            self._tabs[self.current_tab].grid_remove()
+            self._tab_labels[self.current_tab].state(['!selected'])
+
+        # restore tab if hidden
+        if tab_id in self._hidden_tabs:
+            self._tab_labels[tab_id].grid(in_=self._tab_frame)
+            self._visible_tabs.insert(self._tab_labels[tab_id].grid_info()['column'], tab_id)
+            self._hidden_tabs.remove(tab_id)
+
+        # update current tab
+        self.current_tab = tab_id
+        self._tab_var.set(tab_id)
+        self._tab_labels[tab_id].state(['selected'])
+
+        if new:
+            # add new tab
+            c, r = self._tab_frame.grid_size()
+            self._tab_labels[tab_id].grid(in_=self._tab_frame, row=0, column=c)
+            self._visible_tabs.append(tab_id)
+
+        self.update_idletasks()
+        self._on_configure()
+        # ensure tab visibility
+        self.see(tab_id)
+        # display body
+        if update:
+            sticky = self._tab_options[tab_id]['sticky']
+            pad = self._tab_options[tab_id]['padding']
+            self._tabs[tab_id].grid(in_=self._body, sticky=sticky, padx=pad, pady=pad)
+        else:
+            self._tabs[tab_id].grid(in_=self._body)
+        self.update_idletasks()
+        self.event_generate('<<NotebookTabChanged>>')
+
     def add(self, widget, **kwargs):
+        """
+        Add widget (or redisplay it if it was hidden) in the notebook and return
+        the tab index.
+
+        * text: tab label
+        * image: tab image
+        * compound: how the tab label and image are organized
+        * sticky: for the widget inside the notebook
+        * padding: padding (int) around the widget in the notebook
+        """
+        # Todo: underline
         name = str(widget)
         if name in self._indexes:
             ind = self._indexes[name]
@@ -318,7 +379,7 @@ class Notebook(ttk.Frame):
                                         closecmd=lambda: self.forget(ind),
                                         **kwargs)
             self._tab_labels[ind].bind('<ButtonRelease-1>', self._on_click)
-            self._tab_labels[ind].bind('<ButtonPress-1>', self._on_press)
+            self._tab_labels[ind].bind('<ButtonPress-1>', lambda e: self._on_press(e, ind))
             self._body.configure(height=max(self._body.winfo_height(), widget.winfo_reqheight()),
                                  width=max(self._body.winfo_width(), widget.winfo_reqwidth()))
 
@@ -345,6 +406,31 @@ class Notebook(ttk.Frame):
         for i, (text, tab) in enumerate(menu):
             self._tab_menu_entries[tab] = i
 
+    def insert(self, where, widget, **kwargs):
+        """
+        Insert WIDEGT at the position given by WHERE in the notebook.
+
+        For keyword options, see add method.
+        """
+        existing = str(widget) in self._indexes
+        index = self.add(widget, **kwargs)
+        if where == 'end':
+            if not existing:
+                return
+        where = self.index(where)
+        self._visible_tabs.remove(index)
+        self._visible_tabs.insert(where, index)
+        for i in range(where, len(self._visible_tabs)):
+            ind = self._visible_tabs[i]
+            self._tab_labels[ind].grid_configure(column=i)
+        self.update_idletasks()
+        self._on_configure()
+
+    def enable_traversal(self):
+        self.bind('<Control-Tab>', lambda e: self.select_next(True))
+        self.bind('<Shift-Control-ISO_Left_Tab>', lambda e: self.select_prev(True))
+        # TODO: Hot key for tab
+
     def index(self, tab_id):
         if tab_id in self._tabs:
             return tab_id
@@ -354,57 +440,28 @@ class Notebook(ttk.Frame):
             except KeyError:
                 raise ValueError('No such tab in the notebook: %s' % tab_id)
 
-    def show_next(self):
+    def select_next(self, rotate=False):
+        """Go to next tab."""
         if self._current_tab >= 0:
             index = self._visible_tabs.index(self.current_tab)
             index += 1
             if index < len(self._visible_tabs):
                 self.show(self._visible_tabs[index])
+            elif rotate:
+                self._show(self._visible_tabs[0])
 
-    def show_prev(self):
+    def select_prev(self, rotate=False):
+        """Go to prev tab."""
         if self._current_tab >= 0:
             index = self._visible_tabs.index(self.current_tab)
             index -= 1
             if index >= 0:
-                self.show(self._visible_tabs[index])
-
-    def show(self, tab_id, new=False, update=False):
-        # hide current tab body
-        if self._current_tab >= 0:
-            self._tabs[self.current_tab].grid_remove()
-            self._tab_labels[self.current_tab].state(['!selected'])
-
-        if tab_id in self._hidden_tabs:
-            self._tab_labels[tab_id].grid(in_=self._tab_frame)
-            self._visible_tabs.insert(self._tab_labels[tab_id].grid_info()['column'], tab_id)
-            self._hidden_tabs.remove(tab_id)
-
-        # update current tab
-        self.current_tab = tab_id
-        self._tab_var.set(tab_id)
-        self._tab_labels[tab_id].state(['selected'])
-
-        if new:
-            # add new tab
-            c, r = self._tab_frame.grid_size()
-            self._tab_labels[tab_id].grid(in_=self._tab_frame, row=0, column=c)
-            self._visible_tabs.append(tab_id)
-        self.update_idletasks()
-        self._on_configure()
-        # ensure tab visibility
-        self.see(tab_id)
-        # display body
-        if update:
-            sticky = self._tab_options[tab_id]['sticky']
-            pad = self._tab_options[tab_id]['padding']
-            self._tabs[tab_id].grid(in_=self._body, sticky=sticky, padx=pad, pady=pad)
-        else:
-            self._tabs[tab_id].grid(in_=self._body)
-        self.update_idletasks()
-        self.event_generate('<<NotebookTabChanged>>')
+                self._show(self._visible_tabs[index])
+            elif rotate:
+                self._show(self._visible_tabs[-1])
 
     def see(self, tab_id):
-        """Make tab label visible."""
+        """Make label of tab TAB_ID visible."""
         if tab_id < 0:
             return
         tab = self.index(tab_id)
@@ -430,6 +487,7 @@ class Notebook(ttk.Frame):
             self._btn_left.state(['!disabled'])
 
     def hide(self, tab_id):
+        """Hide tab TAB_ID."""
         tab = self.index(tab_id)
         if tab in self._visible_tabs:
             self._visible_tabs.remove(tab)
@@ -445,6 +503,7 @@ class Notebook(ttk.Frame):
             self._on_configure()
 
     def forget(self, tab_id):
+        """Remove tab TAB_ID from notebook."""
         tab = self.index(tab_id)
         if tab in self._hidden_tabs:
             self._hidden_tabs.remove(tab)
@@ -473,11 +532,13 @@ class Notebook(ttk.Frame):
         del self._tab_menu_entries[tab]
 
     def select(self, tab_id=None):
+        """Select tab TAB_ID. If TAB_ID is None, return currently selected tab."""
         if tab_id is None:
             return self.current_tab
         self.show(self.index(tab_id))
 
     def tab(self, tab_id, option=None, **kw):
+        """Query or modify TAB_ID options."""
         tab = self.index(tab_id)
         if option == 'widget':
             return self._tabs[tab]
@@ -494,4 +555,5 @@ class Notebook(ttk.Frame):
                 self._tab_menu.entryconfigure(tab, label=kw['text'])
 
     def tabs(self):
+        """Return the tuple of visible tabs in the order of display."""
         return tuple(self._visible_tabs)

@@ -10,7 +10,8 @@ from tkinter import messagebox
 import re
 from tkeditorlib.autoscrollbar import AutoHideScrollbar
 from tkeditorlib.constants import IM_WARN, IM_ERR, IM_CLOSE, get_screen, FONT,\
-    EDITOR_BG, EDITOR_HIGHLIGHT_BG, EDITOR_SYNTAX_HIGHLIGHTING, EDITOR_FG
+    EDITOR_BG, EDITOR_HIGHLIGHT_BG, EDITOR_SYNTAX_HIGHLIGHTING, EDITOR_FG,\
+    BG, DISABLEDFG, SELECTFG
 from tkeditorlib.complistbox import CompListbox
 from tkeditorlib.tooltip import TooltipTextWrapper
 from tkeditorlib.filebar import FileBar
@@ -36,11 +37,6 @@ class Editor(ttk.Frame):
 
         self.file = ''
 
-        style = ttk.Style(self)
-        bg = style.lookup('TFrame', 'background', default='light grey')
-        select_fg = style.lookup('TEntry', 'selectforeground', ['focus'])
-        # select_bg = style.lookup('TEntry', 'selectbackground', ['focus'])
-
         self.text = tk.Text(self, fg=EDITOR_FG,
                             bg=EDITOR_BG, undo=True,
                             autoseparators=True,
@@ -48,18 +44,18 @@ class Editor(ttk.Frame):
                             highlightthickness=0, wrap='none',
                             selectbackground=EDITOR_HIGHLIGHT_BG,
                             inactiveselectbackground=EDITOR_HIGHLIGHT_BG,
-                            selectforeground=select_fg,
+                            selectforeground=SELECTFG,
                             insertbackground=EDITOR_FG, font=FONT)
 
         self.sep = tk.Frame(self.text, bg='gray60')
         self.sep.place(y=0, relheight=1, x=632, width=1)
 
         self.line_nb = tk.Text(self, width=1, cursor='arrow',
-                               bg=bg, selectbackground=bg,
-                               inactiveselectbackground=bg,
-                               fg='gray40', selectforeground='gray40',
+                               bg=BG, selectbackground=BG,
+                               inactiveselectbackground=BG,
+                               fg=DISABLEDFG, selectforeground=DISABLEDFG,
                                highlightthickness=0, relief='flat',
-                               font="DejaVu\ Sans\ Mono 10")
+                               font=FONT)
         self.line_nb.insert('1.0', '1')
         self.line_nb.tag_configure('right', justify='right')
         self.line_nb.tag_add('right', '1.0', 'end')
@@ -67,17 +63,17 @@ class Editor(ttk.Frame):
 
         self.syntax_checks = tk.Text(self, width=2, cursor='arrow',
                                      state='disabled',
-                                     bg=bg, selectbackground=bg,
-                                     inactiveselectbackground=bg,
-                                     fg='gray40', selectforeground='gray40',
+                                     bg=BG, selectbackground=BG,
+                                     inactiveselectbackground=BG,
+                                     fg=DISABLEDFG, selectforeground=DISABLEDFG,
                                      highlightthickness=0, relief='flat',
-                                     font="DejaVu\ Sans\ Mono 10")
+                                     font=FONT)
         self.textwrapper = TooltipTextWrapper(self.syntax_checks, background='light yellow',
                                               foreground='black', title='Syntax')
 
         sx = AutoHideScrollbar(self, orient='horizontal', command=self.text.xview)
         sy = AutoHideScrollbar(self, orient='vertical', command=self.yview)
-        self.filebar = FileBar(self, self, width=10, bg=bg)
+        self.filebar = FileBar(self, self, width=10)
         self.text.configure(xscrollcommand=sx.set, yscrollcommand=sy.set)
         self.line_nb.configure(yscrollcommand=sy.set)
         self.syntax_checks.configure(yscrollcommand=sy.set)
@@ -130,17 +126,18 @@ class Editor(ttk.Frame):
         self.text.grid(row=0, column=2, sticky='ewns')
         self.line_nb.grid(row=0, column=1, sticky='ns')
         self.syntax_checks.grid(row=0, column=0, sticky='ns')
-        sx.grid(row=1, column=2, sticky='ew')
+        sx.grid(row=1, column=2, columnspan=2, sticky='ew')
         sy.grid(row=0, column=4, sticky='ns')
         self.filebar.grid(row=0, column=3, sticky='ns')
-        ttk.Separator(self, orient='horizontal').grid(row=2, column=0, columnspan=5, sticky='ew')
+        ttk.Frame(self, style='separator.TFrame', height=1).grid(row=2, column=0,
+                                                                 columnspan=5,
+                                                                 sticky='ew')
         self.frame_search.grid(row=3, column=0, columnspan=5, sticky='ew')
         self.frame_search.grid_remove()
 
         #  --- syntax highlighting
-#        for tag, opts in SYNTAX_HIGHLIGHTING.items():
         for tag, opts in EDITOR_SYNTAX_HIGHLIGHTING.items():
-            self.text.tag_configure(tag, selectforeground=select_fg, **opts)
+            self.text.tag_configure(tag, selectforeground=SELECTFG, **opts)
 
         # --- bindings
         self.text.bind("<KeyRelease>", self.on_key)

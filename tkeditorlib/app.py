@@ -1,7 +1,9 @@
 from tkeditorlib.editornotebook import EditorNotebook
 from tkeditorlib.syntax_check import check_file
 from tkeditorlib.filestructure import CodeStructure
-from tkeditorlib.constants import ICON, CONFIG, save_config
+from tkeditorlib.constants import ICON, CONFIG, save_config, BG, FG, SELECTBG,\
+    SELECTFG, FIELDBG, BORDERCOLOR, DISABLEDFG,\
+    BUTTON_STYLE_CONFIG, BUTTON_STYLE_MAP, STYLE_CONFIG, STYLE_MAP
 from tkeditorlib.textconsole import TextConsole
 from tkeditorlib.autoscrollbar import AutoHideScrollbar
 import tkinter as tk
@@ -24,25 +26,52 @@ class App(tk.Tk):
 
         style = ttk.Style(self)
         style.theme_use('clam')
-
-        if CONFIG.get('General', 'theme') == 'dark':
-            fg = 'gray90'
-            bg = 'gray25'
-            dark_bg = 'gray5'
-            style.configure('TFrame', background=bg)
-            style.configure('TLabel', background=bg, foreground=fg)
-            style.configure('TButton', background=bg, foreground=fg)
-            style.configure('Treeview', background=bg, foreground=fg,
-                            fieldbackground=dark_bg)
-            style.configure('TEntry', background=bg, foreground=fg,
-                            fieldbackground=dark_bg)
-            style.configure('TMenubutton', background=bg, foreground=fg)
-            style.configure('TCheckbutton', background=bg, foreground=fg)
-            style.configure('TScrollbar', background=bg, troughcolor=dark_bg)
-            style.configure('TPanedwindow', background=bg)
-            style.configure('TNotebook', background=bg)
-            style.configure('TCombobox', background=bg, foreground=fg,
-                            fieldbackground=dark_bg)
+        style.configure('TFrame', **STYLE_CONFIG)
+        style.configure('TSeparator', **STYLE_CONFIG)
+        style.configure('TLabel', **STYLE_CONFIG)
+        style.configure('Sash', **STYLE_CONFIG)
+        style.configure('TPanedwindow', **STYLE_CONFIG)
+        style.configure('TScrollbar', **STYLE_CONFIG)
+        style.map('TFrame', **STYLE_MAP)
+        style.map('TLabel', **STYLE_MAP)
+        style.map('Sash', **STYLE_MAP)
+        style.map('TScrollbar', **STYLE_MAP)
+        style.map('TPanedwindow', **STYLE_MAP)
+        style.configure('TButton', **BUTTON_STYLE_CONFIG)
+        style.configure('TMenubutton', **BUTTON_STYLE_CONFIG)
+        style.configure('TCheckbutton', **BUTTON_STYLE_CONFIG)
+        style.configure('TRadiobutton', **BUTTON_STYLE_CONFIG)
+        style.configure('TEntry', **BUTTON_STYLE_CONFIG)
+        style.configure('TCombobox', **BUTTON_STYLE_CONFIG)
+        style.configure('TNotebook', **BUTTON_STYLE_CONFIG)
+        style.configure('TNotebook.Tab', **BUTTON_STYLE_CONFIG)
+        style.configure('Treeview', **BUTTON_STYLE_CONFIG)
+        style.configure('Treeview.Heading', **BUTTON_STYLE_CONFIG)
+        style.configure('Treeview.Item', foreground=FG)
+        style.map('TButton', **BUTTON_STYLE_MAP)
+        style.map('TMenubutton', **BUTTON_STYLE_MAP)
+        style.map('TCheckbutton', **BUTTON_STYLE_MAP)
+        style.map('TRadiobutton', **BUTTON_STYLE_MAP)
+        style.map('TEntry', **BUTTON_STYLE_MAP)
+        style.map('TCombobox', **BUTTON_STYLE_MAP)
+        style.map('TNotebook', **BUTTON_STYLE_MAP)
+        style.map('TNotebook.Tab', **BUTTON_STYLE_MAP)
+        style.map('Treeview', **BUTTON_STYLE_MAP)
+        style.map('Treeview', background=[('selected', SELECTBG)],
+                  foreground=[('selected', SELECTFG)])
+        style.map('Treeview.Heading', **BUTTON_STYLE_MAP)
+        self.option_add('*TCombobox*Listbox.selectBackground', SELECTBG)
+        self.option_add('*TCombobox*Listbox.selectForeground', FG)
+        self.option_add('*TCombobox*Listbox.foreground', FG)
+        self.option_add('*TCombobox*Listbox.background', FIELDBG)
+        self.option_add('*Menu.background', FIELDBG)
+        self.option_add('*Menu.activeBackground', SELECTBG)
+        self.option_add('*Menu.activeForeground', FG)
+        self.option_add('*Menu.disabledForeground', DISABLEDFG)
+        self.option_add('*Menu.activeBorderWidth', 0)
+        self.option_add('*Menu.foreground', FG)
+        self.option_add('*Menu.selectColor', FG)
+        self.option_add('*Menu.relief', 'sunken')
 
         style.layout('Down.TButton',
                      [('Button.padding',
@@ -60,6 +89,7 @@ class App(tk.Tk):
                                       {'sticky': 'nswe',
                                        'children': [('Button.label', {'sticky': 'nswe'})]})]})])
         style.configure('border.TFrame', borderwidth=1, relief='sunken')
+        style.configure('separator.TFrame', background=BORDERCOLOR, padding=1)
         style.configure('Up.TButton', arrowsize=20)
         style.configure('Down.TButton', arrowsize=20)
         style.configure('close.TButton', borderwidth=1, relief='flat')
@@ -68,19 +98,20 @@ class App(tk.Tk):
                      [('Treeview.padding',
                        {'sticky': 'nswe',
                         'children': [('Treeview.treearea', {'sticky': 'nswe'})]})])
-        bg = style.lookup('TFrame', 'background', default='light grey')
-        self.configure(bg=bg, padx=6, pady=2)
+        style.configure('flat.Treeview', background=FIELDBG)
+        self.configure(bg=BG, padx=6, pady=2)
         self.file = ''
 
         pane = ttk.PanedWindow(self, orient='horizontal')
         self.codestruct = CodeStructure(pane)
         self.editor = EditorNotebook(pane)
-        console_frame = ttk.Frame(pane)
+        console_frame = ttk.Frame(pane, style='border.TFrame', padding=1)
         console_frame.columnconfigure(0, weight=1)
         console_frame.rowconfigure(0, weight=1)
         sy = AutoHideScrollbar(console_frame, orient='vertical')
         self.console = TextConsole(console_frame, promptcolor='skyblue',
-                                   yscrollcommand=sy.set, relief='flat')
+                                   yscrollcommand=sy.set, relief='flat',
+                                   borderwidth=0, highlightthickness=0)
         sy.configure(command=self.console.yview)
         sy.grid(row=0, column=1, sticky='ns')
         self.console.grid(row=0, column=0, sticky='nswe')
@@ -88,12 +119,12 @@ class App(tk.Tk):
         pane.add(self.codestruct, weight=1)
         pane.add(self.editor, weight=3)
         pane.add(console_frame, weight=2)
-        pane.pack(fill='both', expand=True, pady=4)
+        pane.pack(fill='both', expand=True, pady=(0, 4))
 
         # --- menu
-        menu = tk.Menu(self, tearoff=False, bg=bg)
+        menu = tk.Menu(self, tearoff=False, bg=BG, relief='flat')
         # file
-        self.menu_file = tk.Menu(menu, tearoff=False, bg=bg)
+        self.menu_file = tk.Menu(menu, tearoff=False)
         self.menu_file.add_command(label='New', command=self.new,
                                    accelerator='Ctrl+N')
         self.menu_file.add_separator()
@@ -102,7 +133,7 @@ class App(tk.Tk):
         self.menu_file.add_command(label='Restore last closed', command=self.restore_last_closed,
                                    accelerator='Ctrl+Shift+T')
         # file --- recent
-        self.menu_recent_files = tk.Menu(self.menu_file, tearoff=False, bg=bg)
+        self.menu_recent_files = tk.Menu(self.menu_file, tearoff=False)
         for f in self.recent_files:
             self.menu_recent_files.add_command(label=f, command=lambda file=f: self.open_file(file))
 
@@ -119,7 +150,7 @@ class App(tk.Tk):
         self.menu_file.add_command(label='Close all files', command=self.editor.closeall)
         self.menu_file.add_command(label='Quit', command=self.quit)
         # edit
-        menu_edit = tk.Menu(menu, tearoff=False, bg=bg)
+        menu_edit = tk.Menu(menu, tearoff=False)
         menu_edit.add_command(label='Undo', command=self.editor.undo, accelerator='Ctrl+Z')
         menu_edit.add_command(label='Redo', command=self.editor.redo, accelerator='Ctrl+Y')
         menu_edit.add_separator()

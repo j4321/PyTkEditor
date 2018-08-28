@@ -7,17 +7,19 @@ Created on Sun Aug 19 14:55:51 2018
 """
 
 from tkinter import Canvas
+from tkeditorlib.constants import ACTIVEBG, BG
 
 
 class FileBar(Canvas):
     def __init__(self, master, widget, **kwargs):
-        Canvas.__init__(self, master, **kwargs)
+        Canvas.__init__(self, master, bg=BG, borderwidth=0, highlightthickness=0,
+                        **kwargs)
 
         self.widget = widget
         self.colors = {'warning': 'orange', 'error': 'red'}
         self.update_idletasks()
         self.highlight = self.create_rectangle(0, 0, 0, 0,
-                                               fill='#E5E5E5', width=0)
+                                               fill=ACTIVEBG, width=0)
 
         self.bind('<1>', self.on_click)
         self.bind('<Map>', self.update_highlight)
