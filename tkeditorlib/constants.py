@@ -72,7 +72,7 @@ if CONFIG.get('General', 'theme') == 'dark':
     BG = '#454545'
     ACTIVEBG = '#525252'
     PRESSEDBG = '#262626'
-    FG = '#dddddd'
+    FG = '#E6E6E6'
     FIELDBG = '#303030'
     LIGHTCOLOR = BG
     DARKCOLOR = BG
@@ -80,7 +80,8 @@ if CONFIG.get('General', 'theme') == 'dark':
     FOCUSBORDERCOLOR = '#353535'
     SELECTBG = '#1f1f1f'
     SELECTFG = FG
-    DISABLEDFG = '#ACACAC'
+    UNSELECTEDFG = '#999999'
+    DISABLEDFG = '#666666'
     DISABLEDBG = BG
     IM_CLOSE = os.path.join(IMG_PATH, 'close_dark.png')
 #    DISABLEDBG = '#595959'
@@ -96,6 +97,7 @@ else:
     FOCUSBORDERCOLOR = '#5E5E5E'
     SELECTBG = PRESSEDBG
     SELECTFG = 'black'
+    UNSELECTEDFG = '#666666'
     DISABLEDFG = '#999999'
     DISABLEDBG = BG
     IM_CLOSE = os.path.join(IMG_PATH, 'close.png')
@@ -121,6 +123,7 @@ BUTTON_STYLE_MAP = {'background': [('active', ACTIVEBG),
                     'darkcolor': [('pressed', LIGHTCOLOR)],
                     'bordercolor': [('focus', FOCUSBORDERCOLOR)],
                     'foreground': [('disabled', DISABLEDFG)],
+                    'arrowcolor': [('disabled', DISABLEDFG)],
                     'fieldbackground': [('disabled', FIELDBG)],
                     'selectbackground': [('focus', SELECTBG)],
                     'selectforeground': [('focus', SELECTFG)]}

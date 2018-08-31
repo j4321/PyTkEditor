@@ -8,7 +8,7 @@ Created on Sun Aug 19 16:02:58 2018
 from tkinter import ttk
 import tkinter as tk
 from tkeditorlib.constants import IM_CLOSE, BG, LIGHTCOLOR, DARKCOLOR,\
-    DISABLEDFG, ACTIVEBG, STYLE_CONFIG, FIELDBG
+    ACTIVEBG, STYLE_CONFIG, UNSELECTEDFG, FG
 
 
 class Tab(ttk.Frame):
@@ -102,7 +102,7 @@ class Notebook(ttk.Frame):
         self.configure(style=stylename)
         # --- widgets
         # to display current tab content
-        self._body = ttk.Frame(self, padding=2)
+        self._body = ttk.Frame(self)
         self._body.rowconfigure(0, weight=1)
         self._body.columnconfigure(0, weight=1)
         self._body.grid_propagate(False)
@@ -128,9 +128,9 @@ class Notebook(ttk.Frame):
                                         style='Notebook.TMenubutton', padding=0)
         self._tab_list.state(['disabled'])
 
-        self._btn_left = ttk.Button(self, style='Notebook.Left.Button',
+        self._btn_left = ttk.Button(self, style='Notebook.Left.TButton',
                                     command=self.select_prev)
-        self._btn_right = ttk.Button(self, style='Notebook.Right.Button',
+        self._btn_right = ttk.Button(self, style='Notebook.Right.TButton',
                                      command=self.select_next)
 
         # --- grid
@@ -200,33 +200,35 @@ class Notebook(ttk.Frame):
                                        'sticky': 'nsew',
                                        'children': [('Close.close',
                                                      {'sticky': 'ewsn'})]})]})])
-        style.layout('Notebook.Left.Button',
+        style.layout('Notebook.Left.TButton',
                      [('Button.padding',
                        {'sticky': 'nswe',
                         'children': [('Button.leftarrow', {'sticky': 'nswe'})]})])
-        style.layout('Notebook.Right.Button',
+        style.layout('Notebook.Right.TButton',
                      [('Button.padding',
                        {'sticky': 'nswe',
                         'children': [('Button.rightarrow', {'sticky': 'nswe'})]})])
-        style.configure('Notebook', padding=1, **STYLE_CONFIG)
+        style.configure('Notebook', **STYLE_CONFIG)
         style.configure('Notebook.Tab', relief='raised', borderwidth=1,
                         **STYLE_CONFIG)
         style.configure('Notebook.Tab.Frame', relief='flat', borderwidth=0,
                         **STYLE_CONFIG)
         style.configure('Notebook.Tab.Label', relief='flat', borderwidth=1,
                         padding=0, **STYLE_CONFIG)
+        style.configure('Notebook.Tab.Label', foreground=UNSELECTEDFG)
         style.configure('Notebook.Tab.Close', relief='flat', borderwidth=1,
                         padding=0, **STYLE_CONFIG)
-        style.configure('Notebook.Tab.Frame', background=FIELDBG)
-        style.configure('Notebook.Tab.Label', background=FIELDBG)
-        style.configure('Notebook.Tab.Close', background=FIELDBG)
+        style.configure('Notebook.Tab.Frame', background=BG)
+        style.configure('Notebook.Tab.Label', background=BG)
+        style.configure('Notebook.Tab.Close', background=BG)
 
         style.map('Notebook.Tab.Frame',
-                  **{'background': [('selected', '!disabled', BG)]})
+                  **{'background': [('selected', '!disabled', ACTIVEBG)]})
         style.map('Notebook.Tab.Label',
-                  **{'background': [('selected', '!disabled', BG)]})
+                  **{'background': [('selected', '!disabled', ACTIVEBG)],
+                     'foreground': [('selected', '!disabled', FG)]})
         style.map('Notebook.Tab.Close',
-                  **{'background': [('selected', BG),
+                  **{'background': [('selected', ACTIVEBG),
                                     ('pressed', DARKCOLOR),
                                     ('active', ACTIVEBG)],
                      'relief': [('hover', '!disabled', 'raised'),
@@ -237,12 +239,11 @@ class Notebook(ttk.Frame):
         style.map('Notebook.Tab',
                   **{'background': [('selected', '!disabled', ACTIVEBG)]})
 
-        style.map('Notebook.TMenubutton', arrowcolor=[('disabled', DISABLEDFG)])
-        style.map('Notebook.Left.Button', arrowcolor=[('disabled', DISABLEDFG)])
-        style.map('Notebook.Right.Button', arrowcolor=[('disabled', DISABLEDFG)])
+        style.configure('Notebook.Left.TButton', padding=0)
+        style.configure('Notebook.Right.TButton', padding=0)
 
     def _on_press(self, event, tab):
-        self.show(tab)
+        self._show(tab)
 
         # prepare dragging
         widget = self._tab_labels[tab]
@@ -314,7 +315,7 @@ class Notebook(ttk.Frame):
         self._current_tab = tab_nb
         self._tab_var.set(tab_nb)
 
-    def show(self, tab_id, new=False, update=False):
+    def _show(self, tab_id, new=False, update=False):
         # hide current tab body
         if self._current_tab >= 0:
             self._tabs[self.current_tab].grid_remove()
@@ -367,7 +368,7 @@ class Notebook(ttk.Frame):
         if name in self._indexes:
             ind = self._indexes[name]
             self.tab(ind, **kwargs)
-            self.show(ind)
+            self._show(ind)
         else:
             sticky = kwargs.pop('sticky', 'ewns')
             padding = kwargs.pop('padding', 0)
@@ -388,7 +389,7 @@ class Notebook(ttk.Frame):
             self._tab_options[ind].update(dict(padding=padding, sticky=sticky))
             self._tab_menu_entries[ind] = self._tab_menu.index('end')
             self._tab_list.state(['!disabled'])
-            self.show(self._nb_tab, new=True, update=True)
+            self._show(self._nb_tab, new=True, update=True)
 
             self._nb_tab += 1
             self.menu_insert(ind, kwargs.get('text', ''))
@@ -402,7 +403,7 @@ class Notebook(ttk.Frame):
         ind = menu.index((text, tab))
         self._tab_menu.insert_radiobutton(ind, label=text,
                                           variable=self._tab_var, value=tab,
-                                          command=lambda t=tab: self.show(t))
+                                          command=lambda t=tab: self._show(t))
         for i, (text, tab) in enumerate(menu):
             self._tab_menu_entries[tab] = i
 
@@ -446,7 +447,7 @@ class Notebook(ttk.Frame):
             index = self._visible_tabs.index(self.current_tab)
             index += 1
             if index < len(self._visible_tabs):
-                self.show(self._visible_tabs[index])
+                self._show(self._visible_tabs[index])
             elif rotate:
                 self._show(self._visible_tabs[0])
 
@@ -495,7 +496,7 @@ class Notebook(ttk.Frame):
             self._tab_labels[tab].grid_remove()
             if self.current_tab == tab:
                 if self._visible_tabs:
-                    self.show(self._visible_tabs[0])
+                    self._show(self._visible_tabs[0])
                 else:
                     self.current_tab = -1
                 self._tabs[tab].grid_remove()
@@ -513,7 +514,7 @@ class Notebook(ttk.Frame):
             if self.current_tab == tab:
                 if self._visible_tabs:
                     tab2 = self._visible_tabs[0]
-                    self.show(tab2)
+                    self._show(tab2)
                 else:
                     self.current_tab = -1
                     if not self._hidden_tabs:
@@ -535,7 +536,7 @@ class Notebook(ttk.Frame):
         """Select tab TAB_ID. If TAB_ID is None, return currently selected tab."""
         if tab_id is None:
             return self.current_tab
-        self.show(self.index(tab_id))
+        self._show(self.index(tab_id))
 
     def tab(self, tab_id, option=None, **kw):
         """Query or modify TAB_ID options."""
@@ -550,7 +551,7 @@ class Notebook(ttk.Frame):
             padding = kw.pop('sticky', None)
             self._tab_labels[tab].tab_configure(**kw)
             if sticky is not None or padding is not None and self.current_tab == tab:
-                self.show(tab, update=True)
+                self._show(tab, update=True)
             if 'text' in kw:
                 self._tab_menu.entryconfigure(tab, label=kw['text'])
 

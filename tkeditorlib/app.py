@@ -64,7 +64,7 @@ class App(tk.Tk):
         self.option_add('*TCombobox*Listbox.selectForeground', FG)
         self.option_add('*TCombobox*Listbox.foreground', FG)
         self.option_add('*TCombobox*Listbox.background', FIELDBG)
-        self.option_add('*Menu.background', FIELDBG)
+        self.option_add('*Menu.background', BG)
         self.option_add('*Menu.activeBackground', SELECTBG)
         self.option_add('*Menu.activeForeground', FG)
         self.option_add('*Menu.disabledForeground', DISABLEDFG)
@@ -142,7 +142,7 @@ class App(tk.Tk):
         self.menu_file.add_separator()
         self.menu_file.add_command(label='Save', command=self.save, state='disabled',
                                    accelerator='Ctrl+S')
-        self.menu_file.add_command(label='Save As', command=self.saveas,
+        self.menu_file.add_command(label='Save as', command=self.saveas,
                                    accelerator='Ctrl+Alt+S')
         self.menu_file.add_command(label='Save all', command=self.saveall,
                                    accelerator='Ctrl+Shift+S')
@@ -175,7 +175,7 @@ class App(tk.Tk):
         self.bind('<Control-s>', self.save)
         self.bind('<Control-o>', lambda e: self.open())
         self.bind('<Control-Shift-S>', self.saveall)
-        self.bind('<Control-Alt-S>', self.saveas)
+        self.bind('<Control-Alt-s>', self.saveas)
         self.bind('<F5>', self.run)
         self.bind('<F9>', lambda e: self.console.execute(self.editor.get_selection()))
 

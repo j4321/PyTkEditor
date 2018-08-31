@@ -11,7 +11,7 @@ import re
 from tkeditorlib.autoscrollbar import AutoHideScrollbar
 from tkeditorlib.constants import IM_WARN, IM_ERR, IM_CLOSE, get_screen, FONT,\
     EDITOR_BG, EDITOR_HIGHLIGHT_BG, EDITOR_SYNTAX_HIGHLIGHTING, EDITOR_FG,\
-    BG, DISABLEDFG, SELECTFG
+    BG, UNSELECTEDFG, SELECTFG
 from tkeditorlib.complistbox import CompListbox
 from tkeditorlib.tooltip import TooltipTextWrapper
 from tkeditorlib.filebar import FileBar
@@ -53,7 +53,7 @@ class Editor(ttk.Frame):
         self.line_nb = tk.Text(self, width=1, cursor='arrow',
                                bg=BG, selectbackground=BG,
                                inactiveselectbackground=BG,
-                               fg=DISABLEDFG, selectforeground=DISABLEDFG,
+                               fg=UNSELECTEDFG, selectforeground=UNSELECTEDFG,
                                highlightthickness=0, relief='flat',
                                font=FONT)
         self.line_nb.insert('1.0', '1')
@@ -65,7 +65,7 @@ class Editor(ttk.Frame):
                                      state='disabled',
                                      bg=BG, selectbackground=BG,
                                      inactiveselectbackground=BG,
-                                     fg=DISABLEDFG, selectforeground=DISABLEDFG,
+                                     fg=UNSELECTEDFG, selectforeground=UNSELECTEDFG,
                                      highlightthickness=0, relief='flat',
                                      font=FONT)
         self.textwrapper = TooltipTextWrapper(self.syntax_checks, background='light yellow',
