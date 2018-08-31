@@ -4,13 +4,16 @@
 Created on Sun Aug 19 11:34:11 2018
 
 @author: juliette
+
+ssl certificate generation adapted from pyOpenSSL/xamples/certgen.py
+# Copyright (C) AB Strakt
+# Copyright (C) Jean-Paul Calderone
+Apache 2.0
 """
 import os
 from screeninfo import get_monitors
 from pygments.styles import get_style_by_name
 from jedi import settings
-import hashlib
-from Crypto.Cipher import AES
 import configparser
 
 
@@ -38,6 +41,11 @@ if not os.path.exists(LOCAL_PATH):
 HISTFILE = os.path.join(LOCAL_PATH, 'tkeditor.history')
 CONFIG_PATH = os.path.join(LOCAL_PATH, 'tkeditor.ini')
 
+# --- ssl
+SERVER_CERT = os.path.join(LOCAL_PATH, 'server.pem')
+CLIENT_CERT = os.path.join(LOCAL_PATH, 'client.pem')
+
+# --- config
 CONFIG = configparser.ConfigParser()
 
 if os.path.exists(CONFIG_PATH):
@@ -178,22 +186,3 @@ def get_screen(x, y):
         raise ValueError("(%i, %i) is out of screen" % (x, y))
     else:
         return monitors[i]
-
-
-# --- encryption
-PWD_FILE = os.path.join(LOCAL_PATH, '.pwd')
-IV_FILE = os.path.join(LOCAL_PATH, '.iv')
-
-
-def decrypt(msg, pwd, iv):
-    """Returns the login and password for the mailbox that where encrypted using pwd."""
-    key = hashlib.sha256(pwd.encode()).digest()
-    cipher = AES.new(key, AES.MODE_CFB, iv)
-    return cipher.decrypt(msg).decode()
-
-
-def encrypt(msg, pwd, iv):
-    """Encrypt the mailbox connection information using pwd."""
-    key = hashlib.sha256(pwd.encode()).digest()
-    cipher = AES.new(key, AES.MODE_CFB, iv)
-    return cipher.encrypt(msg.encode())

@@ -9,23 +9,20 @@ Created on Wed Aug 22 12:28:48 2018
 import tkinter as tk
 import sys
 import re
-from os import kill, chmod
+from os import kill
 from os.path import join, dirname
 from tkeditorlib.complistbox import CompListbox
 from tkeditorlib.constants import get_screen, FONT, CONSOLE_BG, CONSOLE_FG,\
-    CONSOLE_HIGHLIGHT_BG, CONSOLE_SYNTAX_HIGHLIGHTING, PWD_FILE, IV_FILE, \
-    decrypt, encrypt, HISTFILE
+    CONSOLE_HIGHLIGHT_BG, CONSOLE_SYNTAX_HIGHLIGHTING, HISTFILE,\
+    SERVER_CERT, CLIENT_CERT
 from pygments import lex
 from pygments.lexers import Python3Lexer
 import pickle
 import jedi
 import socket
+import ssl
 from subprocess import Popen
 import signal
-import string
-import secrets
-from Crypto.Cipher import AES
-from Crypto import Random
 
 
 class History:
@@ -122,27 +119,23 @@ class TextConsole(tk.Text):
         self._comp = CompListbox(self)
         self._comp.set_callback(self._comp_sel)
 
-        self._pwd = ''.join(secrets.choice(string.ascii_letters + string.digits) for i in range(1024))
-        with open(PWD_FILE, 'w') as f:
-            f.write(self._pwd)
-        chmod(PWD_FILE, 0o600)
-
-        self._iv = Random.new().read(AES.block_size)
-
-        with open(IV_FILE, 'wb') as f:
-            f.write(self._iv)
-        chmod(IV_FILE, 0o600)
-
         # --- shell socket
+        context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
+        context.verify_mode = ssl.CERT_REQUIRED
+        context.load_cert_chain(certfile=SERVER_CERT)
+        context.load_verify_locations(CLIENT_CERT)
+
         self.shell_socket = socket.socket()
-        self.shell_socket.bind((socket.gethostname(), 0))
+        self.shell_socket.bind(('127.0.0.1', 0))
         host, port = self.shell_socket.getsockname()
         self.shell_socket.listen(5)
+
         p = Popen(['python',
                    join(dirname(__file__), 'interactive_console.py'),
                    host, str(port)])
         self.shell_pid = p.pid
-        self.shell_client, addr = self.shell_socket.accept()
+        client, addr = self.shell_socket.accept()
+        self.shell_client = context.wrap_socket(client, server_side=True)
         self.shell_client.setblocking(False)
 
         # --- syntax highlighting
@@ -177,6 +170,7 @@ class TextConsole(tk.Text):
 
     def _on_destroy(self):
         self.history.save()
+        self.shell_client.shutdown(socket.SHUT_RDWR)
         self.shell_client.close()
         self.shell_socket.close()
 
@@ -410,7 +404,7 @@ class TextConsole(tk.Text):
             self.insert('insert', '\n')
             print('%r' % line)
             try:
-                self.shell_client.send(encrypt(line, self._pwd, self._iv))
+                self.shell_client.send(line.encode())
                 self.configure(state='disabled')
             except SystemExit:
                 self._shell_clear()
@@ -426,7 +420,7 @@ class TextConsole(tk.Text):
 
     def _check_result(self, auto_indent, lines, index):
         try:
-            cmd = decrypt(self.shell_client.recv(65536), self._pwd, self._iv)
+            cmd = self.shell_client.recv(65536).decode()
         except socket.error:
             self.after(10, self._check_result, auto_indent, lines, index)
         else:
@@ -500,4 +494,3 @@ class TextConsole(tk.Text):
                 self.delete('insert-1c')
         self.parse()
         return 'break'
-
