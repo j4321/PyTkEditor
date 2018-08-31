@@ -42,8 +42,8 @@ HISTFILE = os.path.join(LOCAL_PATH, 'tkeditor.history')
 CONFIG_PATH = os.path.join(LOCAL_PATH, 'tkeditor.ini')
 
 # --- ssl
-SERVER_CERT = os.path.join(LOCAL_PATH, 'server.pem')
-CLIENT_CERT = os.path.join(LOCAL_PATH, 'client.pem')
+SERVER_CERT = os.path.join(PATH, 'ssl', 'server.crt')
+CLIENT_CERT = os.path.join(PATH, 'ssl', 'client.crt')
 
 # --- config
 CONFIG = configparser.ConfigParser()

@@ -3,7 +3,7 @@
 
 from setuptools import setup
 
-files = ["images/*"]
+files = ["images/*", "ssl/*"]
 
 setup(name="tkeditor",
       version="1.0.0",
