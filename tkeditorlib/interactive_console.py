@@ -9,12 +9,11 @@ Created on Mon Aug 27 08:55:30 2018
 from code import InteractiveConsole
 from contextlib import redirect_stdout
 from io import StringIO
-from os import remove, chdir
-from os.path import dirname
 import socket
+import ssl
 import sys
 import signal
-from constants import PWD_FILE, IV_FILE, decrypt, encrypt
+from constants import CLIENT_CERT, SERVER_CERT
 import tkinter
 import time
 
@@ -28,18 +27,14 @@ class SocketConsole(InteractiveConsole):
         self.locals['quit'] = self._exit
         self._initial_locals = self.locals.copy()
         signal.signal(signal.SIGINT, self.interrupt)
-
-        with open(PWD_FILE, 'r') as f:
-            self._pwd = f.read()
-        remove(PWD_FILE)
-
-        with open(IV_FILE, 'rb') as f:
-            self._iv = f.read()
-        remove(IV_FILE)
-
-        self.socket = socket.socket()
+        context = ssl.create_default_context(ssl.Purpose.SERVER_AUTH, cafile=SERVER_CERT)
+        context.load_cert_chain(certfile=CLIENT_CERT)
+        context.load_verify_locations(SERVER_CERT)
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.port = port
         self.host = hostname
+        self.socket = context.wrap_socket(sock, server_side=False,
+                                          server_hostname='TkEditor_Server')
         self.socket.connect((self.host, self.port))
 
     def interrupt(self, *args):
@@ -84,7 +79,7 @@ class SocketConsole(InteractiveConsole):
         self.socket.setblocking(False)
         while True:
             try:
-                line = decrypt(self.socket.recv(65536), self._pwd, self._iv)
+                line = self.socket.recv(65536).decode()
                 if self.buffer:
                     self.resetbuffer()
                 with redirect_stdout(self.stdout):
@@ -98,7 +93,7 @@ class SocketConsole(InteractiveConsole):
                         res = False
                 output = self.stdout.getvalue()
                 err = self.stderr.getvalue()
-                self.socket.send(encrypt('%s, %r, %r' % (res, output, err), self._pwd, self._iv))
+                self.socket.send(('%s, %r, %r' % (res, output, err)).encode())
                 self.stdout.close()
                 self.stderr.close()
                 self.stdout = StringIO()
