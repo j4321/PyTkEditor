@@ -1,9 +1,10 @@
 from tkeditorlib.editornotebook import EditorNotebook
 from tkeditorlib.syntax_check import check_file
 from tkeditorlib.filestructure import CodeStructure
-from tkeditorlib.constants import ICON, CONFIG, save_config, BG, FG, SELECTBG,\
-    SELECTFG, FIELDBG, BORDERCOLOR, DISABLEDFG,\
+from tkeditorlib.constants import ICON, CONFIG, save_config,\
+    BG, FG, SELECTBG, SELECTFG, FIELDBG, BORDERCOLOR, DISABLEDFG,\
     BUTTON_STYLE_CONFIG, BUTTON_STYLE_MAP, STYLE_CONFIG, STYLE_MAP
+from tkeditorlib import constants as cst
 from tkeditorlib.textconsole import TextConsole
 from tkeditorlib.autoscrollbar import AutoHideScrollbar
 import tkinter as tk
@@ -19,6 +20,20 @@ class App(tk.Tk):
         tk.Tk.__init__(self, className='TkEditor')
         self.title('TkEditor')
         self._icon = tk.PhotoImage(file=ICON, master=self)
+        self._im_run = tk.PhotoImage(file=cst.IM_RUN, master=self)
+        self._im_new = tk.PhotoImage(file=cst.IM_NEW, master=self)
+        self._im_open = tk.PhotoImage(file=cst.IM_OPEN, master=self)
+        self._im_reopen = tk.PhotoImage(file=cst.IM_REOPEN, master=self)
+        self._im_save = tk.PhotoImage(file=cst.IM_SAVE, master=self)
+        self._im_saveall = tk.PhotoImage(file=cst.IM_SAVEALL, master=self)
+        self._im_saveas = tk.PhotoImage(file=cst.IM_SAVEAS, master=self)
+        self._im_undo = tk.PhotoImage(file=cst.IM_UNDO, master=self)
+        self._im_redo = tk.PhotoImage(file=cst.IM_REDO, master=self)
+        self._im_recents = tk.PhotoImage(file=cst.IM_RECENTS, master=self)
+        self._im_close = tk.PhotoImage(file=cst.IM_CLOSE, master=self)
+        self._im_quit = tk.PhotoImage(file=cst.IM_QUIT, master=self)
+        self._im_find = tk.PhotoImage(file=cst.IM_FIND, master=self)
+        self._im_replace = tk.PhotoImage(file=cst.IM_REPLACE, master=self)
         self.iconphoto(True, self._icon)
 
         recent_files = CONFIG.get('General', 'recent_files', fallback='').split(', ')
@@ -125,43 +140,59 @@ class App(tk.Tk):
         menu = tk.Menu(self, tearoff=False, bg=BG, relief='flat')
         # file
         self.menu_file = tk.Menu(menu, tearoff=False)
-        self.menu_file.add_command(label='New', command=self.new,
-                                   accelerator='Ctrl+N')
+        self.menu_file.add_command(label='New', command=self.new, image=self._im_new,
+                                   accelerator='Ctrl+N', compound='left')
         self.menu_file.add_separator()
         self.menu_file.add_command(label='Open', command=self.open,
-                                   accelerator='Ctrl+O')
-        self.menu_file.add_command(label='Restore last closed', command=self.restore_last_closed,
+                                   image=self._im_open,
+                                   accelerator='Ctrl+O', compound='left')
+        self.menu_file.add_command(label='Restore last closed',
+                                   command=self.restore_last_closed,
+                                   image=self._im_reopen, compound='left',
                                    accelerator='Ctrl+Shift+T')
         # file --- recent
         self.menu_recent_files = tk.Menu(self.menu_file, tearoff=False)
         for f in self.recent_files:
-            self.menu_recent_files.add_command(label=f, command=lambda file=f: self.open_file(file))
+            self.menu_recent_files.add_command(label=f,
+                                               command=lambda file=f: self.open_file(file))
 
-        self.menu_file.add_cascade(label='Recent files', menu=self.menu_recent_files)
+        self.menu_file.add_cascade(label='Recent files', image=self._im_recents,
+                                   menu=self.menu_recent_files, compound='left')
 
         self.menu_file.add_separator()
-        self.menu_file.add_command(label='Save', command=self.save, state='disabled',
-                                   accelerator='Ctrl+S')
+        self.menu_file.add_command(label='Save', command=self.save,
+                                   state='disabled', image=self._im_save,
+                                   accelerator='Ctrl+S', compound='left')
         self.menu_file.add_command(label='Save as', command=self.saveas,
-                                   accelerator='Ctrl+Alt+S')
+                                   image=self._im_saveas,
+                                   accelerator='Ctrl+Alt+S', compound='left')
         self.menu_file.add_command(label='Save all', command=self.saveall,
-                                   accelerator='Ctrl+Shift+S')
+                                   image=self._im_saveall,
+                                   accelerator='Ctrl+Shift+S', compound='left')
         self.menu_file.add_separator()
-        self.menu_file.add_command(label='Close all files', command=self.editor.closeall)
-        self.menu_file.add_command(label='Quit', command=self.quit)
+        self.menu_file.add_command(label='Close all files', image=self._im_close,
+                                   command=self.editor.closeall, compound='left')
+        self.menu_file.add_command(label='Quit', command=self.quit,
+                                   image=self._im_quit, compound='left')
         # edit
         menu_edit = tk.Menu(menu, tearoff=False)
-        menu_edit.add_command(label='Undo', command=self.editor.undo, accelerator='Ctrl+Z')
-        menu_edit.add_command(label='Redo', command=self.editor.redo, accelerator='Ctrl+Y')
+        menu_edit.add_command(label='Undo', command=self.editor.undo,
+                              image=self._im_undo,
+                              accelerator='Ctrl+Z', compound='left')
+        menu_edit.add_command(label='Redo', command=self.editor.redo,
+                              image=self._im_redo,
+                              accelerator='Ctrl+Y', compound='left')
         menu_edit.add_separator()
         menu_edit.add_command(label='Find', command=self.editor.find,
-                              accelerator='Ctrl+F')
+                              accelerator='Ctrl+F', compound='left',
+                              image=self._im_find)
         menu_edit.add_command(label='Replace', command=self.editor.replace,
-                              accelerator='Ctrl+R')
+                              accelerator='Ctrl+R', compound='left',
+                              image=self._im_replace)
 
         menu.add_cascade(label='File', menu=self.menu_file)
         menu.add_cascade(label='Edit', menu=menu_edit)
-        menu.add_command(label='Run', command=self.run)
+        menu.add_command(image=self._im_run, command=self.run, compound='center')
         self.configure(menu=menu)
 
         # --- bindings
