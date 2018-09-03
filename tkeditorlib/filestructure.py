@@ -13,6 +13,7 @@ from tkeditorlib.autoscrollbar import AutoHideScrollbar as Scrollbar
 from tkeditorlib.autocomplete import AutoCompleteCombobox
 from tkeditorlib.constants import IM_CLASS, IM_FCT, IM_HFCT, IM_SEP
 from io import BytesIO
+import re
 
 
 class CodeTree(Treeview):
@@ -70,11 +71,18 @@ class CodeTree(Treeview):
                 if name[0] == '_' and obj_type == 'def':
                     obj_type = '_def'
                 add = True
-            elif token.type == 55 and (token.string[:5] == '# ---' or 'TODO' in token.string):
-                obj_type = '#'
-                index = token.start[1] // 4
-                name = token.string[1:]
-                add = True
+            elif token.type == 55:
+                if token.string[:5] == '# ---' or 'TODO' in token.string:
+                    obj_type = '#'
+                    index = token.start[1] // 4
+                    name = token.string[1:]
+                    add = True
+                elif re.match(r'#( )*In\[.*\]', token.string):
+                    res = re.match(r'#( )*In', token.string)
+                    obj_type = '#'
+                    index = token.start[1] // 4
+                    name = token.string[len(res.group()):]
+                    add = True
 
             if add:
                 parent = ''

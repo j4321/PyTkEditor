@@ -402,7 +402,6 @@ class TextConsole(tk.Text):
             line = '\n'.join(lines)
 
             self.insert('insert', '\n')
-            print('%r' % line)
             try:
                 self.shell_client.send(line.encode())
                 self.configure(state='disabled')

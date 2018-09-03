@@ -15,9 +15,18 @@ from screeninfo import get_monitors
 from pygments.styles import get_style_by_name
 from jedi import settings
 import configparser
+from pygments.lexers import Python3Lexer
+from pygments.token import Comment
 
 
+class MyLexer(Python3Lexer):
+    tokens = Python3Lexer.tokens.copy()
+    tokens['root'].insert(5, (r'# *In\[.*\].*$', Comment.Cell))
+
+
+PYTHON_LEX = MyLexer()
 settings.case_insensitive_completion = False
+
 
 PATH = os.path.dirname(__file__)
 IMG_PATH = os.path.join(PATH, 'images')

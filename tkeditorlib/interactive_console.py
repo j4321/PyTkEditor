@@ -98,14 +98,15 @@ class SocketConsole(InteractiveConsole):
                 self.stderr.close()
                 self.stdout = StringIO()
                 self.stderr = StringIO()
+            except BrokenPipeError:
+                self.socket.close()
+                break
             except socket.error as e:
-                if e.errno == socket.errno.EAGAIN:
-                    if tkinter._default_root is not None:
-                        tkinter._default_root.update()
-                    time.sleep(0.05)
-                else:
-                    self.socket.close()
-                    break
+                if e.errno != 2:
+                    print('%r' % e, type(e), e)
+                if tkinter._default_root is not None:
+                    tkinter._default_root.update()
+                time.sleep(0.05)
 
 
 if __name__ == '__main__':

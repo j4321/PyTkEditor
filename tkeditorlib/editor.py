@@ -3,7 +3,6 @@
 
 import jedi
 from pygments import lex
-from pygments.lexers import Python3Lexer
 import tkinter as tk
 from tkinter import ttk
 from tkinter import messagebox
@@ -11,7 +10,7 @@ import re
 from tkeditorlib.autoscrollbar import AutoHideScrollbar
 from tkeditorlib.constants import IM_WARN, IM_ERR, IM_CLOSE, get_screen, FONT,\
     EDITOR_BG, EDITOR_HIGHLIGHT_BG, EDITOR_SYNTAX_HIGHLIGHTING, EDITOR_FG,\
-    BG, UNSELECTEDFG, SELECTFG
+    BG, UNSELECTEDFG, SELECTFG, PYTHON_LEX
 from tkeditorlib.complistbox import CompListbox
 from tkeditorlib.tooltip import TooltipTextWrapper
 from tkeditorlib.filebar import FileBar
@@ -31,6 +30,8 @@ class Editor(ttk.Frame):
         self._paste = False
         self._autoclose = {'(': ')', '[': ']', '{': '}', '"': '"', "'": "'"}
         self._search_count = tk.IntVar(self)
+
+        self._sections = []
 
         self._comp = CompListbox(self)
         self._comp.set_callback(self._comp_sel)
@@ -138,6 +139,7 @@ class Editor(ttk.Frame):
         #  --- syntax highlighting
         for tag, opts in EDITOR_SYNTAX_HIGHLIGHTING.items():
             self.text.tag_configure(tag, selectforeground=SELECTFG, **opts)
+        self.text.tag_configure('Token.Comment.Cell', underline=True)
 
         # --- bindings
         self.text.bind("<KeyRelease>", self.on_key)
@@ -216,7 +218,7 @@ class Editor(ttk.Frame):
         self.text.mark_set('range_start', start)
         for t in EDITOR_SYNTAX_HIGHLIGHTING:
             self.text.tag_remove(t, start, "range_start +%ic" % len(data))
-        for token, content in lex(data, Python3Lexer()):
+        for token, content in lex(data, PYTHON_LEX):
             self.text.mark_set("range_end", "range_start + %ic" % len(content))
             for t in token.split():
                 self.text.tag_add(str(t), "range_start", "range_end")
