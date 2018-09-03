@@ -139,8 +139,7 @@ class Editor(ttk.Frame):
 
         # --- syntax highlighting
         for tag, opts in EDITOR_SYNTAX_HIGHLIGHTING.items():
-            self.text.tag_configure(tag, selectforeground=SELECTFG, **opts)
-#        self.text.tag_configure('Token.Comment.Cell', underline=True)
+            self.text.tag_configure(tag, **opts)
 
         # --- bindings
         self.text.bind("<KeyRelease>", self.on_key)

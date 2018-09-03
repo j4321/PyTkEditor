@@ -9,6 +9,7 @@ from tkeditorlib.notebook import Notebook
 from tkeditorlib.editor import Editor
 from tkeditorlib.tooltip import TooltipNotebookWrapper
 import os
+from tkinter import Menu
 from tkinter.messagebox import askyesnocancel
 from tkfilebrowser import asksaveasfilename
 from subprocess import Popen
@@ -21,6 +22,11 @@ class EditorNotebook(Notebook):
         self.wrapper = TooltipNotebookWrapper(self, background='light yellow',
                                               foreground='black')
         self.last_closed = []
+        self.menu = Menu(self, tearoff=False)
+        self.menu.add_command(label='Close all other tabs',
+                              command=self.close_other_tabs)
+        self.menu.add_command(label='Close tabs to the right',
+                              command=self.close_tabs_right)
 
     @property
     def filename(self):
@@ -149,6 +155,16 @@ class EditorNotebook(Notebook):
 
     def closeall(self):
         for tab in self.tabs():
+            self.close(tab)
+
+    def close_other_tabs(self):
+        for tab in self.tabs():
+            if tab != self.current_tab:
+                self.close(tab)
+
+    def close_tabs_right(self):
+        ind = self._visible_tabs.index(self.current_tab)
+        for tab in self._visible_tabs[ind + 1:]:
             self.close(tab)
 
     def save(self, tab=None):

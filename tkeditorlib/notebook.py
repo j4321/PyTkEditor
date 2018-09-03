@@ -16,9 +16,9 @@ class Tab(ttk.Frame):
         ttk.Frame.__init__(self, master, class_='Notebook.Tab',
                            style='Notebook.Tab', padding=1)
         self._closecommand = kwargs.pop('closecmd', lambda: None)
-        self.frame = ttk.Frame(self, style='Notebook.Tab.Frame')
+        self.frame = ttk.Frame(self, style='Notebook.Tab.Frame', class_='Notebook.Tab.Frame')
         self.label = ttk.Label(self.frame, style='Notebook.Tab.Label', **kwargs,
-                               anchor='center')
+                               anchor='center', class_='Notebook.Tab.Label')
         self.closebtn = ttk.Button(self.frame, style='Notebook.Tab.Close',
                                    command=self.closecommand)
         self.label.pack(side='left', padx=(6, 0))
@@ -72,7 +72,7 @@ class Notebook(ttk.Frame):
 
     _initialized = False
 
-    def __init__(self, master=None, **kwargs):
+    def __init__(self, master=None, menu=None, **kwargs):
         stylename = kwargs.pop('style', 'Notebook')
         ttk.Frame.__init__(self, master, class_='Notebook', padding=(0, 0, 0, 1),
                            **kwargs)
@@ -91,6 +91,8 @@ class Notebook(ttk.Frame):
         self._nb_tab = 0
         self.current_tab = -1
         self._dragged_tab = None
+
+        self.menu = menu
 
         style = ttk.Style(self)
         # --- init style
@@ -162,6 +164,13 @@ class Notebook(ttk.Frame):
         self._canvas.bind('<Configure>', self._on_configure)
         self.bind_all('<ButtonRelease-1>', self._on_click)
         self.bind('<<ThemeChanged>>', self._setup_style)
+        self.bind('<Control-Tab>', lambda e: self.select_next(True))
+        self.bind('<Shift-Control-ISO_Left_Tab>', lambda e: self.select_prev(True))
+
+    def _popup_menu(self, event, tab):
+        self._show(tab)
+        if self.menu is not None:
+            self.menu.tk_popup(event.x_root, event.y_root)
 
     def _on_configure(self, event=None):
         self.update_idletasks()
@@ -368,7 +377,6 @@ class Notebook(ttk.Frame):
         * sticky: for the widget inside the notebook
         * padding: padding (int) around the widget in the notebook
         """
-        # Todo: underline
         name = str(widget)
         if name in self._indexes:
             ind = self._indexes[name]
@@ -385,6 +393,7 @@ class Notebook(ttk.Frame):
                                         closecmd=lambda: self.forget(ind),
                                         **kwargs)
             self._tab_labels[ind].bind('<ButtonRelease-1>', self._on_click)
+            self._tab_labels[ind].bind('<ButtonRelease-3>', lambda e: self._popup_menu(e, ind))
             self._tab_labels[ind].bind('<ButtonPress-1>', lambda e: self._on_press(e, ind))
             self._body.configure(height=max(self._body.winfo_height(), widget.winfo_reqheight()),
                                  width=max(self._body.winfo_width(), widget.winfo_reqwidth()))
@@ -431,11 +440,6 @@ class Notebook(ttk.Frame):
             self._tab_labels[ind].grid_configure(column=i)
         self.update_idletasks()
         self._on_configure()
-
-    def enable_traversal(self):
-        self.bind('<Control-Tab>', lambda e: self.select_next(True))
-        self.bind('<Shift-Control-ISO_Left_Tab>', lambda e: self.select_prev(True))
-        # TODO: Hot key for tab
 
     def index(self, tab_id):
         if tab_id in self._tabs:

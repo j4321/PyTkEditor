@@ -238,7 +238,7 @@ class App(tk.Tk):
         files = list(self.editor.files.values())
         if file in files:
             self.editor.select(list(self.editor.files.keys())[files.index(file)])
-            self._update_recent_files()
+            self._update_recent_files(file)
         else:
             try:
                 with open(file) as f:
@@ -255,7 +255,7 @@ class App(tk.Tk):
                 self.codestruct.populate(self.editor.filename, self.editor.get(strip=False))
                 self.check_syntax()
                 self.editor.goto_start()
-                self._update_recent_files()
+                self._update_recent_files(file)
                 CONFIG.set('General', 'recent_files', ', '.join(self.recent_files))
                 save_config()
 
