@@ -11,7 +11,7 @@ from tkinter.font import Font
 from tokenize import tokenize, TokenError
 from tkeditorlib.autoscrollbar import AutoHideScrollbar as Scrollbar
 from tkeditorlib.autocomplete import AutoCompleteCombobox
-from tkeditorlib.constants import IM_CLASS, IM_FCT, IM_HFCT, IM_SEP
+from tkeditorlib.constants import IM_CLASS, IM_FCT, IM_HFCT, IM_SEP, IM_CELL
 from io import BytesIO
 import re
 
@@ -24,6 +24,7 @@ class CodeTree(Treeview):
         self._img_fct = PhotoImage(file=IM_FCT, master=self)
         self._img_hfct = PhotoImage(file=IM_HFCT, master=self)
         self._img_sep = PhotoImage(file=IM_SEP, master=self)
+        self._img_cell = PhotoImage(file=IM_CELL, master=self)
 
         self.font = Font(self, font="TkDefaultFont 9")
 
@@ -31,7 +32,9 @@ class CodeTree(Treeview):
         self.tag_configure('def', image=self._img_fct)
         self.tag_configure('_def', image=self._img_hfct)
         self.tag_configure('#', image=self._img_sep)
+        self.tag_configure('cell', image=self._img_cell)
         self.callback = None
+        self.cells = []
 
         self.bind('<1>', self._on_click)
         self.bind('<<TreeviewSelect>>', self._on_select)
@@ -53,6 +56,7 @@ class CodeTree(Treeview):
         self.delete(*self.get_children())
         tokens = tokenize(BytesIO(text.encode()).readline)
         names = set()
+        self.cells.clear()
         max_length = 20
         while True:
             try:
@@ -79,10 +83,11 @@ class CodeTree(Treeview):
                     add = True
                 elif re.match(r'#( )*In\[.*\]', token.string):
                     res = re.match(r'#( )*In', token.string)
-                    obj_type = '#'
+                    obj_type = 'cell'
                     index = token.start[1] // 4
                     name = token.string[len(res.group()):]
                     add = True
+                    self.cells.append(token.start[0])
 
             if add:
                 parent = ''
@@ -140,6 +145,9 @@ class CodeStructure(Frame):
     def _reset_goto(self, event):
         self._goto_index = 0
 
+    def get_cells(self):
+        return self.codetree.cells
+
     def clear(self, event=None):
         self.codetree.delete(*self.codetree.get_children())
         self.filename.configure(text='')
@@ -150,6 +158,7 @@ class CodeStructure(Frame):
         names.sort()
         self.goto_entry.delete(0, "end")
         self.goto_entry.set_completion_list(names)
+        self.event_generate('<<Populate>>')
 
     def goto(self, event):
         name = self.goto_entry.get()

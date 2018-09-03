@@ -253,7 +253,7 @@ class TooltipNotebookWrapper:
     def _on_leave_tooltip(self, event):
         """Hide tooltip."""
         x, y = event.widget.winfo_pointerxy()
-        if not event.widget.winfo_containing(x, y) in self.notebook._tab_labels[self._current_widget].children.values():
+        if not event.widget.winfo_containing(x, y) in self.notebook._tab_labels[self.current_tab].children.values():
             self.tooltip.withdraw()
 
     def display_tooltip(self):

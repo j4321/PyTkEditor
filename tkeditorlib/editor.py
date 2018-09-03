@@ -31,7 +31,8 @@ class Editor(ttk.Frame):
         self._autoclose = {'(': ')', '[': ']', '{': '}', '"': '"', "'": "'"}
         self._search_count = tk.IntVar(self)
 
-        self._sections = []
+        self.cells = []
+        self._cell_sep = {}
 
         self._comp = CompListbox(self)
         self._comp.set_callback(self._comp_sel)
@@ -136,10 +137,10 @@ class Editor(ttk.Frame):
         self.frame_search.grid(row=3, column=0, columnspan=5, sticky='ew')
         self.frame_search.grid_remove()
 
-        #  --- syntax highlighting
+        # --- syntax highlighting
         for tag, opts in EDITOR_SYNTAX_HIGHLIGHTING.items():
             self.text.tag_configure(tag, selectforeground=SELECTFG, **opts)
-        self.text.tag_configure('Token.Comment.Cell', underline=True)
+#        self.text.tag_configure('Token.Comment.Cell', underline=True)
 
         # --- bindings
         self.text.bind("<KeyRelease>", self.on_key)
@@ -160,6 +161,7 @@ class Editor(ttk.Frame):
         self.text.bind("<Control-d>", self.duplicate_lines)
         self.text.bind("<Control-k>", self.delete_lines)
         self.text.bind("<Control-a>", self.select_all)
+        self.text.bind("<Control-Return>", self.on_ctrl_return)
         self.text.bind("<Return>", self.on_return)
         self.text.bind("<BackSpace>", self.on_backspace)
         self.text.bind("<Tab>", self.on_tab)
@@ -189,6 +191,20 @@ class Editor(ttk.Frame):
     def _on_b5(self, event):
         self.yview('scroll', 3, 'units')
         return "break"
+
+    def set_cells(self, cells):
+        self.cells = cells
+        bg = self.text.tag_cget('Token.Comment', 'foreground')
+        for i, s in list(self._cell_sep.items()):
+            if i not in cells:
+                s.destroy()
+                del self._cell_sep[i]
+        for i in cells:
+            if i not in self._cell_sep:
+                s = tk.Frame(self.text, bg=bg, height=1)
+                self._cell_sep[i] = s
+                bbox = self.text.bbox('%i.0' % i)
+                s.place(x=bbox[0], y=bbox[1], relwidth=1, anchor='sw')
 
     def undo(self, event=None):
         try:
@@ -431,6 +447,10 @@ class Editor(ttk.Frame):
         txt = self._comp.get()
         self._comp.withdraw()
         self.text.insert('insert', txt)
+
+    def on_ctrl_return(self, event):
+        self.master.event_generate('<<CtrlReturn>>')
+        return 'break'
 
     def on_return(self, event):
         if self._comp.winfo_ismapped():

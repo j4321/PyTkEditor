@@ -73,6 +73,9 @@ class EditorNotebook(Notebook):
             self.event_generate('<<Modified>>')
         return b
 
+    def set_cells(self, cells):
+        self._tabs[self.current_tab].set_cells(cells)
+
     def new(self, file=None):
         if file is None:
             title = 'new.py'
@@ -81,7 +84,7 @@ class EditorNotebook(Notebook):
             title = os.path.split(file)[-1]
         editor = Editor(self)
         tab = self.add(editor, text=title)
-        self.tab(tab, closecmd=lambda: self.close(tab))
+        self.tab(tab, closecmd=self.close)
         if file in self.last_closed:
             self.last_closed.remove(file)
         self.files[tab] = file
@@ -101,6 +104,26 @@ class EditorNotebook(Notebook):
                 return self._tabs[self._current_tab].text.get('sel.first', 'sel.last')
             else:
                 return ''
+
+    def get_cell(self):
+        if self._current_tab >= 0:
+            editor = self._tabs[self._current_tab]
+            line = int(str(editor.text.index('insert')).split('.')[0])
+            if not editor.cells:
+                return ''
+            i = 0
+            while i < len(editor.cells) and editor.cells[i] < line:
+                i += 1
+            if i == len(editor.cells):
+                start = '%i.0' % editor.cells[-1]
+                end = editor.text.index('end')
+            elif i > 0:
+                start = '%i.0' % editor.cells[i - 1]
+                end = '%i.0' % editor.cells[i]
+            else:
+                start = '1.0'
+                end = '%i.0' % editor.cells[i]
+            return editor.text.get(start, end)
 
     def get_last_closed(self):
         if self.last_closed:

@@ -15,12 +15,12 @@ class Tab(ttk.Frame):
     def __init__(self, master=None, tab_nb=0, **kwargs):
         ttk.Frame.__init__(self, master, class_='Notebook.Tab',
                            style='Notebook.Tab', padding=1)
-        closecmd = kwargs.pop('closecmd', None)
+        self._closecommand = kwargs.pop('closecmd', lambda: None)
         self.frame = ttk.Frame(self, style='Notebook.Tab.Frame')
         self.label = ttk.Label(self.frame, style='Notebook.Tab.Label', **kwargs,
                                anchor='center')
         self.closebtn = ttk.Button(self.frame, style='Notebook.Tab.Close',
-                                   command=closecmd)
+                                   command=self.closecommand)
         self.label.pack(side='left', padx=(6, 0))
         self.closebtn.pack(side='right', padx=(0, 6))
         self.update_idletasks()
@@ -29,6 +29,11 @@ class Tab(ttk.Frame):
         self.frame.place(bordermode='inside', anchor='nw', x=0, y=0,
                          relwidth=1, relheight=1)
         self.tab_nb = tab_nb
+        self.frame.bind('<2>', self.closecommand)
+        self.label.bind('<2>', self.closecommand)
+
+    def closecommand(self, event=None):
+        self._closecommand(self.tab_nb)
 
     def state(self, *args):
         res = ttk.Frame.state(self, *args)
@@ -54,7 +59,7 @@ class Tab(ttk.Frame):
 
     def tab_configure(self, *args, **kwargs):
         if 'closecmd' in kwargs:
-            self.closebtn.configure(command=kwargs.pop('closecmd'))
+            self._closecommand = kwargs.pop('closecmd')
             if not kwargs:
                 return
         return self.label.configure(*args, **kwargs)

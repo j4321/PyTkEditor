@@ -64,7 +64,7 @@ class App(tk.Tk):
         self.option_add('*TCombobox*Listbox.selectForeground', FG)
         self.option_add('*TCombobox*Listbox.foreground', FG)
         self.option_add('*TCombobox*Listbox.background', FIELDBG)
-        self.option_add('*Menu.background', BG)
+        self.option_add('*Menu.background', FIELDBG)
         self.option_add('*Menu.activeBackground', SELECTBG)
         self.option_add('*Menu.activeForeground', FG)
         self.option_add('*Menu.disabledForeground', DISABLEDFG)
@@ -165,6 +165,7 @@ class App(tk.Tk):
         self.configure(menu=menu)
 
         # --- bindings
+        self.codestruct.bind('<<Populate>>', self._on_populate)
         self.editor.bind('<<NotebookEmpty>>', self.codestruct.clear)
         self.editor.bind('<<NotebookTabChanged>>', self._on_tab_changed)
         self.editor.bind('<<Modified>>', lambda e: self._edit_modified())
@@ -176,6 +177,7 @@ class App(tk.Tk):
         self.bind('<Control-o>', lambda e: self.open())
         self.bind('<Control-Shift-S>', self.saveall)
         self.bind('<Control-Alt-s>', self.saveas)
+        self.editor.bind('<<CtrlReturn>>', lambda e: self.console.execute(self.editor.get_cell()))
         self.bind('<F5>', self.run)
         self.bind('<F9>', lambda e: self.console.execute(self.editor.get_selection()))
 
@@ -187,6 +189,10 @@ class App(tk.Tk):
         if file:
             self.open_file(file)
         self.protocol('WM_DELETE_WINDOW', self.quit)
+
+    def _on_populate(self, event):
+        cells = self.codestruct.get_cells()
+        self.editor.set_cells(cells)
 
     def _on_tab_changed(self, event):
         self.codestruct.set_callback(self.editor.goto_item)
@@ -217,10 +223,22 @@ class App(tk.Tk):
         if file:
             self.open_file(file)
 
+    def _update_recent_files(self, file):
+        if file in self.recent_files:
+            ind = self.recent_files.index(file)
+            del self.recent_files[ind]
+            self.menu_recent_files.delete(ind)
+        self.recent_files.insert(0, file)
+        self.menu_recent_files.insert_command(0, label=file, command=lambda: self.open_file(file))
+        if len(self.recent_files) > 10:
+            del self.recent_files[-1]
+            self.menu_recent_files.delete(self.menu_recent_files.index('end'))
+
     def open_file(self, file):
         files = list(self.editor.files.values())
         if file in files:
             self.editor.select(list(self.editor.files.keys())[files.index(file)])
+            self._update_recent_files()
         else:
             try:
                 with open(file) as f:
@@ -237,15 +255,7 @@ class App(tk.Tk):
                 self.codestruct.populate(self.editor.filename, self.editor.get(strip=False))
                 self.check_syntax()
                 self.editor.goto_start()
-                if file in self.recent_files:
-                    ind = self.recent_files.index(file)
-                    del self.recent_files[ind]
-                    self.menu_recent_files.delete(ind)
-                self.recent_files.append(file)
-                self.menu_recent_files.add_command(label=file, command=lambda: self.open_file(file))
-                if len(self.recent_files) > 10:
-                    del self.recent_files[0]
-                    self.menu_recent_files.delete(0)
+                self._update_recent_files()
                 CONFIG.set('General', 'recent_files', ', '.join(self.recent_files))
                 save_config()
 

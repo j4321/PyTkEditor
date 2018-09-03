@@ -16,15 +16,15 @@ from pygments.styles import get_style_by_name
 from jedi import settings
 import configparser
 from pygments.lexers import Python3Lexer
-from pygments.token import Comment
+#from pygments.token import Comment
 
 
-class MyLexer(Python3Lexer):
-    tokens = Python3Lexer.tokens.copy()
-    tokens['root'].insert(5, (r'# *In\[.*\].*$', Comment.Cell))
+#class MyLexer(Python3Lexer):
+#    tokens = Python3Lexer.tokens.copy()
+#    tokens['root'].insert(5, (r'^# *In\[.*\].*$', Comment.Cell))
+#
 
-
-PYTHON_LEX = MyLexer()
+PYTHON_LEX = Python3Lexer()
 settings.case_insensitive_completion = False
 
 
@@ -35,6 +35,7 @@ IM_CLASS = os.path.join(IMG_PATH, 'c.png')
 IM_FCT = os.path.join(IMG_PATH, 'f.png')
 IM_HFCT = os.path.join(IMG_PATH, 'hf.png')
 IM_SEP = os.path.join(IMG_PATH, 'sep.png')
+IM_CELL = os.path.join(IMG_PATH, 'cell.png')
 IM_WARN = os.path.join(IMG_PATH, 'warning.png')
 IM_ERR = os.path.join(IMG_PATH, 'error.png')
 ICON = os.path.join(IMG_PATH, 'icon.png')
