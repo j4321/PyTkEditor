@@ -26,4 +26,4 @@ def copen(filename=None):
 
 
 if __name__ == '__main__':
-    copen(argv[1:])
+    copen(argv[1])
