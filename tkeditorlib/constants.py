@@ -16,13 +16,6 @@ from pygments.styles import get_style_by_name
 from jedi import settings
 import configparser
 from pygments.lexers import Python3Lexer
-#from pygments.token import Comment
-
-
-#class MyLexer(Python3Lexer):
-#    tokens = Python3Lexer.tokens.copy()
-#    tokens['root'].insert(5, (r'^# *In\[.*\].*$', Comment.Cell))
-#
 
 PYTHON_LEX = Python3Lexer()
 settings.case_insensitive_completion = False
@@ -91,87 +84,11 @@ def save_config():
         CONFIG.write(f)
 
 
-FONT = (CONFIG.get("General", "fontfamily"),
-        CONFIG.getint("General", "fontsize"))
-
 # --- style
-
 EDITOR_STYLE = CONFIG.get('Editor', 'style')
 CONSOLE_STYLE = CONFIG.get('Console', 'style')
-
-if CONFIG.get('General', 'theme') == 'dark':
-    BG = '#454545'
-    ACTIVEBG = '#525252'
-    PRESSEDBG = '#262626'
-    FG = '#E6E6E6'
-    FIELDBG = '#303030'
-    LIGHTCOLOR = BG
-    DARKCOLOR = BG
-    BORDERCOLOR = '#131313'
-    FOCUSBORDERCOLOR = '#353535'
-    SELECTBG = '#1f1f1f'
-    SELECTFG = FG
-    UNSELECTEDFG = '#999999'
-    DISABLEDFG = '#666666'
-    DISABLEDBG = BG
-    IM_CLOSE = os.path.join(IMG_PATH, 'close_dark.png')
-#    DISABLEDBG = '#595959'
-else:
-    BG = '#dddddd'
-    ACTIVEBG = '#efefef'
-    PRESSEDBG = '#c1c1c1'
-    FG = 'black'
-    FIELDBG = 'white'
-    LIGHTCOLOR = '#ededed'
-    DARKCOLOR = '#cfcdc8'
-    BORDERCOLOR = '#888888'
-    FOCUSBORDERCOLOR = '#5E5E5E'
-    SELECTBG = PRESSEDBG
-    SELECTFG = 'black'
-    UNSELECTEDFG = '#666666'
-    DISABLEDFG = '#999999'
-    DISABLEDBG = BG
-    IM_CLOSE = os.path.join(IMG_PATH, 'close.png')
-#    DISABLEDBG = ''
-
-BUTTON_STYLE_CONFIG = {'bordercolor': BORDERCOLOR,
-                       'background': BG,
-                       'fieldbackground': FIELDBG,
-                       'indicatorbackground': FIELDBG,
-                       'indicatorforeground': FG,
-                       'foreground': FG,
-                       'arrowcolor': FG,
-                       'insertcolor': FG,
-                       'upperbordercolor': BORDERCOLOR,
-                       'lowerbordercolor': BORDERCOLOR,
-                       'lightcolor': LIGHTCOLOR,
-                       'darkcolor': DARKCOLOR}
-
-BUTTON_STYLE_MAP = {'background': [('active', ACTIVEBG),
-                                   ('disabled', DISABLEDBG),
-                                   ('pressed', PRESSEDBG)],
-                    'lightcolor': [('pressed', DARKCOLOR)],
-                    'darkcolor': [('pressed', LIGHTCOLOR)],
-                    'bordercolor': [('focus', FOCUSBORDERCOLOR)],
-                    'foreground': [('disabled', DISABLEDFG)],
-                    'arrowcolor': [('disabled', DISABLEDFG)],
-                    'fieldbackground': [('disabled', FIELDBG)],
-                    'selectbackground': [('focus', SELECTBG)],
-                    'selectforeground': [('focus', SELECTFG)]}
-
-STYLE_CONFIG = {'bordercolor': BORDERCOLOR,
-                'background': BG,
-                'foreground': FG,
-                'arrowcolor': FG,
-                'gripcount': 0,
-                'lightcolor': LIGHTCOLOR,
-                'darkcolor': DARKCOLOR,
-                'troughcolor': PRESSEDBG}
-
-STYLE_MAP = {'background': [('active', ACTIVEBG), ('disabled', BG)],
-             'lightcolor': [('pressed', DARKCOLOR)],
-             'darkcolor': [('pressed', LIGHTCOLOR)],
-             'foreground': [('disabled', DISABLEDFG)]}
+FONT = (CONFIG.get("General", "fontfamily"),
+        CONFIG.getint("General", "fontsize"))
 
 
 def load_style(stylename):

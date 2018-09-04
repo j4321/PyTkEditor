@@ -7,8 +7,6 @@ Created on Sun Aug 19 16:02:58 2018
 """
 from tkinter import ttk
 import tkinter as tk
-from tkeditorlib.constants import IM_CLOSE, BG, LIGHTCOLOR, DARKCOLOR,\
-    ACTIVEBG, STYLE_CONFIG, UNSELECTEDFG, FG
 
 
 class Tab(ttk.Frame):
@@ -70,8 +68,6 @@ class Tab(ttk.Frame):
 
 class Notebook(ttk.Frame):
 
-    _initialized = False
-
     def __init__(self, master=None, menu=None, **kwargs):
         stylename = kwargs.pop('style', 'Notebook')
         ttk.Frame.__init__(self, master, class_='Notebook', padding=(0, 0, 0, 1),
@@ -93,20 +89,8 @@ class Notebook(ttk.Frame):
         self._dragged_tab = None
 
         self.menu = menu
-
-        style = ttk.Style(self)
-        # --- init style
-        if not Notebook._initialized:
-            Notebook._img_close = tk.PhotoImage(file=IM_CLOSE)
-            style.element_create('close', 'image', Notebook._img_close,
-                                 sticky='')
-
-            for seq in self.bind_class('TButton'):
-                self.bind_class('Notebook.Tab.Close', seq, self.bind_class('TButton', seq), True)
-
-            self._setup_style()
-            Notebook._initialized = True
         self.configure(style=stylename)
+
         # --- widgets
         # to display current tab content
         self._body = ttk.Frame(self)
@@ -114,8 +98,7 @@ class Notebook(ttk.Frame):
         self._body.columnconfigure(0, weight=1)
         self._body.grid_propagate(False)
         # tab labels
-        self._canvas = tk.Canvas(self, bg=BG, highlightthickness=0,
-                                 borderwidth=0, takefocus=False)  # to scroll through tab labels
+        self._canvas = tk.Canvas(self, takefocus=False)  # to scroll through tab labels
         self._tab_frame2 = ttk.Frame(self, height=25)  # to display tab labels
         self._tab_frame = ttk.Frame(self._tab_frame2)  # to display tab labels
         self._sep = ttk.Frame(self._tab_frame2, style='separator.TFrame', height=1)
@@ -163,7 +146,6 @@ class Notebook(ttk.Frame):
         self._tab_frame.bind('<Configure>', self._on_configure)
         self._canvas.bind('<Configure>', self._on_configure)
         self.bind_all('<ButtonRelease-1>', self._on_click)
-        self.bind('<<ThemeChanged>>', self._setup_style)
         self.bind('<Control-Tab>', lambda e: self.select_next(True))
         self.bind('<Shift-Control-ISO_Left_Tab>', lambda e: self.select_prev(True))
 
@@ -190,71 +172,6 @@ class Notebook(ttk.Frame):
         else:
             self._btn_left.grid()
             self._btn_right.grid()
-
-    def _setup_style(self, vent=None):
-        style = ttk.Style(self)
-        style.layout('Notebook', style.layout('TFrame'))
-        style.layout('Notebook.TMenubutton',
-                     [('Menubutton.border',
-                       {'sticky': 'nswe',
-                        'children': [('Menubutton.focus',
-                                      {'sticky': 'nswe',
-                                       'children': [('Menubutton.indicator', {'side': 'right', 'sticky': ''}),
-                                                    ('Menubutton.padding',
-                                                     {'expand': '1',
-                                                      'sticky': 'we'})]})]})])
-        style.layout('Notebook.Tab', style.layout('TFrame'))
-        style.layout('Notebook.Tab.Frame', style.layout('TFrame'))
-        style.layout('Notebook.Tab.Label', style.layout('TLabel'))
-        style.layout('Notebook.Tab.Close',
-                     [('Close.padding',
-                       {'sticky': 'nswe',
-                        'children': [('Close.border',
-                                      {'border': '1',
-                                       'sticky': 'nsew',
-                                       'children': [('Close.close',
-                                                     {'sticky': 'ewsn'})]})]})])
-        style.layout('Notebook.Left.TButton',
-                     [('Button.padding',
-                       {'sticky': 'nswe',
-                        'children': [('Button.leftarrow', {'sticky': 'nswe'})]})])
-        style.layout('Notebook.Right.TButton',
-                     [('Button.padding',
-                       {'sticky': 'nswe',
-                        'children': [('Button.rightarrow', {'sticky': 'nswe'})]})])
-        style.configure('Notebook', **STYLE_CONFIG)
-        style.configure('Notebook.Tab', relief='raised', borderwidth=1,
-                        **STYLE_CONFIG)
-        style.configure('Notebook.Tab.Frame', relief='flat', borderwidth=0,
-                        **STYLE_CONFIG)
-        style.configure('Notebook.Tab.Label', relief='flat', borderwidth=1,
-                        padding=0, **STYLE_CONFIG)
-        style.configure('Notebook.Tab.Label', foreground=UNSELECTEDFG)
-        style.configure('Notebook.Tab.Close', relief='flat', borderwidth=1,
-                        padding=0, **STYLE_CONFIG)
-        style.configure('Notebook.Tab.Frame', background=BG)
-        style.configure('Notebook.Tab.Label', background=BG)
-        style.configure('Notebook.Tab.Close', background=BG)
-
-        style.map('Notebook.Tab.Frame',
-                  **{'background': [('selected', '!disabled', ACTIVEBG)]})
-        style.map('Notebook.Tab.Label',
-                  **{'background': [('selected', '!disabled', ACTIVEBG)],
-                     'foreground': [('selected', '!disabled', FG)]})
-        style.map('Notebook.Tab.Close',
-                  **{'background': [('selected', ACTIVEBG),
-                                    ('pressed', DARKCOLOR),
-                                    ('active', ACTIVEBG)],
-                     'relief': [('hover', '!disabled', 'raised'),
-                                ('active', '!disabled', 'raised'),
-                                ('pressed', '!disabled', 'sunken')],
-                     'lightcolor': [('pressed', DARKCOLOR)],
-                     'darkcolor': [('pressed', LIGHTCOLOR)]})
-        style.map('Notebook.Tab',
-                  **{'background': [('selected', '!disabled', ACTIVEBG)]})
-
-        style.configure('Notebook.Left.TButton', padding=0)
-        style.configure('Notebook.Right.TButton', padding=0)
 
     def _on_press(self, event, tab):
         self._show(tab)

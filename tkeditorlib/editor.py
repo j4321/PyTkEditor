@@ -6,11 +6,12 @@ from pygments import lex
 import tkinter as tk
 from tkinter import ttk
 from tkinter import messagebox
+from tkinter.font import Font
 import re
 from tkeditorlib.autoscrollbar import AutoHideScrollbar
-from tkeditorlib.constants import IM_WARN, IM_ERR, IM_CLOSE, get_screen, FONT,\
+from tkeditorlib.constants import IM_WARN, IM_ERR, get_screen,\
     EDITOR_BG, EDITOR_HIGHLIGHT_BG, EDITOR_SYNTAX_HIGHLIGHTING, EDITOR_FG,\
-    BG, UNSELECTEDFG, SELECTFG, PYTHON_LEX
+    PYTHON_LEX, CONFIG
 from tkeditorlib.complistbox import CompListbox
 from tkeditorlib.tooltip import TooltipTextWrapper
 from tkeditorlib.filebar import FileBar
@@ -22,7 +23,6 @@ class Editor(ttk.Frame):
 
         self.columnconfigure(2, weight=1)
         self.rowconfigure(0, weight=1)
-        self._im_close = tk.PhotoImage(master=self, file=IM_CLOSE)
 
         self._syntax_icons = {'warning': tk.PhotoImage(master=self, file=IM_WARN),
                               'error': tk.PhotoImage(master=self, file=IM_ERR)}
@@ -42,34 +42,24 @@ class Editor(ttk.Frame):
         self.text = tk.Text(self, fg=EDITOR_FG,
                             bg=EDITOR_BG, undo=True,
                             autoseparators=True,
-                            relief='flat', borderwidth=0,
-                            highlightthickness=0, wrap='none',
+                            wrap='none',
                             selectbackground=EDITOR_HIGHLIGHT_BG,
                             inactiveselectbackground=EDITOR_HIGHLIGHT_BG,
-                            selectforeground=SELECTFG,
-                            insertbackground=EDITOR_FG, font=FONT)
+                            insertbackground=EDITOR_FG)
 
         self.sep = tk.Frame(self.text, bg='gray60')
-        self.sep.place(y=0, relheight=1, x=632, width=1)
+        font = Font(self, (CONFIG.get("General", "fontfamily"),
+                           CONFIG.getint("General", "fontsize")))
+        self.sep.place(y=0, relheight=1, x=font.measure(' ' * 79), width=1)
 
-        self.line_nb = tk.Text(self, width=1, cursor='arrow',
-                               bg=BG, selectbackground=BG,
-                               inactiveselectbackground=BG,
-                               fg=UNSELECTEDFG, selectforeground=UNSELECTEDFG,
-                               highlightthickness=0, relief='flat',
-                               font=FONT)
+        self.line_nb = tk.Text(self, width=1, cursor='arrow')
         self.line_nb.insert('1.0', '1')
         self.line_nb.tag_configure('right', justify='right')
         self.line_nb.tag_add('right', '1.0', 'end')
         self.line_nb.configure(state='disabled')
 
         self.syntax_checks = tk.Text(self, width=2, cursor='arrow',
-                                     state='disabled',
-                                     bg=BG, selectbackground=BG,
-                                     inactiveselectbackground=BG,
-                                     fg=UNSELECTEDFG, selectforeground=UNSELECTEDFG,
-                                     highlightthickness=0, relief='flat',
-                                     font=FONT)
+                                     state='disabled')
         self.textwrapper = TooltipTextWrapper(self.syntax_checks, background='light yellow',
                                               foreground='black', title='Syntax')
 
@@ -113,16 +103,18 @@ class Editor(ttk.Frame):
         frame_find = ttk.Frame(self.frame_search)
         ttk.Button(frame_find, padding=0,
                    command=lambda: self.frame_search.grid_remove(),
-                   image=self._im_close, style='close.TButton').pack(side='left')
+                   style='close.TButton').pack(side='left')
         ttk.Label(frame_find, text='Find:').pack(side='right')
         # ------- placement
-        frame_find.grid(row=0, column=0, padx=2, pady=4, sticky='ew')
+        ttk.Frame(self.frame_search, style='separator.TFrame',
+                  height=1).grid(row=0, column=0, columnspan=3, sticky='ew')
+        frame_find.grid(row=1, column=0, padx=2, pady=4, sticky='ew')
         self.label_replace = ttk.Label(self.frame_search, text='Replace by:')
-        self.label_replace.grid(row=1, column=0, sticky='e', pady=4, padx=4)
-        self.entry_search.grid(row=0, column=1, sticky='ew', pady=4, padx=2)
-        self.entry_replace.grid(row=1, column=1, sticky='ew', pady=4, padx=2)
-        search_buttons.grid(row=0, column=2, sticky='w')
-        self.replace_buttons.grid(row=1, column=2, sticky='w')
+        self.label_replace.grid(row=2, column=0, sticky='e', pady=4, padx=4)
+        self.entry_search.grid(row=1, column=1, sticky='ew', pady=4, padx=2)
+        self.entry_replace.grid(row=2, column=1, sticky='ew', pady=4, padx=2)
+        search_buttons.grid(row=1, column=2, sticky='w')
+        self.replace_buttons.grid(row=2, column=2, sticky='w')
 
         # --- grid
         self.text.grid(row=0, column=2, sticky='ewns')
@@ -131,10 +123,7 @@ class Editor(ttk.Frame):
         sx.grid(row=1, column=2, columnspan=2, sticky='ew')
         sy.grid(row=0, column=4, sticky='ns')
         self.filebar.grid(row=0, column=3, sticky='ns')
-        ttk.Frame(self, style='separator.TFrame', height=1).grid(row=2, column=0,
-                                                                 columnspan=5,
-                                                                 sticky='ew')
-        self.frame_search.grid(row=3, column=0, columnspan=5, sticky='ew')
+        self.frame_search.grid(row=2, column=0, columnspan=5, sticky='ew')
         self.frame_search.grid_remove()
 
         # --- syntax highlighting
@@ -706,4 +695,3 @@ class Editor(ttk.Frame):
             self.filebar.add_mark(line, category)
             self.textwrapper.add_tooltip(str(line), msg)
         self.syntax_checks.configure(state='disabled')
-
