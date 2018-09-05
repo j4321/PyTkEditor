@@ -12,8 +12,7 @@ import re
 from os import kill
 from os.path import join, dirname
 from tkeditorlib.complistbox import CompListbox
-from tkeditorlib.constants import get_screen, FONT, CONSOLE_BG, CONSOLE_FG,\
-    CONSOLE_HIGHLIGHT_BG, CONSOLE_SYNTAX_HIGHLIGHTING, HISTFILE,\
+from tkeditorlib.constants import get_screen, load_style, CONFIG, HISTFILE,\
     SERVER_CERT, CLIENT_CERT
 from pygments import lex
 from pygments.lexers import Python3Lexer
@@ -87,31 +86,21 @@ class History:
 class TextConsole(tk.Text):
     def __init__(self, master=None, **kw):
         kw.setdefault('wrap', 'word')
-        kw.setdefault('background', CONSOLE_BG)
-        kw.setdefault('foreground', CONSOLE_FG)
-        kw.setdefault('selectforeground', CONSOLE_FG)
-        kw.setdefault('selectbackground', CONSOLE_HIGHLIGHT_BG)
-        kw.setdefault('insertbackground', kw['foreground'])
         kw.setdefault('prompt1', '>>> ')
         kw.setdefault('prompt2', '... ')
-        kw.setdefault('promptcolor', kw['foreground'])
-        kw.setdefault('output_foreground', kw['foreground'])
-        kw.setdefault('output_background', kw['background'])
+        kw.setdefault('promptcolor', 'black')
         kw.setdefault('error_foreground', 'tomato')
-        kw.setdefault('error_background', kw['background'])
-        kw.setdefault('font', FONT)
         banner = kw.pop('banner', 'Python %s\n' % sys.version)
 
         self.history = History(HISTFILE)
         self._hist_item = self.history.get_length()
         self._hist_match = ''
 
+        self._syntax_highlighting_tags = []
+
         self._prompt1 = kw.pop('prompt1')
         self._prompt2 = kw.pop('prompt2')
-        output_foreground = kw.pop('output_foreground')
-        output_background = kw.pop('output_background')
         error_foreground = kw.pop('error_foreground')
-        error_background = kw.pop('error_background')
         promptcolor = kw.pop('promptcolor')
 
         tk.Text.__init__(self, master, **kw)
@@ -138,15 +127,10 @@ class TextConsole(tk.Text):
         self.shell_client = context.wrap_socket(client, server_side=True)
         self.shell_client.setblocking(False)
 
-        # --- syntax highlighting
-        for tag, opts in CONSOLE_SYNTAX_HIGHLIGHTING.items():
-            self.tag_configure(tag, selectforeground=kw['selectforeground'], **opts)
+        self.update_config()
 
-        self.tag_configure('error', foreground=error_foreground,
-                           background=error_background)
+        self.tag_configure('error', foreground=error_foreground)
         self.tag_configure('prompt', foreground=promptcolor)
-        self.tag_configure('output', foreground=output_foreground,
-                           background=output_background)
 
         self.insert('end', banner, 'banner')
         self.prompt()
@@ -189,6 +173,24 @@ class TextConsole(tk.Text):
         self.insert('insert', txt)
         self.parse()
 
+    def update_config(self):
+        FONT = (CONFIG.get("General", "fontfamily"),
+                CONFIG.getint("General", "fontsize"))
+        CONSOLE_BG, CONSOLE_HIGHLIGHT_BG, CONSOLE_SYNTAX_HIGHLIGHTING = load_style(CONFIG.get('Console', 'style'))
+        CONSOLE_FG = CONSOLE_SYNTAX_HIGHLIGHTING.get('Token.Name', {}).get('foreground', 'black')
+
+        self._syntax_highlighting_tags = list(CONSOLE_SYNTAX_HIGHLIGHTING.keys())
+        self.configure(fg=CONSOLE_FG, bg=CONSOLE_BG, font=FONT,
+                       selectbackground=CONSOLE_HIGHLIGHT_BG,
+                       inactiveselectbackground=CONSOLE_HIGHLIGHT_BG,
+                       insertbackground=CONSOLE_FG)
+        self.tag_configure('error', background=CONSOLE_BG)
+        self.tag_configure('output', foreground=CONSOLE_FG,
+                           background=CONSOLE_BG)
+        # --- syntax highlighting
+        for tag, opts in CONSOLE_SYNTAX_HIGHLIGHTING.items():
+            self.tag_configure(tag, **opts)
+
     def index_to_tuple(self, index):
         return tuple(map(int, self.index(index).split(".")))
 
@@ -199,7 +201,7 @@ class TextConsole(tk.Text):
             start = self.index('%s+1c' % start)
             data = data[1:]
         self.mark_set('range_start', start)
-        for t in CONSOLE_SYNTAX_HIGHLIGHTING:
+        for t in self._syntax_highlighting_tags:
             self.tag_remove(t, start, "range_start +%ic" % len(data))
         for token, content in lex(data, Python3Lexer()):
             self.mark_set("range_end", "range_start + %ic" % len(content))

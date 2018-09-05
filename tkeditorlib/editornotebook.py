@@ -32,6 +32,10 @@ class EditorNotebook(Notebook):
     def filename(self):
         return self.tab(self.current_tab, 'text')
 
+    def update_config(self):
+        for editor in self._tabs.values():
+            editor.update_config()
+
     def insert(self, index, text):
         if self.current_tab >= 0:
             self._tabs[self.current_tab].insert(index, text)

@@ -10,7 +10,7 @@ from tkinter.ttk import Treeview, Frame, Label
 from tkinter.font import Font
 from tokenize import tokenize, TokenError
 from tkeditorlib.autoscrollbar import AutoHideScrollbar as Scrollbar
-from tkeditorlib.autocomplete import AutoCompleteCombobox
+from tkeditorlib.autocomplete import AutoCompleteCombobox2
 from tkeditorlib.constants import IM_CLASS, IM_FCT, IM_HFCT, IM_SEP, IM_CELL
 from io import BytesIO
 import re
@@ -122,7 +122,7 @@ class CodeStructure(Frame):
 
         self.goto_frame = Frame(self)
         Label(self.goto_frame, text='Go to:').pack(side='left')
-        self.goto_entry = AutoCompleteCombobox(self.goto_frame, completevalues=[])
+        self.goto_entry = AutoCompleteCombobox2(self.goto_frame, completevalues=[])
         self.goto_entry.pack(side='left', fill='x', pady=4, padx=4)
         self._goto_index = 0
 

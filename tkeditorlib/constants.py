@@ -44,6 +44,7 @@ IM_REDO = os.path.join(IMG_PATH, 'redo.png')
 IM_QUIT = os.path.join(IMG_PATH, 'quit.png')
 IM_FIND = os.path.join(IMG_PATH, 'find.png')
 IM_REPLACE = os.path.join(IMG_PATH, 'replace.png')
+IM_SETTINGS = os.path.join(IMG_PATH, 'settings.png')
 ICON = os.path.join(IMG_PATH, 'icon.png')
 
 if os.access(PATH, os.W_OK):
@@ -85,16 +86,12 @@ def save_config():
 
 
 # --- style
-EDITOR_STYLE = CONFIG.get('Editor', 'style')
-CONSOLE_STYLE = CONFIG.get('Console', 'style')
-FONT = (CONFIG.get("General", "fontfamily"),
-        CONFIG.getint("General", "fontsize"))
-
-
 def load_style(stylename):
     s = get_style_by_name(stylename)
     style = s.list_styles()
     style_dic = {}
+    FONT = (CONFIG.get("General", "fontfamily"),
+            CONFIG.getint("General", "fontsize"))
     for token, opts in style:
         name = str(token)
         style_dic[name] = {}
@@ -108,13 +105,6 @@ def load_style(stylename):
         style_dic[name]['font'] = font
         style_dic[name]['underline'] = opts['underline']
     return s.background_color, s.highlight_color, style_dic
-
-
-CONSOLE_BG, CONSOLE_HIGHLIGHT_BG, CONSOLE_SYNTAX_HIGHLIGHTING = load_style(CONSOLE_STYLE)
-CONSOLE_FG = CONSOLE_SYNTAX_HIGHLIGHTING.get('Token.Name', {}).get('foreground', 'black')
-
-EDITOR_BG, EDITOR_HIGHLIGHT_BG, EDITOR_SYNTAX_HIGHLIGHTING = load_style(EDITOR_STYLE)
-EDITOR_FG = EDITOR_SYNTAX_HIGHLIGHTING.get('Token.Name', {}).get('foreground', 'black')
 
 
 # --- screen size

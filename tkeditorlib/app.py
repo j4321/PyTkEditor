@@ -4,6 +4,7 @@ from tkeditorlib.filestructure import CodeStructure
 from tkeditorlib.constants import ICON, CONFIG, save_config, IMG_PATH
 from tkeditorlib import constants as cst
 from tkeditorlib.textconsole import TextConsole
+from tkeditorlib.config import Config
 from tkeditorlib.autoscrollbar import AutoHideScrollbar
 import tkinter as tk
 from tkinter import ttk
@@ -32,7 +33,12 @@ class App(tk.Tk):
         self._im_quit = tk.PhotoImage(file=cst.IM_QUIT, master=self)
         self._im_find = tk.PhotoImage(file=cst.IM_FIND, master=self)
         self._im_replace = tk.PhotoImage(file=cst.IM_REPLACE, master=self)
+        self._im_settings = tk.PhotoImage(file=cst.IM_SETTINGS, master=self)
         self.iconphoto(True, self._icon)
+
+        self.option_add('*Menu.borderWidth', 1)
+        self.option_add('*Menu.activeBorderWidth', 0)
+        self.option_add('*Menu.relief', 'sunken')
 
         recent_files = CONFIG.get('General', 'recent_files', fallback='').split(', ')
         self.recent_files = [f for f in recent_files if f and os.path.exists(f)]
@@ -40,6 +46,10 @@ class App(tk.Tk):
         self.file = ''
 
         self.menu = tk.Menu(self, tearoff=False, relief='flat')
+        self.menu_file = tk.Menu(self.menu, tearoff=False)
+        self.menu_recent_files = tk.Menu(self.menu_file, tearoff=False)
+        self.menu_edit = tk.Menu(self.menu, tearoff=False)
+
         # -- style
         for seq in self.bind_class('TButton'):
             self.bind_class('Notebook.Tab.Close', seq, self.bind_class('TButton', seq), True)
@@ -69,7 +79,6 @@ class App(tk.Tk):
 
         # --- menu
         # file
-        self.menu_file = tk.Menu(self.menu, tearoff=False)
         self.menu_file.add_command(label='New', command=self.new, image=self._im_new,
                                    accelerator='Ctrl+N', compound='left')
         self.menu_file.add_separator()
@@ -81,7 +90,6 @@ class App(tk.Tk):
                                    image=self._im_reopen, compound='left',
                                    accelerator='Ctrl+Shift+T')
         # file --- recent
-        self.menu_recent_files = tk.Menu(self.menu_file, tearoff=False)
         for f in self.recent_files:
             self.menu_recent_files.add_command(label=f,
                                                command=lambda file=f: self.open_file(file))
@@ -105,23 +113,25 @@ class App(tk.Tk):
         self.menu_file.add_command(label='Quit', command=self.quit,
                                    image=self._im_quit, compound='left')
         # edit
-        menu_edit = tk.Menu(self.menu, tearoff=False)
-        menu_edit.add_command(label='Undo', command=self.editor.undo,
-                              image=self._im_undo,
-                              accelerator='Ctrl+Z', compound='left')
-        menu_edit.add_command(label='Redo', command=self.editor.redo,
-                              image=self._im_redo,
-                              accelerator='Ctrl+Y', compound='left')
-        menu_edit.add_separator()
-        menu_edit.add_command(label='Find', command=self.editor.find,
-                              accelerator='Ctrl+F', compound='left',
-                              image=self._im_find)
-        menu_edit.add_command(label='Replace', command=self.editor.replace,
-                              accelerator='Ctrl+R', compound='left',
-                              image=self._im_replace)
+        self.menu_edit.add_command(label='Undo', command=self.editor.undo,
+                                   image=self._im_undo,
+                                   accelerator='Ctrl+Z', compound='left')
+        self.menu_edit.add_command(label='Redo', command=self.editor.redo,
+                                   image=self._im_redo,
+                                   accelerator='Ctrl+Y', compound='left')
+        self.menu_edit.add_separator()
+        self.menu_edit.add_command(label='Find', command=self.editor.find,
+                                   accelerator='Ctrl+F', compound='left',
+                                   image=self._im_find)
+        self.menu_edit.add_command(label='Replace', command=self.editor.replace,
+                                   accelerator='Ctrl+R', compound='left',
+                                   image=self._im_replace)
+        self.menu_edit.add_separator()
+        self.menu_edit.add_command(label='Settings', command=self.config,
+                                   compound='left', image=self._im_settings)
 
         self.menu.add_cascade(label='File', menu=self.menu_file)
-        self.menu.add_cascade(label='Edit', menu=menu_edit)
+        self.menu.add_cascade(label='Edit', menu=self.menu_edit)
         self.menu.add_command(image=self._im_run, command=self.run, compound='center')
         self.configure(menu=self.menu)
 
@@ -271,19 +281,11 @@ class App(tk.Tk):
         self.option_add('*TCombobox*Listbox.selectForeground', FG)
         self.option_add('*TCombobox*Listbox.foreground', FG)
         self.option_add('*TCombobox*Listbox.background', FIELDBG)
-        self.option_add('*Menu.background', FIELDBG)
-        self.option_add('*Menu.activeBackground', SELECTBG)
-        self.option_add('*Menu.activeForeground', FG)
-        self.option_add('*Menu.disabledForeground', DISABLEDFG)
-        self.option_add('*Menu.activeBorderWidth', 0)
-        self.option_add('*Menu.foreground', FG)
-        self.option_add('*Menu.selectColor', FG)
-        self.option_add('*Menu.relief', 'sunken')
         self.option_add('*Text.foreground', UNSELECTEDFG)
         self.option_add('*Text.selectForeground', UNSELECTEDFG)
         self.option_add('*Text.background', BG)
-        self.option_add('*Text.selectBackground', SELECTFG)
-        self.option_add('*Text.inactiveSelectBackground', SELECTFG)
+        self.option_add('*Text.selectBackground', BG)
+        self.option_add('*Text.inactiveSelectBackground', BG)
         self.option_add('*Text.relief', 'flat')
         self.option_add('*Text.highlightThickness', 0)
         self.option_add('*Text.borderWidth', 0)
@@ -293,6 +295,7 @@ class App(tk.Tk):
         self.option_add('*Canvas.relief', 'flat')
         self.option_add('*Canvas.highlightThickness', 0)
         self.option_add('*Canvas.borderWidth', 0)
+        self.option_add('*Toplevel.background', BG)
 
         style.layout('Down.TButton',
                      [('Button.padding',
@@ -321,7 +324,28 @@ class App(tk.Tk):
                         'children': [('Treeview.treearea', {'sticky': 'nswe'})]})])
         style.configure('flat.Treeview', background=FIELDBG)
         self.configure(bg=BG, padx=6, pady=2)
-        self.menu.configure(bg=BG)
+        self.menu.configure(bg=BG, fg=FG,
+                            borderwidth=0, activeborderwidth=0,
+                            activebackground=SELECTBG,
+                            activeforeground=SELECTFG)
+        self.menu_file.configure(bg=FIELDBG, activebackground=SELECTBG,
+                                 fg=FG, activeforeground=FG,
+                                 disabledforeground=DISABLEDFG,
+                                 selectcolor=FG)
+        self.menu_recent_files.configure(bg=FIELDBG, activebackground=SELECTBG,
+                                         fg=FG, activeforeground=FG,
+                                         disabledforeground=DISABLEDFG,
+                                         selectcolor=FG)
+        self.menu_edit.configure(bg=FIELDBG, activebackground=SELECTBG,
+                                 fg=FG, activeforeground=FG,
+                                 disabledforeground=DISABLEDFG,
+                                 selectcolor=FG)
+        self.option_add('*Menu.background', FIELDBG)
+        self.option_add('*Menu.activeBackground', SELECTBG)
+        self.option_add('*Menu.activeForeground', FG)
+        self.option_add('*Menu.disabledForeground', DISABLEDFG)
+        self.option_add('*Menu.foreground', FG)
+        self.option_add('*Menu.selectColor', FG)
         # --- notebook
         style.layout('Notebook', style.layout('TFrame'))
         style.layout('Notebook.TMenubutton',
@@ -400,6 +424,13 @@ class App(tk.Tk):
             self.menu_file.entryconfigure('Save', state='normal')
         else:
             self.menu_file.entryconfigure('Save', state='disabled')
+
+    def config(self):
+        c = Config(self)
+        self.wait_window(c)
+        self._setup_style()
+        self.editor.update_config()
+        self.console.update_config()
 
     def quit(self):
         files = ', '.join([f for f in self.editor.files.values() if f])

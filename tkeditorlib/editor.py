@@ -10,8 +10,7 @@ from tkinter.font import Font
 import re
 from tkeditorlib.autoscrollbar import AutoHideScrollbar
 from tkeditorlib.constants import IM_WARN, IM_ERR, get_screen,\
-    EDITOR_BG, EDITOR_HIGHLIGHT_BG, EDITOR_SYNTAX_HIGHLIGHTING, EDITOR_FG,\
-    PYTHON_LEX, CONFIG
+    load_style, PYTHON_LEX, CONFIG
 from tkeditorlib.complistbox import CompListbox
 from tkeditorlib.tooltip import TooltipTextWrapper
 from tkeditorlib.filebar import FileBar
@@ -27,6 +26,8 @@ class Editor(ttk.Frame):
         self._syntax_icons = {'warning': tk.PhotoImage(master=self, file=IM_WARN),
                               'error': tk.PhotoImage(master=self, file=IM_ERR)}
 
+        self._syntax_highlighting_tags = []
+
         self._paste = False
         self._autoclose = {'(': ')', '[': ']', '{': '}', '"': '"', "'": "'"}
         self._search_count = tk.IntVar(self)
@@ -39,18 +40,11 @@ class Editor(ttk.Frame):
 
         self.file = ''
 
-        self.text = tk.Text(self, fg=EDITOR_FG,
-                            bg=EDITOR_BG, undo=True,
+        self.text = tk.Text(self, undo=True,
                             autoseparators=True,
-                            wrap='none',
-                            selectbackground=EDITOR_HIGHLIGHT_BG,
-                            inactiveselectbackground=EDITOR_HIGHLIGHT_BG,
-                            insertbackground=EDITOR_FG)
+                            wrap='none')
 
         self.sep = tk.Frame(self.text, bg='gray60')
-        font = Font(self, (CONFIG.get("General", "fontfamily"),
-                           CONFIG.getint("General", "fontsize")))
-        self.sep.place(y=0, relheight=1, x=font.measure(' ' * 79), width=1)
 
         self.line_nb = tk.Text(self, width=1, cursor='arrow')
         self.line_nb.insert('1.0', '1')
@@ -126,9 +120,7 @@ class Editor(ttk.Frame):
         self.frame_search.grid(row=2, column=0, columnspan=5, sticky='ew')
         self.frame_search.grid_remove()
 
-        # --- syntax highlighting
-        for tag, opts in EDITOR_SYNTAX_HIGHLIGHTING.items():
-            self.text.tag_configure(tag, **opts)
+        self.update_config()
 
         # --- bindings
         self.text.bind("<KeyRelease>", self.on_key)
@@ -180,6 +172,36 @@ class Editor(ttk.Frame):
         self.yview('scroll', 3, 'units')
         return "break"
 
+    def update_config(self):
+        FONT = (CONFIG.get("General", "fontfamily"),
+                CONFIG.getint("General", "fontsize"))
+        font = Font(self, FONT)
+
+        self.sep.place(y=0, relheight=1, x=font.measure(' ' * 79), width=1)
+
+        EDITOR_BG, EDITOR_HIGHLIGHT_BG, EDITOR_SYNTAX_HIGHLIGHTING = load_style(CONFIG.get('Editor', 'style'))
+        EDITOR_FG = EDITOR_SYNTAX_HIGHLIGHTING.get('Token.Name', {}).get('foreground', 'black')
+
+        self._syntax_highlighting_tags = list(EDITOR_SYNTAX_HIGHLIGHTING.keys())
+
+        self.text.configure(fg=EDITOR_FG, bg=EDITOR_BG, font=FONT,
+                            selectbackground=EDITOR_HIGHLIGHT_BG,
+                            inactiveselectbackground=EDITOR_HIGHLIGHT_BG,
+                            insertbackground=EDITOR_FG)
+        fg = self.line_nb.option_get('foreground', '*Text')
+        bg = self.line_nb.option_get('background', '*Text')
+        self.line_nb.configure(fg=fg, bg=bg, font=FONT,
+                               selectbackground=bg, selectforeground=fg,
+                               inactiveselectbackground=bg)
+        self.syntax_checks.configure(fg=fg, bg=bg, font=FONT,
+                                     selectbackground=bg, selectforeground=fg,
+                                     inactiveselectbackground=bg)
+        self.filebar.update_config()
+
+        # --- syntax highlighting
+        for tag, opts in EDITOR_SYNTAX_HIGHLIGHTING.items():
+            self.text.tag_configure(tag, **opts)
+
     def set_cells(self, cells):
         self.cells = cells
         bg = self.text.tag_cget('Token.Comment', 'foreground')
@@ -220,7 +242,7 @@ class Editor(ttk.Frame):
             start = self.text.index('%s+1c' % start)
             data = data[1:]
         self.text.mark_set('range_start', start)
-        for t in EDITOR_SYNTAX_HIGHLIGHTING:
+        for t in self._syntax_highlighting_tags:
             self.text.tag_remove(t, start, "range_start +%ic" % len(data))
         for token, content in lex(data, PYTHON_LEX):
             self.text.mark_set("range_end", "range_start + %ic" % len(content))
