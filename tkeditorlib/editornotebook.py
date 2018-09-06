@@ -37,10 +37,15 @@ class EditorNotebook(Notebook):
             editor.update_style()
 
         fg = self.menu.option_get('foreground', '*Menu')
-        self.menu.configure(bg=self.menu.option_get('background', '*Menu'),
+        bg = self.menu.option_get('background', '*Menu')
+        activebackground = self.menu.option_get('activeBackground', '*Menu')
+        disabledforeground = self.menu.option_get('disabledForeground', '*Menu')
+        self.menu.configure(bg=bg, activebackground=activebackground,
                             fg=fg, selectcolor=fg, activeforeground=fg,
-                            activebackground=self.menu.option_get('activeBackground', '*Menu'),
-                            disabledforeground=self.menu.option_get('disabledForeground', '*Menu'))
+                            disabledforeground=disabledforeground)
+        self._tab_menu.configure(bg=bg, activebackground=activebackground,
+                                 fg=fg, selectcolor=fg, activeforeground=fg,
+                                 disabledforeground=disabledforeground)
 
     def insert(self, index, text):
         if self.current_tab >= 0:

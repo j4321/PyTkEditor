@@ -148,11 +148,11 @@ class TextConsole(tk.Text):
         self.bind('<BackSpace>', self.on_backspace)
         self.bind('<Control-c>', self.on_ctrl_c)
         self.bind('<<Paste>>', self.on_paste)
-        self.bind('<Destroy>', lambda e: self.history.save())
+        self.bind('<Destroy>', self.quit)
         self.bind('<FocusOut>', lambda e: self._comp.withdraw())
         self.bind("<ButtonPress>", self._on_press)
 
-    def _on_destroy(self):
+    def quit(self, event=None):
         self.history.save()
         self.shell_client.shutdown(socket.SHUT_RDWR)
         self.shell_client.close()
