@@ -32,9 +32,15 @@ class EditorNotebook(Notebook):
     def filename(self):
         return self.tab(self.current_tab, 'text')
 
-    def update_config(self):
+    def update_style(self):
         for editor in self._tabs.values():
-            editor.update_config()
+            editor.update_style()
+
+        fg = self.menu.option_get('foreground', '*Menu')
+        self.menu.configure(bg=self.menu.option_get('background', '*Menu'),
+                            fg=fg, selectcolor=fg, activeforeground=fg,
+                            activebackground=self.menu.option_get('activeBackground', '*Menu'),
+                            disabledforeground=self.menu.option_get('disabledForeground', '*Menu'))
 
     def insert(self, index, text):
         if self.current_tab >= 0:

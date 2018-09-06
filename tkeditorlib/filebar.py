@@ -22,7 +22,7 @@ class FileBar(Canvas):
         self.bind('<1>', self.on_click)
         self.bind('<Map>', self.update_highlight)
 
-    def update_config(self):
+    def update_style(self):
         self.itemconfigure(self.highlight, fill=self.option_get('fill', '*Canvas'))
         self.configure(bg=self.option_get('background', '*Canvas'))
 

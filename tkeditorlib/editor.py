@@ -120,7 +120,7 @@ class Editor(ttk.Frame):
         self.frame_search.grid(row=2, column=0, columnspan=5, sticky='ew')
         self.frame_search.grid_remove()
 
-        self.update_config()
+        self.update_style()
 
         # --- bindings
         self.text.bind("<KeyRelease>", self.on_key)
@@ -172,7 +172,7 @@ class Editor(ttk.Frame):
         self.yview('scroll', 3, 'units')
         return "break"
 
-    def update_config(self):
+    def update_style(self):
         FONT = (CONFIG.get("General", "fontfamily"),
                 CONFIG.getint("General", "fontsize"))
         font = Font(self, FONT)
@@ -196,7 +196,7 @@ class Editor(ttk.Frame):
         self.syntax_checks.configure(fg=fg, bg=bg, font=FONT,
                                      selectbackground=bg, selectforeground=fg,
                                      inactiveselectbackground=bg)
-        self.filebar.update_config()
+        self.filebar.update_style()
 
         # --- syntax highlighting
         for tag, opts in EDITOR_SYNTAX_HIGHLIGHTING.items():

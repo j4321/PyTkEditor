@@ -132,7 +132,7 @@ class App(tk.Tk):
 
         self.menu.add_cascade(label='File', menu=self.menu_file)
         self.menu.add_cascade(label='Edit', menu=self.menu_edit)
-        self.menu.add_command(image=self._im_run, command=self.run, compound='center')
+        self.menu.add_command(image=self._im_run, command=self.run, compound='left', label='Run')
         self.configure(menu=self.menu)
 
         # --- bindings
@@ -324,6 +324,7 @@ class App(tk.Tk):
                         'children': [('Treeview.treearea', {'sticky': 'nswe'})]})])
         style.configure('flat.Treeview', background=FIELDBG)
         self.configure(bg=BG, padx=6, pady=2)
+        # --- menu
         self.menu.configure(bg=BG, fg=FG,
                             borderwidth=0, activeborderwidth=0,
                             activebackground=SELECTBG,
@@ -429,8 +430,8 @@ class App(tk.Tk):
         c = Config(self)
         self.wait_window(c)
         self._setup_style()
-        self.editor.update_config()
-        self.console.update_config()
+        self.editor.update_style()
+        self.console.update_style()
 
     def quit(self):
         files = ', '.join([f for f in self.editor.files.values() if f])

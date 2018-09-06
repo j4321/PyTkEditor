@@ -22,7 +22,9 @@ class Config(tk.Toplevel):
         self.configure(padx=4, pady=4)
         self.title('TkEditor - Config')
 
-        ttk.Label(self, text='General', font=('TkDefaultFont', 10, 'bold')).grid(row=0, column=0, sticky='w', padx=4, pady=4)
+        ttk.Label(self, text='General',
+                  font=('TkDefaultFont', 10, 'bold')).grid(row=0, columnspan=3,
+                                                           sticky='w', padx=4, pady=4)
         # --- theme
         menu_theme = tk.Menu(self, tearoff=False)
         self.theme = tk.StringVar(self, CONFIG.get('General', 'theme'))
@@ -32,13 +34,14 @@ class Config(tk.Toplevel):
                                    value='dark')
         ttk.Label(self, text='Theme:').grid(row=1, column=0, sticky='e',
                                             padx=4, pady=4)
-        ttk.Menubutton(self, menu=menu_theme,
+        ttk.Menubutton(self, menu=menu_theme, width=5,
                        textvariable=self.theme).grid(row=1, column=1, padx=4,
                                                      pady=4, sticky='w')
         # --- font
         families = list(font.families())
         families.sort()
-        self.family = AutoCompleteCombobox(self, values=families)
+        length = max([len(f) for f in families])
+        self.family = AutoCompleteCombobox(self, values=families, width=length - 1)
         self.family.insert(0, CONFIG.get('General', 'fontfamily'))
         self.size = AutoCompleteCombobox(self, values=[str(i) for i in range(6, 20)],
                                          allow_other_values=True, width=3)
@@ -59,7 +62,9 @@ class Config(tk.Toplevel):
         self.console_style = AutoCompleteCombobox(self, values=styles)
         self.console_style.insert(0, CONFIG.get('Console', 'style'))
 
-        ttk.Label(self, text='Syntax Highlighting', font=('TkDefaultFont', 10, 'bold')).grid(row=4, column=0, sticky='w', padx=4, pady=4)
+        ttk.Label(self, text='Syntax Highlighting',
+                  font=('TkDefaultFont', 10, 'bold')).grid(row=4, columnspan=3,
+                                                           sticky='w', padx=4, pady=4)
         ttk.Label(self, text='Editor').grid(row=5, column=0, sticky='e', padx=4, pady=4)
         self.editor_style.grid(row=5, column=1, sticky='w', padx=4, pady=4)
         ttk.Label(self, text='Console').grid(row=6, column=0, sticky='e', padx=4, pady=4)

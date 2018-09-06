@@ -127,7 +127,7 @@ class TextConsole(tk.Text):
         self.shell_client = context.wrap_socket(client, server_side=True)
         self.shell_client.setblocking(False)
 
-        self.update_config()
+        self.update_style()
 
         self.tag_configure('error', foreground=error_foreground)
         self.tag_configure('prompt', foreground=promptcolor)
@@ -173,7 +173,7 @@ class TextConsole(tk.Text):
         self.insert('insert', txt)
         self.parse()
 
-    def update_config(self):
+    def update_style(self):
         FONT = (CONFIG.get("General", "fontfamily"),
                 CONFIG.getint("General", "fontsize"))
         CONSOLE_BG, CONSOLE_HIGHLIGHT_BG, CONSOLE_SYNTAX_HIGHLIGHTING = load_style(CONFIG.get('Console', 'style'))
