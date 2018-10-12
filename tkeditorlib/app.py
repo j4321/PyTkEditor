@@ -130,8 +130,8 @@ class App(tk.Tk):
         self.menu_edit.add_command(label='Settings', command=self.config,
                                    compound='left', image=self._im_settings)
 
-        self.menu.add_cascade(label='File', menu=self.menu_file)
-        self.menu.add_cascade(label='Edit', menu=self.menu_edit)
+        self.menu.add_cascade(label='File', underline=0, menu=self.menu_file)
+        self.menu.add_cascade(label='Edit', underline=0, menu=self.menu_edit)
         self.menu.add_command(image=self._im_run, command=self.run, compound='left', label='Run')
         self.configure(menu=self.menu)
 
@@ -182,6 +182,7 @@ class App(tk.Tk):
             DISABLEDFG = '#666666'
             DISABLEDBG = BG
             IM_CLOSE = os.path.join(IMG_PATH, 'close_dark.png')
+            TOOLTIP_BG = BORDERCOLOR
         #    DISABLEDBG = '#595959'
         else:
             BG = '#dddddd'
@@ -199,6 +200,7 @@ class App(tk.Tk):
             DISABLEDFG = '#999999'
             DISABLEDBG = BG
             IM_CLOSE = os.path.join(IMG_PATH, 'close.png')
+            TOOLTIP_BG = 'light yellow'
         #    DISABLEDBG = ''
         self._im_close.configure(file=IM_CLOSE)
 
@@ -277,6 +279,10 @@ class App(tk.Tk):
         style.map('Treeview', background=[('selected', SELECTBG)],
                   foreground=[('selected', SELECTFG)])
         style.map('Treeview.Heading', **BUTTON_STYLE_MAP)
+        style.configure('tooltip.TLabel', background=TOOLTIP_BG, foreground=FG)
+        style.configure('tooltip.TFrame', background=TOOLTIP_BG)
+        style.configure('title.tooltip.TLabel', foreground='#FF4D00')
+
         self.option_add('*TCombobox*Listbox.selectBackground', SELECTBG)
         self.option_add('*TCombobox*Listbox.selectForeground', FG)
         self.option_add('*TCombobox*Listbox.foreground', FG)

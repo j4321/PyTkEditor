@@ -4,11 +4,6 @@
 Created on Sun Aug 19 11:34:11 2018
 
 @author: juliette
-
-ssl certificate generation adapted from pyOpenSSL/xamples/certgen.py
-# Copyright (C) AB Strakt
-# Copyright (C) Jean-Paul Calderone
-Apache 2.0
 """
 import os
 from screeninfo import get_monitors
@@ -16,10 +11,16 @@ from pygments.styles import get_style_by_name
 from jedi import settings
 import configparser
 from pygments.lexers import Python3Lexer
-
-PYTHON_LEX = Python3Lexer()
+from pygments.token import Comment
 settings.case_insensitive_completion = False
 
+
+class MyLexer(Python3Lexer):
+    tokens = Python3Lexer.tokens.copy()
+    tokens['root'].insert(5, (r'^# *In\[.*\].*$', Comment.Cell))
+
+
+PYTHON_LEX = MyLexer()
 
 PATH = os.path.dirname(__file__)
 IMG_PATH = os.path.join(PATH, 'images')

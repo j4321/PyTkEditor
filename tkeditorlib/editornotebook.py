@@ -19,8 +19,7 @@ class EditorNotebook(Notebook):
     def __init__(self, master):
         Notebook.__init__(self, master)
         self.files = {}
-        self.wrapper = TooltipNotebookWrapper(self, background='light yellow',
-                                              foreground='black')
+        self.wrapper = TooltipNotebookWrapper(self)
         self.last_closed = []
         self.menu = Menu(self, tearoff=False)
         self.menu.add_command(label='Close all other tabs',
@@ -46,6 +45,7 @@ class EditorNotebook(Notebook):
         self._tab_menu.configure(bg=bg, activebackground=activebackground,
                                  fg=fg, selectcolor=fg, activeforeground=fg,
                                  disabledforeground=disabledforeground)
+        self._canvas.configure(bg=self._canvas.option_get('background', '*Canvas'))
 
     def insert(self, index, text):
         if self.current_tab >= 0:

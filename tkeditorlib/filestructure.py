@@ -85,7 +85,7 @@ class CodeTree(Treeview):
                     res = re.match(r'#( )*In', token.string)
                     obj_type = 'cell'
                     index = token.start[1] // 4
-                    name = token.string[len(res.group()):]
+                    name = token.string[len(res.group()):].strip()
                     add = True
                     self.cells.append(token.start[0])
 

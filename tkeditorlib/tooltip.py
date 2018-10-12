@@ -24,7 +24,7 @@ class Tooltip(tk.Toplevel):
         tk.Toplevel.__init__(self, parent)
         self.transient(parent)
         self.attributes('-type', 'tooltip')
-        self.attributes('-alpha', kwargs.get('alpha', 1))
+        self.attributes('-alpha', kwargs.get('alpha', 0.85))
         self.overrideredirect(True)
         self.configure(padx=kwargs.get('borderwidth', 1))
         self.configure(pady=kwargs.get('borderwidth', 1))
@@ -33,12 +33,6 @@ class Tooltip(tk.Toplevel):
         self.style = ttk.Style(self)
         frame = ttk.Frame(self, padding=4, style='tooltip.TFrame')
         frame.pack()
-        bg = kwargs.get('background', 'black')
-        fg = kwargs.get('foreground', 'white')
-        self.style.configure('tooltip.TLabel', background=bg)
-        self.style.configure('tooltip.TFrame', background=bg)
-        self.style.configure('tooltip.TLabel', foreground=fg)
-        self.style.configure('title.tooltip.TLabel', foreground='#FF4D00')
 
         self.im = kwargs.get('image', None)
         title = kwargs.get('title', '')
@@ -62,13 +56,6 @@ class Tooltip(tk.Toplevel):
             self.title.configure(text=kwargs.pop('title'))
         if 'image' in kwargs:
             self.label.configure(image=kwargs.pop('image'))
-        if 'background' in kwargs:
-            bg = kwargs.pop('background')
-            self.style.configure('tooltip.TLabel', background=bg)
-            self.style.configure('tooltip.TFrame', background=bg)
-        if 'foreground' in kwargs:
-            fg = kwargs.pop('foreground')
-            self.style.configure('tooltip.TLabel', foreground=fg)
         if 'alpha' in kwargs:
             self.attributes('-alpha', kwargs.pop('alpha'))
         tk.Toplevel.configure(self, **kwargs)
@@ -124,7 +111,10 @@ class TooltipTextWrapper:
 
     def _on_leave_tooltip(self, event):
         x, y = event.widget.winfo_pointerxy()
-        if event.widget.winfo_containing(x, y) != self.tooltip:
+        try:
+            if event.widget.winfo_containing(x, y) != self.tooltip:
+                self.tooltip.withdraw()
+        except KeyError:
             self.tooltip.withdraw()
 
     def display_tooltip(self, tag):
@@ -252,6 +242,8 @@ class TooltipNotebookWrapper:
 
     def _on_leave_tooltip(self, event):
         """Hide tooltip."""
+        if self.current_tab is None:
+            return
         x, y = event.widget.winfo_pointerxy()
         if not event.widget.winfo_containing(x, y) in self.notebook._tab_labels[self.current_tab].children.values():
             self.tooltip.withdraw()

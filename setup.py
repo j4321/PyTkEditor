@@ -6,7 +6,7 @@ from setuptools import setup
 files = ["images/*", "ssl/*"]
 
 setup(name="tkeditor",
-      version="1.0.0",
+      version="1.0.1",
       description="Python IDE",
       author="Juliette Monsel",
       author_email="j_4321@protonmail.fr",
@@ -17,4 +17,4 @@ setup(name="tkeditor",
                   ("/usr/share/applications", ["tkeditor.desktop"])],
       scripts=["tkeditor"],
       long_description="""Python IDE in Tkinter.""",
-      requires=["os", "sys", "tkinter", "screeninfo", "pygments", "pyflakes", "pycodestyle", "tkfilebrowser"])
+      install_requires=["screeninfo", "pygments", "pyflakes", "pycodestyle", "tkfilebrowser"])

@@ -33,7 +33,6 @@ class Editor(ttk.Frame):
         self._search_count = tk.IntVar(self)
 
         self.cells = []
-        self._cell_sep = {}
 
         self._comp = CompListbox(self)
         self._comp.set_callback(self._comp_sel)
@@ -44,7 +43,7 @@ class Editor(ttk.Frame):
                             autoseparators=True,
                             wrap='none')
 
-        self.sep = tk.Frame(self.text, bg='gray60')
+        self.sep = tk.Frame(self.text)
 
         self.line_nb = tk.Text(self, width=1, cursor='arrow')
         self.line_nb.insert('1.0', '1')
@@ -54,8 +53,7 @@ class Editor(ttk.Frame):
 
         self.syntax_checks = tk.Text(self, width=2, cursor='arrow',
                                      state='disabled')
-        self.textwrapper = TooltipTextWrapper(self.syntax_checks, background='light yellow',
-                                              foreground='black', title='Syntax')
+        self.textwrapper = TooltipTextWrapper(self.syntax_checks, title='Syntax')
 
         sx = AutoHideScrollbar(self, orient='horizontal', command=self.text.xview)
         sy = AutoHideScrollbar(self, orient='vertical', command=self.yview)
@@ -190,31 +188,27 @@ class Editor(ttk.Frame):
                             insertbackground=EDITOR_FG)
         fg = self.line_nb.option_get('foreground', '*Text')
         bg = self.line_nb.option_get('background', '*Text')
+        comment_fg = EDITOR_SYNTAX_HIGHLIGHTING['Token.Comment']['foreground']
+        self.sep.configure(bg=comment_fg)
         self.line_nb.configure(fg=fg, bg=bg, font=FONT,
                                selectbackground=bg, selectforeground=fg,
                                inactiveselectbackground=bg)
         self.syntax_checks.configure(fg=fg, bg=bg, font=FONT,
                                      selectbackground=bg, selectforeground=fg,
                                      inactiveselectbackground=bg)
-        self.filebar.update_style()
+        self.filebar.update_style(comment_fg=comment_fg)
 
         # --- syntax highlighting
+        EDITOR_SYNTAX_HIGHLIGHTING['Token.Comment.Cell'] = EDITOR_SYNTAX_HIGHLIGHTING['Token.Comment'].copy()
+        EDITOR_SYNTAX_HIGHLIGHTING['Token.Comment.Cell']['underline'] = True
         for tag, opts in EDITOR_SYNTAX_HIGHLIGHTING.items():
             self.text.tag_configure(tag, **opts)
 
     def set_cells(self, cells):
         self.cells = cells
-        bg = self.text.tag_cget('Token.Comment', 'foreground')
-        for i, s in list(self._cell_sep.items()):
-            if i not in cells:
-                s.destroy()
-                del self._cell_sep[i]
+        self.filebar.clear_cells()
         for i in cells:
-            if i not in self._cell_sep:
-                s = tk.Frame(self.text, bg=bg, height=1)
-                self._cell_sep[i] = s
-                bbox = self.text.bbox('%i.0' % i)
-                s.place(x=bbox[0], y=bbox[1], relwidth=1, anchor='sw')
+            self.filebar.add_mark(i, 'sep')
 
     def undo(self, event=None):
         try:
@@ -248,6 +242,10 @@ class Editor(ttk.Frame):
             self.text.mark_set("range_end", "range_start + %ic" % len(content))
             for t in token.split():
                 self.text.tag_add(str(t), "range_start", "range_end")
+            if str(token) == 'Token.Comment.Cell':
+                line, col = tuple(map(int, self.text.index("range_end").split(".")))
+                if col < 79:
+                    self.text.insert("range_end", " " * (79 - col), "Token.Comment.Cell")
             self.text.mark_set("range_start", "range_end")
 
     def parse_all(self):
@@ -707,7 +705,7 @@ class Editor(ttk.Frame):
         self.syntax_checks.configure(state='normal')
         self.syntax_checks.delete('1.0', 'end')
         self.textwrapper.reset()
-        self.filebar.clear()
+        self.filebar.clear_syntax_issues()
         end = int(str(self.text.index('end')).split('.')[0]) - 1
         self.syntax_checks.insert('end', '\n' * end)
         for line, (category, msg) in results.items():

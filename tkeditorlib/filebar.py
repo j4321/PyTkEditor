@@ -14,7 +14,8 @@ class FileBar(Canvas):
         Canvas.__init__(self, master, **kwargs)
 
         self.widget = widget
-        self.colors = {'warning': 'orange', 'error': 'red'}
+        self.colors = {'warning': 'orange', 'error': 'red',
+                       'sep': 'blue'}
         self.update_idletasks()
         self.highlight = self.create_rectangle(0, 0, 0, 0, width=0,
                                                fill=self.option_get('fill', '*Canvas'))
@@ -22,9 +23,10 @@ class FileBar(Canvas):
         self.bind('<1>', self.on_click)
         self.bind('<Map>', self.update_highlight)
 
-    def update_style(self):
+    def update_style(self, comment_fg):
         self.itemconfigure(self.highlight, fill=self.option_get('fill', '*Canvas'))
         self.configure(bg=self.option_get('background', '*Canvas'))
+        self.colors['sep'] = comment_fg
 
     def update_highlight(self, event=None):
         height = self.winfo_height()
@@ -50,7 +52,11 @@ class FileBar(Canvas):
         end = int(self.widget.get_end().split('.')[0])
         y = int((line / end) * self.winfo_height())
         self.create_rectangle(1, y - 1, self.winfo_width(), y + 1,
-                              fill=self.colors[category], width=0, tag='mark')
+                              fill=self.colors[category], width=0, tag=category)
 
-    def clear(self):
-        self.delete('mark')
+    def clear_syntax_issues(self):
+        self.delete('warning')
+        self.delete('error')
+
+    def clear_cells(self):
+        self.delete('sep')
