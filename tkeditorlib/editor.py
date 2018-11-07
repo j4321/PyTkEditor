@@ -715,3 +715,4 @@ class Editor(ttk.Frame):
             self.filebar.add_mark(line, category)
             self.textwrapper.add_tooltip(str(line), msg)
         self.syntax_checks.configure(state='disabled')
+        self.syntax_checks.yview_moveto(self.line_nb.yview()[0])
