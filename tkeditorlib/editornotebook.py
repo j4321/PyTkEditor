@@ -75,6 +75,12 @@ class EditorNotebook(Notebook):
         if self.current_tab >= 0:
             self._tabs[self.current_tab].show_syntax_issues(results)
 
+    def get_syntax_issues(self):
+        if self.current_tab >= 0:
+            return self._tabs[self.current_tab].syntax_issues_menuentries
+        else:
+            return []
+
     def goto_item(self, *args):
         if self.current_tab >= 0:
             self._tabs[self.current_tab].goto_item(*args)

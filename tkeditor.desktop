@@ -8,5 +8,4 @@ Type=Application
 Categories=Development;
 StartupNotify=false
 Icon=tkeditor
-Name[fr_FR.UTF-8]=TkEditor
 MimeType=text/x-python;

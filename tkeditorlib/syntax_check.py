@@ -42,24 +42,22 @@ class Reporter(flakeReporter):
 def parse_message(message, category, results):
     txt = message.split(':')
     line = int(txt[1])
-    msg = ':'.join(txt[2:]).strip()
+    msg = ':'.join(txt[3:]).strip()
     if line in results:
-        msg = '%s\n%s' % (results[line][1], msg)
-    results[line] = (category, msg)
+        results[line][1].append(msg)
+        results[line][2] = '%s\n%s: %s' % (results[line][2], txt[2], msg)
+    else:
+        results[line] = [category, [msg], '%s: %s' % (txt[2], msg)]
 
 
 def pyflakes_check(filename):
     warning_log, err_log = Logger(), Logger()
     checkPath(filename, Reporter(warning_log, err_log))
-#    res = [parse_message(line, 'error') for line in err_log.log]
-#    res.extend([parse_message(line, 'warning') for line in warning_log.log])
     return err_log.log, warning_log.log
 
 
 def pycodestyle_check(filename):
     p = Popen(['pycodestyle', filename], stdout=PIPE)
-#    res = p.stdout.read().decode().splitlines()
-#    return [parse_message(line, 'warning') for line in res]
     return p.stdout.read().decode().splitlines()
 
 

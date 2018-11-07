@@ -54,6 +54,7 @@ class Editor(ttk.Frame):
         self.syntax_checks = tk.Text(self, width=2, cursor='arrow',
                                      state='disabled')
         self.textwrapper = TooltipTextWrapper(self.syntax_checks, title='Syntax')
+        self.syntax_issues_menuentries = []  # [(category, msg, command)]
 
         sx = AutoHideScrollbar(self, orient='horizontal', command=self.text.xview)
         sy = AutoHideScrollbar(self, orient='vertical', command=self.yview)
@@ -701,18 +702,26 @@ class Editor(ttk.Frame):
         self.line_nb.see(i)
         self.syntax_checks.see(i)
 
+    def show_line(self, line):
+        self.see('%i.0' % line)
+        self.text.tag_remove('sel', '1.0', 'end')
+        self.text.tag_add('sel', '%i.0' % line, '%i.end' % line)
+
     def show_syntax_issues(self, results):
         self.syntax_checks.configure(state='normal')
         self.syntax_checks.delete('1.0', 'end')
+        self.syntax_issues_menuentries.clear()
         self.textwrapper.reset()
         self.filebar.clear_syntax_issues()
         end = int(str(self.text.index('end')).split('.')[0]) - 1
         self.syntax_checks.insert('end', '\n' * end)
-        for line, (category, msg) in results.items():
+        for line, (category, msgs, msg) in results.items():
             self.syntax_checks.image_create('%i.0' % line,
                                             image=self._syntax_icons[category])
             self.syntax_checks.tag_add(str(line), '%i.0' % line)
             self.filebar.add_mark(line, category)
             self.textwrapper.add_tooltip(str(line), msg)
+            for m in msgs:
+                self.syntax_issues_menuentries.append((category, m, lambda l=line: self.show_line(l)))
         self.syntax_checks.configure(state='disabled')
         self.syntax_checks.yview_moveto(self.line_nb.yview()[0])

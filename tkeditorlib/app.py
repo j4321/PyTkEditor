@@ -6,6 +6,7 @@ from tkeditorlib import constants as cst
 from tkeditorlib.textconsole import TextConsole
 from tkeditorlib.config import Config
 from tkeditorlib.autoscrollbar import AutoHideScrollbar
+from tkeditorlib.menu import LongMenu
 import tkinter as tk
 from tkinter import ttk
 from tkinter.messagebox import showerror
@@ -35,21 +36,24 @@ class App(tk.Tk):
         self._im_replace = tk.PhotoImage(file=cst.IM_REPLACE, master=self)
         self._im_settings = tk.PhotoImage(file=cst.IM_SETTINGS, master=self)
         self.iconphoto(True, self._icon)
+        self._syntax_icons = {'warning': tk.PhotoImage(master=self, file=cst.IM_WARN),
+                              'error': tk.PhotoImage(master=self, file=cst.IM_ERR)}
 
         self.option_add('*Menu.borderWidth', 1)
         self.option_add('*Menu.activeBorderWidth', 0)
         self.option_add('*Menu.relief', 'sunken')
 
-        recent_files = CONFIG.get('General', 'recent_files', fallback='').split(', ')
-        self.recent_files = [f for f in recent_files if f and os.path.exists(f)]
-
-        self.file = ''
-
         self.menu = tk.Menu(self, tearoff=False, relief='flat')
         self.menu_file = tk.Menu(self.menu, tearoff=False)
         self.menu_recent_files = tk.Menu(self.menu_file, tearoff=False)
         self.menu_edit = tk.Menu(self.menu, tearoff=False)
+        self.menu_errors = LongMenu(self.menu, 40, tearoff=False)
 
+        recent_files = CONFIG.get('General', 'recent_files', fallback='').split(', ')
+        self.recent_files = [f for f in recent_files if f and os.path.exists(f)]
+
+        self.file = ''
+        
         # -- style
         for seq in self.bind_class('TButton'):
             self.bind_class('Notebook.Tab.Close', seq, self.bind_class('TButton', seq), True)
@@ -132,6 +136,7 @@ class App(tk.Tk):
 
         self.menu.add_cascade(label='File', underline=0, menu=self.menu_file)
         self.menu.add_cascade(label='Edit', underline=0, menu=self.menu_edit)
+        self.menu.add_cascade(label='Error list', underline=1, menu=self.menu_errors)
         self.menu.add_command(image=self._im_run, command=self.run, compound='left', label='Run')
         self.configure(menu=self.menu)
 
@@ -347,6 +352,10 @@ class App(tk.Tk):
                                  fg=FG, activeforeground=FG,
                                  disabledforeground=DISABLEDFG,
                                  selectcolor=FG)
+        self.menu_errors.configure(bg=FIELDBG, activebackground=SELECTBG,
+                                   fg=FG, activeforeground=FG,
+                                   disabledforeground=DISABLEDFG,
+                                   selectcolor=FG)
         self.option_add('*Menu.background', FIELDBG)
         self.option_add('*Menu.activeBackground', SELECTBG)
         self.option_add('*Menu.activeForeground', FG)
@@ -424,6 +433,7 @@ class App(tk.Tk):
     def _on_tab_changed(self, event):
         self.codestruct.set_callback(self.editor.goto_item)
         self.codestruct.populate(self.editor.filename, self.editor.get(strip=False))
+        self.update_menu_errors()
 
     def _edit_modified(self, *args, tab=None):
         self.editor.edit_modified(*args, tab=tab)
@@ -544,3 +554,16 @@ class App(tk.Tk):
         if self.editor.files[tab]:
             results = check_file(self.editor.files[tab])
             self.editor.show_syntax_issues(results)
+            self.update_menu_errors()
+
+    def update_menu_errors(self):
+        self.menu.entryconfigure('Error list', state='normal')
+        self.menu_errors.delete(0, 'end')
+        errors = self.editor.get_syntax_issues()
+        if not errors:
+            self.menu.entryconfigure('Error list', state='disabled')
+        else:
+            for (category, msg, cmd) in errors:
+                self.menu_errors.add_command(label=msg,
+                                             image=self._syntax_icons[category],
+                                             compound='left', command=cmd)
