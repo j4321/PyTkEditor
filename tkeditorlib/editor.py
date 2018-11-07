@@ -671,6 +671,7 @@ class Editor(ttk.Frame):
     def get(self, strip=True):
         txt = self.text.get('1.0', 'end')
         if strip:
+            yview = self.text.yview()[0]
             index = self.text.index('insert')
             txt = txt.splitlines()
             for i, line in enumerate(txt):
@@ -680,7 +681,7 @@ class Editor(ttk.Frame):
             self.text.insert('1.0', txt)
             self.parse_all()
             self.text.mark_set('insert', index)
-            self.see('insert')
+            self.yview('moveto', yview)
         return txt
 
     def get_end(self):
