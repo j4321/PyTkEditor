@@ -7,8 +7,10 @@ Created on Sun Aug 19 10:41:14 2018
 """
 from pyflakes.api import checkPath
 from pyflakes.reporter import Reporter as flakeReporter
+from pyflakes.checker import builtin_vars
 from subprocess import Popen, PIPE
 
+builtin_vars.append('_')
 
 class Logger(object):
     """Logger to collect checks output."""
