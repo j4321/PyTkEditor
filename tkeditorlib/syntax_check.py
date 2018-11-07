@@ -39,7 +39,7 @@ class Reporter(flakeReporter):
         self._stdout.write(str(message))
 
 
-def parse_message(message, category, results):
+def parse_message_style(message, results):
     txt = message.split(':')
     line = int(txt[1])
     msg = ':'.join(txt[3:]).strip()
@@ -47,7 +47,17 @@ def parse_message(message, category, results):
         results[line][1].append(msg)
         results[line][2] = '%s\n%s: %s' % (results[line][2], txt[2], msg)
     else:
-        results[line] = [category, [msg], '%s: %s' % (txt[2], msg)]
+        results[line] = ['warning', [msg], '%s: %s' % (txt[2], msg)]
+
+def parse_message_flake(message, category, results):
+    txt = message.split(':')
+    line = int(txt[1])
+    msg = ':'.join(txt[2:]).strip()
+    if line in results:
+        results[line][1].append(msg)
+        results[line][2] = '%s\n%s' % (results[line][2], msg)
+    else:
+        results[line] = [category, [msg], msg]
 
 
 def pyflakes_check(filename):
@@ -63,13 +73,15 @@ def pycodestyle_check(filename):
 
 def check_file(filename, style=True):
     err, warn = pyflakes_check(filename)
-    if style:
-        warn.extend(pycodestyle_check(filename))
     results = {}
     if err:
         for line in err:
-            parse_message(line, 'error', results)
+            parse_message_flake(line, 'error', results)
     else:
         for line in warn:
-            parse_message(line, 'warning', results)
+            parse_message_flake(line, 'warning', results)
+        if style:
+            warn2 = pycodestyle_check(filename)
+            for line in warn2:
+                parse_message_style(line, results)
     return results
