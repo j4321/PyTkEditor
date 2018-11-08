@@ -731,7 +731,14 @@ class Editor(ttk.Frame):
         return str(self.text.index('end'))
 
     def get_docstring(self, obj):
-        return ""
+        txt = self.text.get('1.0', 'end')
+        script = jedi.Script(txt + obj, len(txt.splitlines()) + 1,
+                             len(obj), self.file)
+        res = script.goto_definitions()
+        if res:
+            return res[-1].full_name, res[-1].docstring()
+        else:
+            return ("", "")
 
     def delete(self, index1, index2=None):
         self.text.delete(index1, index2=index2)

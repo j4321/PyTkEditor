@@ -21,26 +21,19 @@ a:hover
 tt
 {
     font-family: FreeMono;
-    background-color: #DAE6F4;
+    background-color: #ecf0f3;
     line-height: 1.4;
 }
 
-pre
+pre, code
 {
     padding: 6px;
     padding-left: 10px;
-    background-color: #DAE6F4;
+    background-color: #ecf0f3;
     font-family: FreeMono;
     line-height: 1.4;
-}
-
-code
-{
-    padding: 6px;
-    padding-left: 10px;
-    background-color: #DAE6F4;
-    font-family: FreeMono;
-    line-height: 1.4;
+    margin: 0px;
+    border: 1px solid #BDBDBE
 }
 
 blockquote
@@ -110,8 +103,13 @@ div.abstract p.topic-title {
 div.admonition, div.attention, div.caution, div.danger, div.error,
 div.hint, div.important, div.note, div.tip, div.warning {
   margin: 2em ;
-  border: medium outset ;
+  border: 1px solid;
   padding: 1em }
+
+div.error {
+    background-color: #ffe4e4;
+    border: 1px solid #f66;
+}
 
 div.admonition p.admonition-title, div.hint p.admonition-title,
 div.important p.admonition-title, div.note p.admonition-title,
@@ -186,10 +184,11 @@ div.topic {
 h1.section-subtitle, h2.section-subtitle, h3.section-subtitle,
 h4.section-subtitle, h5.section-subtitle, h6.section-subtitle {
   margin-top: 0.4em }
-
-h1.title {
+  
+h1.title, h2.title, h3.title,
+h4.title, h5.title, h6.title {
   text-align: left }
-
+  
 h2.subtitle {
   text-align: left }
 
@@ -299,7 +298,7 @@ pre.address {
   font: inherit }
 
 pre.literal-block, pre.doctest-block, pre.math, pre.code {
-  margin-left: 2em ;
+  margin-left: 1em ;
   margin-right: 2em }
 
 pre.code .ln { color: grey; } /* line numbers */

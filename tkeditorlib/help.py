@@ -30,7 +30,7 @@ class Help(ttk.Frame):
         menu_source.add_radiobutton(label='Console', value='Console', variable=self._source)
         menu_source.add_radiobutton(label='Editor', value='Editor', variable=self._source)
         self.source = ttk.Menubutton(top_bar, textvariable=self._source,
-                                     menu=menu_source)
+                                     menu=menu_source, padding=1)
         self.entry = ttk.Combobox(top_bar)
         self.entry.bind('<Return>', self.show_help)
         self.entry.bind('<<ComboboxSelected>>', self.show_help)
@@ -62,11 +62,9 @@ class Help(ttk.Frame):
 
         if not doc:
             doc = """
-                  .. warning::
+                  .. error::
                         No documentation available
                   """
-        doc = dedent(doc)
-
         out = publish_string(doc, writer_name='html', settings_overrides=rst_opts)
 
         return out.decode()
@@ -80,7 +78,9 @@ class Help(ttk.Frame):
             name, doc = "", ""
         if doc:
             self.entry['values'] = [obj] + list(self.entry['values'])
-            txt = name + '\n' + '=' * len(name) + '\n\n' + doc
+            args = "::\n\n    %s\n\n" % doc.splitlines()[0]
+            doc = dedent('\n'.join(doc.splitlines()[1:]))
+            txt = '#' * len(name) + '\n' + name + '\n' + '#' * len(name) + '\n\n' + args + doc
         else:
             txt = ''
         self.html.set_content(self.doc2html(txt))

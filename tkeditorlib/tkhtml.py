@@ -6,7 +6,6 @@ Wrapper for the Tkhtml widget from http://tkhtml.tcl.tk/tkhtml.html
 
 
 import traceback
-import warnings
 from urllib.request import urlopen
 from subprocess import Popen
 import tkinter as tk
@@ -83,8 +82,6 @@ class TkinterHtml(tk.Widget, tk.XView, tk.YView):
 
     def parse(self, *args):
         source = args[0]
-        if "<title>" in source.lower():
-            warnings.warn("64-bit Windows Tkhtml has problems with html source containing <title> element. Consider removing it before sending source to parse.\n")
         self.tk.call(self._w, "parse", *args)
 
     def reset(self):
