@@ -347,6 +347,9 @@ class TextConsole(tk.Text):
         self.mark_set('insert', 'insert lineend')
         if lines:
             lines = [lines[0].rstrip()] + [line[len(self._prompt2):].rstrip() for line in lines[1:]]
+            for i, l in enumerate(lines):
+                if l.endswith('?'):
+                    lines[i] = 'help(%s)' % l[:-1]
             line = '\n'.join(lines)
 
             self.insert('insert', '\n')
