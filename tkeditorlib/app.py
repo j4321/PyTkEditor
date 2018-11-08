@@ -53,7 +53,7 @@ class App(tk.Tk):
         self.recent_files = [f for f in recent_files if f and os.path.exists(f)]
 
         self.file = ''
-        
+
         # -- style
         for seq in self.bind_class('TButton'):
             self.bind_class('Notebook.Tab.Close', seq, self.bind_class('TButton', seq), True)
@@ -136,8 +136,9 @@ class App(tk.Tk):
 
         self.menu.add_cascade(label='File', underline=0, menu=self.menu_file)
         self.menu.add_cascade(label='Edit', underline=0, menu=self.menu_edit)
-        self.menu.add_cascade(label='Error list', underline=1, menu=self.menu_errors)
-        self.menu.add_command(image=self._im_run, command=self.run, compound='left', label='Run')
+        self.menu.add_cascade(label='Error list', underline=6, menu=self.menu_errors)
+        self.menu.add_command(image=self._im_run, command=self.run,
+                              compound='left', label='Run', underline=0)
         self.configure(menu=self.menu)
 
         # --- bindings

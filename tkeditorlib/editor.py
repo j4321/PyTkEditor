@@ -189,7 +189,7 @@ class Editor(ttk.Frame):
                             insertbackground=EDITOR_FG)
         fg = self.line_nb.option_get('foreground', '*Text')
         bg = self.line_nb.option_get('background', '*Text')
-        comment_fg = EDITOR_SYNTAX_HIGHLIGHTING['Token.Comment']['foreground']
+        comment_fg = EDITOR_SYNTAX_HIGHLIGHTING['Token.Comment'].get('foreground', EDITOR_FG)
         self.sep.configure(bg=comment_fg)
         self.line_nb.configure(fg=fg, bg=bg, font=FONT,
                                selectbackground=bg, selectforeground=fg,
@@ -200,6 +200,11 @@ class Editor(ttk.Frame):
         self.filebar.update_style(comment_fg=comment_fg)
 
         # --- syntax highlighting
+        tags = list(self.text.tag_names())
+        tags.remove('sel')
+        tag_props = {key: '' for key in self.text.tag_configure('sel')}
+        for tag in tags:
+            self.text.tag_configure(tag, **tag_props)
         EDITOR_SYNTAX_HIGHLIGHTING['Token.Comment.Cell'] = EDITOR_SYNTAX_HIGHLIGHTING['Token.Comment'].copy()
         EDITOR_SYNTAX_HIGHLIGHTING['Token.Comment.Cell']['underline'] = True
         for tag, opts in EDITOR_SYNTAX_HIGHLIGHTING.items():
