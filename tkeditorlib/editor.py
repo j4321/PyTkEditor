@@ -661,6 +661,7 @@ class Editor(ttk.Frame):
 
         top = tk.Toplevel(self)
         top.transient(self)
+        top.geometry('+%i+%i' % self.winfo_pointerxy())
         top.grab_set()
         top.title('Go to')
 
@@ -668,6 +669,7 @@ class Editor(ttk.Frame):
         e = ttk.Entry(top, width=5)
         e.pack(side='left', padx=4, pady=4)
         e.focus_set()
+        e.bind('<Escape>', lambda e: top.destroy())
         e.bind('<Return>', goto)
 
     def goto_item(self, start, end):
