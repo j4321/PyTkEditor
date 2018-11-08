@@ -1,6 +1,6 @@
-# Maintainer: Juliette Monsel <j_4321@protonmail.com>
+dpu# Maintainer: Juliette Monsel <j_4321@protonmail.com>
 pkgname=tkeditor
-pkgver=1.0.0
+pkgver=1.0.1
 pkgrel=1
 pkgdesc="Python IDE"
 arch=('any')
