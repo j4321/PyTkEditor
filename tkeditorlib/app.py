@@ -289,8 +289,8 @@ class App(tk.Tk):
         style.configure('TRadiobutton', **BUTTON_STYLE_CONFIG)
         style.configure('TEntry', **BUTTON_STYLE_CONFIG)
         style.configure('TCombobox', **BUTTON_STYLE_CONFIG)
-        style.configure('TNotebook', **BUTTON_STYLE_CONFIG)
-        style.configure('TNotebook.Tab', **BUTTON_STYLE_CONFIG)
+        style.configure('TNotebook', **STYLE_CONFIG)
+        style.configure('TNotebook.Tab', **STYLE_CONFIG)
         style.configure('Treeview', **BUTTON_STYLE_CONFIG)
         style.configure('Treeview.Heading', **BUTTON_STYLE_CONFIG)
         style.configure('Treeview.Item', foreground=FG)
@@ -449,6 +449,11 @@ class App(tk.Tk):
 
         style.configure('Notebook.Left.TButton', padding=0)
         style.configure('Notebook.Right.TButton', padding=0)
+
+        style.configure('TNotebook.Tab', background=BG, foreground=UNSELECTEDFG)
+        style.map('TNotebook.Tab',
+                  **{'background': [('selected', '!disabled', ACTIVEBG)],
+                     'foreground': [('selected', '!disabled', FG)]})
 
     def _on_populate(self, event):
         cells = self.codestruct.get_cells()
