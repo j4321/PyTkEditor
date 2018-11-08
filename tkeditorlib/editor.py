@@ -496,7 +496,6 @@ class Editor(ttk.Frame):
             self.line_nb.insert('end',
                                 '\n' + '\n'.join([str(i) for i in range(row_old + 1, row + 1)]),
                                 'right')
-
         elif row_old > row:
             self.line_nb.delete('%i.0' % (row + 1), 'end')
             self.syntax_checks.delete('%i.0' % (row + 1), 'end')
@@ -714,7 +713,7 @@ class Editor(ttk.Frame):
         self.syntax_issues_menuentries.clear()
         self.textwrapper.reset()
         self.filebar.clear_syntax_issues()
-        end = int(str(self.text.index('end')).split('.')[0]) - 1
+        end = int(str(self.text.index('end')).split('.')[0]) - 2
         self.syntax_checks.insert('end', '\n' * end)
         for line, (category, msgs, msg) in results.items():
             self.syntax_checks.image_create('%i.0' % line,
