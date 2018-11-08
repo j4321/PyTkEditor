@@ -68,9 +68,11 @@ class Editor(ttk.Frame):
         self.frame_search.columnconfigure(1, weight=1)
         self.entry_search = ttk.Entry(self.frame_search)
         self.entry_search.bind('<Return>', self.search)
+        self.entry_search.bind('<Escape>', lambda e: self.frame_search.grid_remove())
         self.entry_search.bind('<Control-r>', self.replace)
         self.entry_replace = ttk.Entry(self.frame_search)
         self.entry_replace.bind('<Control-f>', self.find)
+        self.entry_replace.bind('<Escape>', lambda e: self.frame_search.grid_remove())
         search_buttons = ttk.Frame(self.frame_search)
         ttk.Button(search_buttons, style='Up.TButton', padding=0,
                    command=lambda: self.search(backwards=True)).pack(side='left', padx=2, pady=4)
@@ -548,6 +550,7 @@ class Editor(ttk.Frame):
             self.filebar.update_highlight()
         return res
 
+    # --- find and replace
     def find(self, event=None):
         self.label_replace.grid_remove()
         self.entry_replace.grid_remove()
@@ -604,8 +607,7 @@ class Editor(ttk.Frame):
             self.search(notify_no_match=False, stopindex='end')
             res = self.replace_sel(notify_no_match=False)
 
-    def search(self, event=None, backwards=False, forwards=True,
-               notify_no_match=True, **kw):
+    def search(self, event=None, backwards=False, notify_no_match=True, **kw):
         pattern = self.entry_search.get()
         full_word = 'selected' in self.full_word.state()
         options = {'regexp': 'selected' in self.regexp.state(),
@@ -635,15 +637,16 @@ class Editor(ttk.Frame):
         self.text.tag_remove('sel', '1.0', 'end')
         if res:
             self.text.tag_add('sel', res, '%s+%ic' % (res, self._search_count.get()))
-            if forwards:
-                self.text.mark_set('insert', '%s+%ic' % (res, self._search_count.get()))
-            else:
+            if backwards:
                 self.text.mark_set('insert', '%s-1c' % (res))
+            else:
+                self.text.mark_set('insert', '%s+%ic' % (res, self._search_count.get()))
             self.see(res)
         else:
             if notify_no_match:
                 messagebox.showinfo("Search complete", "No match found")
 
+    # --- goto
     def goto_line(self, event):
 
         def goto(event):
@@ -707,6 +710,7 @@ class Editor(ttk.Frame):
         self.line_nb.see(i)
         self.syntax_checks.see(i)
 
+    # --- syntax issues highlighting
     def show_line(self, line):
         self.see('%i.0' % line)
         self.text.tag_remove('sel', '1.0', 'end')

@@ -4,6 +4,7 @@ from tkeditorlib.filestructure import CodeStructure
 from tkeditorlib.constants import ICON, CONFIG, save_config, IMG_PATH
 from tkeditorlib import constants as cst
 from tkeditorlib.textconsole import TextConsole
+from tkeditorlib.history import HistoryFrame
 from tkeditorlib.config import Config
 from tkeditorlib.autoscrollbar import AutoHideScrollbar
 from tkeditorlib.menu import LongMenu
@@ -62,23 +63,37 @@ class App(tk.Tk):
                              sticky='')
         self._setup_style()
 
+        # --- GUI elements
         pane = ttk.PanedWindow(self, orient='horizontal')
+        # ----- code structure tree
         self.codestruct = CodeStructure(pane)
+        # ----- editor notebook
         self.editor = EditorNotebook(pane)
-        console_frame = ttk.Frame(pane, style='border.TFrame', padding=1)
+        # ----- right pane
+        right_nb = ttk.Notebook(pane)
+        # -------- command history
+        self.history = HistoryFrame(right_nb, padding=1)
+
+        # -------- python console
+        console_frame = ttk.Frame(right_nb, padding=1)
         console_frame.columnconfigure(0, weight=1)
         console_frame.rowconfigure(0, weight=1)
         sy = AutoHideScrollbar(console_frame, orient='vertical')
-        self.console = TextConsole(console_frame, promptcolor='skyblue',
+        self.console = TextConsole(console_frame, self.history.history,
+                                   promptcolor='skyblue',
                                    yscrollcommand=sy.set, relief='flat',
                                    borderwidth=0, highlightthickness=0)
         sy.configure(command=self.console.yview)
         sy.grid(row=0, column=1, sticky='ns')
         self.console.grid(row=0, column=0, sticky='nswe')
-        # placement
+        # -------- placement
+        right_nb.add(console_frame, text='Console')
+        right_nb.add(self.history, text='History')
+
+        # ----- placement
         pane.add(self.codestruct, weight=1)
         pane.add(self.editor, weight=3)
-        pane.add(console_frame, weight=2)
+        pane.add(right_nb, weight=2)
         pane.pack(fill='both', expand=True, pady=(0, 4))
 
         # --- menu
@@ -449,6 +464,7 @@ class App(tk.Tk):
         self._setup_style()
         self.editor.update_style()
         self.console.update_style()
+        self.history.update_style()
 
     def quit(self):
         files = ', '.join([f for f in self.editor.files.values() if f])

@@ -24,67 +24,8 @@ from subprocess import Popen
 import signal
 
 
-class History:
-    """Python console command history."""
-
-    def __init__(self, histfile, max_size=10000):
-        """ Crée un historique vide """
-        self.histfile = histfile
-        self.maxsize = max_size
-        self.history = []
-        try:
-            with open(histfile, 'rb') as file:
-                dp = pickle.Unpickler(file)
-                self.history = dp.load()
-            self._session_start = len(self.history)
-        except (FileNotFoundError, pickle.UnpicklingError, EOFError):
-            self._session_start = 0
-
-    def save(self):
-        try:
-            with open(self.histfile, 'rb') as file:
-                dp = pickle.Unpickler(file)
-                prev = dp.load()
-        except (FileNotFoundError, pickle.UnpicklingError, EOFError):
-            prev = []
-        with open(self.histfile, 'wb') as file:
-            pick = pickle.Pickler(file)
-            hist = prev + self.history[self._session_start:]
-            l = len(hist)
-            if l > self.maxsize:
-                hist = hist[l - self.maxsize:]
-            pick.dump(hist)
-
-    def add_history(self, line):
-        self.history.append(line)
-
-    def replace_history_item(self, pos, line):
-        self.history[pos] = line
-
-    def remove_history_item(self, pos):
-        del self.history[pos]
-
-    def get_history_item(self, pos):
-        try:
-            return self.history[pos]
-        except IndexError:
-            return None
-
-    def get_length(self):
-        return len(self.history)
-
-    def set_max_size(self, maxsize):
-        self.maxsize = maxsize
-
-    def get_max_size(self):
-        return self.maxsize
-
-    def get_session_hist(self):
-        return self.history[self._session_start:]
-
-
 class TextConsole(tk.Text):
-    def __init__(self, master=None, **kw):
+    def __init__(self, master, history, **kw):
         kw.setdefault('wrap', 'word')
         kw.setdefault('prompt1', '>>> ')
         kw.setdefault('prompt2', '... ')
@@ -92,7 +33,7 @@ class TextConsole(tk.Text):
         kw.setdefault('error_foreground', 'tomato')
         banner = kw.pop('banner', 'Python %s\n' % sys.version)
 
-        self.history = History(HISTFILE)
+        self.history = history
         self._hist_item = self.history.get_length()
         self._hist_match = ''
 
@@ -188,6 +129,11 @@ class TextConsole(tk.Text):
         self.tag_configure('output', foreground=CONSOLE_FG,
                            background=CONSOLE_BG)
         # --- syntax highlighting
+        tags = list(self.tag_names())
+        tags.remove('sel')
+        tag_props = {key: '' for key in self.tag_configure('sel')}
+        for tag in tags:
+            self.tag_configure(tag, **tag_props)
         for tag, opts in CONSOLE_SYNTAX_HIGHLIGHTING.items():
             self.tag_configure(tag, **opts)
 
