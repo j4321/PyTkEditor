@@ -8,6 +8,7 @@ from tkeditorlib.history import HistoryFrame
 from tkeditorlib.config import Config
 from tkeditorlib.autoscrollbar import AutoHideScrollbar
 from tkeditorlib.menu import LongMenu
+from tkeditorlib.help import Help
 import tkinter as tk
 from tkinter import ttk
 from tkinter.messagebox import showerror
@@ -73,7 +74,6 @@ class App(tk.Tk):
         right_nb = ttk.Notebook(pane)
         # -------- command history
         self.history = HistoryFrame(right_nb, padding=1)
-
         # -------- python console
         console_frame = ttk.Frame(right_nb, padding=1)
         console_frame.columnconfigure(0, weight=1)
@@ -86,9 +86,15 @@ class App(tk.Tk):
         sy.configure(command=self.console.yview)
         sy.grid(row=0, column=1, sticky='ns')
         self.console.grid(row=0, column=0, sticky='nswe')
+        # -------- help
+        self.help = Help(right_nb,
+                         help_cmds={'Editor': self.editor.get_docstring,
+                                    'Console': self.console.get_docstring},
+                         padding=1)
         # -------- placement
         right_nb.add(console_frame, text='Console')
         right_nb.add(self.history, text='History')
+        right_nb.add(self.help, text='Help')
 
         # ----- placement
         pane.add(self.codestruct, weight=1)
@@ -302,7 +308,9 @@ class App(tk.Tk):
         style.map('Treeview.Heading', **BUTTON_STYLE_MAP)
         style.configure('tooltip.TLabel', background=TOOLTIP_BG, foreground=FG)
         style.configure('tooltip.TFrame', background=TOOLTIP_BG)
-        style.configure('title.tooltip.TLabel', foreground='#FF4D00')
+        style.configure('title.tooltip.TLabel', font='TkDefaultFont 9 bold')
+        style.configure('syntax.title.tooltip.TLabel', foreground='#FF4D00')
+        style.configure('args.title.tooltip.TLabel', foreground='#4169E1')
 
         self.option_add('*TCombobox*Listbox.selectBackground', SELECTBG)
         self.option_add('*TCombobox*Listbox.selectForeground', FG)

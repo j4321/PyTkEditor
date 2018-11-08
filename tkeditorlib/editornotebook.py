@@ -63,6 +63,12 @@ class EditorNotebook(Notebook):
         if self.current_tab >= 0:
             self._tabs[self.current_tab].redo()
 
+    def get_docstring(self, obj):
+        if self.current_tab >= 0:
+            return self._tabs[self.current_tab].get_docstring(obj)
+        else:
+            return ("", "")
+
     def find(self):
         if self.current_tab >= 0:
             self._tabs[self.current_tab].find()

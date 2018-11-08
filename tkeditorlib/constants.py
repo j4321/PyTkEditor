@@ -23,6 +23,8 @@ class MyLexer(Python3Lexer):
 PYTHON_LEX = MyLexer()
 
 PATH = os.path.dirname(__file__)
+CSS_PATH = os.path.join(PATH, 'html', 'basic.css')
+TEMPLATE_PATH = os.path.join(PATH, 'html', 'template.txt')
 IMG_PATH = os.path.join(PATH, 'images')
 
 IM_CLASS = os.path.join(IMG_PATH, 'c.png')

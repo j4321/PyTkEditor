@@ -12,8 +12,7 @@ class Tooltip(tk.Toplevel):
         Options:
             * parent: parent window
             * title
-            * background: background color
-            * foreground: foreground color
+            * titlestyle
             * borderwidth
             * bordercolor
             * image: PhotoImage/BitmapImage to display in the tooltip
@@ -37,8 +36,8 @@ class Tooltip(tk.Toplevel):
 
         self.im = kwargs.get('image', None)
         title = kwargs.get('title', '')
-        self.title = ttk.Label(frame, text=title, style='title.tooltip.TLabel',
-                               font='TkDefaultFont 9 bold')
+        titlestyle = kwargs.get('titlestyle', 'title.tooltip.TLabel')
+        self.title = ttk.Label(frame, text=title, style=titlestyle)
         if title:
             self.title.pack(fill='x', side='top')
             ttk.Separator(frame, orient='horizontal').pack(fill='x', side='top')

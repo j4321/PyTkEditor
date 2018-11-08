@@ -1,0 +1,6 @@
+%(head)s
+%(docinfo)s
+%(body_pre_docinfo)s
+
+%(body)s
+

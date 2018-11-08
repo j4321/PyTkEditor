@@ -12,11 +12,11 @@ import re
 from os import kill
 from os.path import join, dirname
 from tkeditorlib.complistbox import CompListbox
-from tkeditorlib.constants import get_screen, load_style, CONFIG, HISTFILE,\
-    SERVER_CERT, CLIENT_CERT
+from tkeditorlib.tooltip import Tooltip
+from tkeditorlib.constants import get_screen, load_style, CONFIG, SERVER_CERT, \
+    CLIENT_CERT
 from pygments import lex
 from pygments.lexers import Python3Lexer
-import pickle
 import jedi
 import socket
 import ssl
@@ -49,6 +49,10 @@ class TextConsole(tk.Text):
         self._comp = CompListbox(self)
         self._comp.set_callback(self._comp_sel)
 
+        self._tooltip = Tooltip(self, title='Arguments',
+                                titlestyle='args.title.tooltip.TLabel')
+        self._tooltip.withdraw()
+
         # --- shell socket
         context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
         context.verify_mode = ssl.CERT_REQUIRED
@@ -68,6 +72,7 @@ class TextConsole(tk.Text):
         self.shell_client = context.wrap_socket(client, server_side=True)
         self.shell_client.setblocking(False)
 
+        # --- initialization
         self.update_style()
 
         self.tag_configure('error', foreground=error_foreground)
@@ -78,6 +83,8 @@ class TextConsole(tk.Text):
         self.mark_set('input', 'insert')
         self.mark_gravity('input', 'left')
 
+        # --- bindings
+        self.bind('<parenleft>', self._args_hint)
         self.bind('<Control-Return>', self.on_ctrl_return)
         self.bind('<Shift-Return>', self.on_shift_return)
         self.bind('<KeyPress>', self.on_key_press)
@@ -208,6 +215,7 @@ class TextConsole(tk.Text):
         self.mark_set('input', 'insert')
 
     def on_key_press(self, event):
+        self._tooltip.withdraw()
         if self.compare('insert', '<', 'input') and event.keysym not in ['Left', 'Right']:
             self._hist_item = self.history.get_length()
             return 'break'
@@ -296,8 +304,19 @@ class TextConsole(tk.Text):
                 self._comp_display()
         return "break"
 
-    def _comp_display(self):
-        self._comp.withdraw()
+    def get_docstring(self, obj):
+        session_code = '\n\n'.join(self.history.get_session_hist()) + '\n\n'
+        script = jedi.Script(session_code + obj,
+                             len(session_code.splitlines()) + 1,
+                             len(obj),
+                             'help.py')
+        res = script.goto_definitions()
+        if res:
+            return res[-1].full_name, res[-1].docstring()
+        else:
+            return ("", "")
+
+    def _jedi_script(self):
 
         index = self.index('insert wordend')
         if index[-2:] != '.0':
@@ -314,7 +333,36 @@ class TextConsole(tk.Text):
         offset = len(session_code.splitlines())
         r, c = self.index_to_tuple('insert')
 
-        script = jedi.Script(session_code + lines, offset + 1, c - len(self._prompt1), 'completion.py')
+        script = jedi.Script(session_code + lines, offset + 1, c - len(self._prompt1),
+                             'completion.py')
+        return script
+
+    def _args_hint(self, event=None):
+        script = self._jedi_script()
+        res = script.goto_definitions()
+        if res:
+            try:
+                args = res[-1].docstring().splitlines()[0]
+            except IndexError:
+                return
+            self._tooltip.configure(text=args)
+            xb, yb, w, h = self.bbox('insert')
+            xr = self.winfo_rootx()
+            yr = self.winfo_rooty()
+            ht = self._tooltip.winfo_reqheight()
+            screen = get_screen(xr, yr)
+            y = yr + yb + h
+            x = xr + xb
+            if y + ht > screen[3]:
+                y = yr + yb - ht
+
+            self._tooltip.geometry('+%i+%i' % (x, y))
+            self._tooltip.deiconify()
+
+    def _comp_display(self):
+        self._comp.withdraw()
+        script = self._jedi_script()
+
         comp = script.completions()
 
         if len(comp) == 1:

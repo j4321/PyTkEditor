@@ -12,7 +12,7 @@ from tkeditorlib.autoscrollbar import AutoHideScrollbar
 from tkeditorlib.constants import IM_WARN, IM_ERR, get_screen,\
     load_style, PYTHON_LEX, CONFIG
 from tkeditorlib.complistbox import CompListbox
-from tkeditorlib.tooltip import TooltipTextWrapper
+from tkeditorlib.tooltip import TooltipTextWrapper, Tooltip
 from tkeditorlib.filebar import FileBar
 
 
@@ -37,6 +37,11 @@ class Editor(ttk.Frame):
         self._comp = CompListbox(self)
         self._comp.set_callback(self._comp_sel)
 
+        self._tooltip = Tooltip(self, title='Arguments',
+                                titlestyle='args.title.tooltip.TLabel')
+        self._tooltip.withdraw()
+        self._tooltip.bind('<FocusOut>', lambda e: self._tooltip.withdraw())
+
         self.file = ''
 
         self.text = tk.Text(self, undo=True,
@@ -53,7 +58,8 @@ class Editor(ttk.Frame):
 
         self.syntax_checks = tk.Text(self, width=2, cursor='arrow',
                                      state='disabled')
-        self.textwrapper = TooltipTextWrapper(self.syntax_checks, title='Syntax')
+        self.textwrapper = TooltipTextWrapper(self.syntax_checks, title='Syntax',
+                                              titlestyle='syntax.title.tooltip.TLabel')
         self.syntax_issues_menuentries = []  # [(category, msg, command)]
 
         sx = AutoHideScrollbar(self, orient='horizontal', command=self.text.xview)
@@ -124,6 +130,7 @@ class Editor(ttk.Frame):
         self.update_style()
 
         # --- bindings
+        self.text.bind("<KeyPress>", lambda e: self._tooltip.withdraw())
         self.text.bind("<KeyRelease>", self.on_key)
         self.text.bind("<ButtonPress>", self._on_press)
         self.text.bind("<Down>", self.on_down)
@@ -131,7 +138,8 @@ class Editor(ttk.Frame):
         self.text.bind("<<Paste>>", self.on_paste)
         self.text.bind("<apostrophe>", self.auto_close_string)
         self.text.bind("<quotedbl>", self.auto_close_string)
-        self.text.bind("<parenleft>", self.auto_close)
+        self.text.bind('<parenleft>', self._args_hint)
+        self.text.bind('<parenleft>', self.auto_close, True)
         self.text.bind("<bracketleft>", self.auto_close)
         self.text.bind("<braceleft>", self.auto_close)
         self.text.bind("<parenright>", self.close_brackets)
@@ -431,6 +439,30 @@ class Editor(ttk.Frame):
                 self._comp_display()
         return "break"
 
+    def _args_hint(self, event=None):
+        index = self.text.index('insert')
+        row, col = str(index).split('.')
+        script = jedi.Script(self.text.get('1.0', 'end'), int(row), int(col), self.file)
+        res = script.goto_definitions()
+        if res:
+            try:
+                args = res[-1].docstring().splitlines()[0]
+            except IndexError:
+                pass
+            else:
+                self._tooltip.configure(text=args)
+                xb, yb, w, h = self.text.bbox('insert')
+                xr = self.text.winfo_rootx()
+                yr = self.text.winfo_rooty()
+                ht = self._tooltip.winfo_reqheight()
+                screen = get_screen(xr, yr)
+                y = yr + yb + h
+                x = xr + xb
+                if y + ht > screen[3]:
+                    y = yr + yb - ht
+                self._tooltip.geometry('+%i+%i' % (x, y))
+                self._tooltip.deiconify()
+
     def _comp_display(self):
         index = self.text.index('insert wordend')
         if index[-2:] != '.0':
@@ -441,6 +473,7 @@ class Editor(ttk.Frame):
             self.text.mark_set('insert', 'insert wordstart +%ic' % (i + 1))
         row, col = str(self.text.index('insert')).split('.')
         script = jedi.Script(self.text.get('1.0', 'end'), int(row), int(col), self.file)
+
         comp = script.completions()
         self._comp.withdraw()
         if len(comp) == 1:
@@ -456,6 +489,7 @@ class Editor(ttk.Frame):
             x = xr + xb
             if y + hcomp > screen[3]:
                 y = yr + yb - hcomp
+            print(xb, yb, h, hcomp)
             self._comp.geometry('+%i+%i' % (x, y))
             self._comp.deiconify()
 
@@ -695,6 +729,9 @@ class Editor(ttk.Frame):
 
     def get_end(self):
         return str(self.text.index('end'))
+
+    def get_docstring(self, obj):
+        return ""
 
     def delete(self, index1, index2=None):
         self.text.delete(index1, index2=index2)
