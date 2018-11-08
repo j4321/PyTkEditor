@@ -1,5 +1,6 @@
 import tkinter as tk
 from tkinter import ttk
+from tkeditorlib.constants import get_screen
 
 
 class Tooltip(tk.Toplevel):
@@ -119,10 +120,19 @@ class TooltipTextWrapper:
 
     def display_tooltip(self, tag):
         self.tooltip['text'] = self.tooltip_text[tag]
+        self.tooltip.update_idletasks()
+        xb, yb, w, h = self.text.bbox(self.text.tag_ranges(tag)[-1])
+        xr = self.text.winfo_rootx()
+        yr = self.text.winfo_rooty()
+        ht = self.tooltip.winfo_reqheight()
+        screen = get_screen(xr, yr)
+        y = yr + yb + h
+        x = xr + xb + w
+        if y + ht > screen[3]:
+            y = yr + yb - ht
+
+        self.tooltip.geometry('+%i+%i' % (x, y))
         self.tooltip.deiconify()
-        x, y, w, h = self.text.bbox(self.text.tag_ranges(tag)[-1])
-        self.tooltip.geometry('+%i+%i' % (x + w + self.text.winfo_rootx(),
-                                          y + h + self.text.winfo_rooty()))
 
     def reset(self):
         for tag, (id1, id2) in self.tooltip_bind_ids.items():
