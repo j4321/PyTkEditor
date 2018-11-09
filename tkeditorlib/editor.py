@@ -164,14 +164,18 @@ class Editor(ttk.Frame):
         self.line_nb.bind('<4>', self._on_b4)
         self.text.bind('<5>', self._on_b5)
         self.line_nb.bind('<5>', self._on_b5)
-        self.bind('<FocusOut>', lambda e: self._comp.withdraw())
+        self.bind('<FocusOut>', self._on_focusout)
 
         self.text.focus_set()
         self.text.edit_modified(0)
 
+    def _on_focusout(self, event):
+        self._comp.withdraw()
+        self._tooltip.withdraw()
+
     def _on_press(self, event):
-        if self._comp.winfo_ismapped():
-            self._comp.withdraw()
+        self._comp.withdraw()
+        self._tooltip.withdraw()
 
     def _on_b4(self, event):
         self.yview('scroll', -3, 'units')
@@ -736,9 +740,9 @@ class Editor(ttk.Frame):
                              len(obj), self.file)
         res = script.goto_definitions()
         if res:
-            return res[-1].full_name, res[-1].docstring()
+            return res[-1]
         else:
-            return ("", "")
+            return None
 
     def delete(self, index1, index2=None):
         self.text.delete(index1, index2=index2)

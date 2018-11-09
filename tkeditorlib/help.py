@@ -8,9 +8,108 @@ Created on Thu Nov  8 14:19:58 2018
 import tkinter as tk
 from tkinter import ttk
 from tkeditorlib.tkhtml import HtmlFrame
-from tkeditorlib.constants import TEMPLATE_PATH, CSS_PATH
+from tkeditorlib.constants import TEMPLATE_PATH, CSS_PATH, CONFIG
 from textwrap import dedent
 from docutils.core import publish_string
+from docutils.parsers.rst import roles
+from docutils.nodes import TextElement, Inline
+from docutils.parsers.rst import Directive, directives
+from docutils.writers.html4css1 import Writer, HTMLTranslator
+
+
+sproles = ['data', 'exc', 'func', 'class', 'const', 'attr', 'meth', 'mod', 'obj',
+           'py:data', 'py:exc', 'py:func', 'py:class', 'py:const', 'py:attr',
+           'py:meth', 'py:mod', 'py:obj', 'any', 'ref', 'doc', 'download', 'numref',
+           'envvar', 'token', 'keyword', 'option', 'term', 'eq', 'abbr', 'command',
+           'dfn', 'file', 'guilabel', 'kbd', 'mailheader', 'makevar', 'manpage',
+           'menuselection', 'mimetype', 'newsgroup', 'program', 'regexp', 'samp',
+           'pep', 'rfc']
+
+
+def run(self):
+    thenode = type(self._role, (Inline, TextElement), {})(text=self.arguments[0])
+    return [thenode]
+
+
+for role in sproles:
+    roles.register_generic_role(role, type(role, (Inline, TextElement), {}))
+    directives.register_directive(role,
+                                  type(role.capitalize(),
+                                       (Directive,),
+                                       {'required_arguments': 1,
+                                        'optional_arguments': 0,
+                                        'has_content': None,
+                                        '_role': role,
+                                        'run': run}))
+
+
+def _visit(self, node, name):
+    # don't start tags; use
+    #     self.starttag(node, tagname, suffix, empty, **attributes)
+    # keyword arguments (attributes) are turned into html tag key/value
+    # pairs, e.g. `{'style':'background:red'} => 'style="background:red"'`
+    self.body.append(self.starttag(node, 'span', '', CLASS=name.replace(':', '_')))
+
+
+def _depart(self, node):
+    self.body.append('</span>')
+
+
+attributes = {'visit_' + role: lambda self, node, name=role: _visit(self, node, name) for role in sproles}
+attributes.update({'depart_' + role: _depart for role in sproles})
+
+MyHTMLTranslator = type('MyHTMLTranslator', (HTMLTranslator,), attributes)
+
+html_writer = Writer()
+html_writer.translator_class = MyHTMLTranslator
+
+
+def doc2html(doc):
+    rst_opts = {
+        'no_generator': True,
+        'no_source_link': True,
+        'tab_width': 4,
+        'file_insertion_enabled': False,
+        'raw_enabled': False,
+        'stylesheet_path': None,
+        'traceback': True,
+        'halt_level': 5,
+        'template': TEMPLATE_PATH
+    }
+
+    if not doc:
+        doc = """
+              .. error::
+                    No documentation available
+              """
+    out = publish_string(source=doc, writer=html_writer, settings_overrides=rst_opts)
+
+    return out.decode()
+
+
+def get_docstring(jedi_def):
+    doc = jedi_def.docstring()
+    doc2 = ""
+    args = ""
+    if jedi_def.type == 'module':
+        doc = dedent(doc)
+    elif jedi_def.type == 'class':
+        args = ".. code:: python\n\n    %s\n\n" % doc.splitlines()[0]
+        doc = dedent('\n'.join(doc.splitlines()[1:]))
+        l = [i for i in jedi_def.defined_names() if i.name == '__init__']
+        if l:
+            res = l[0]
+            doc2 = dedent('\n'.join(res.docstring().splitlines()[1:]))
+
+    else:
+        if doc:
+            args = ".. code:: python\n\n    %s\n\n" % doc.splitlines()[0]
+            doc = dedent('\n'.join(doc.splitlines()[1:]))
+
+    name = jedi_def.name.replace('_', '\_')
+    sep = '#' * len(name)
+    txt = "{0}\n{1}\n{0}\n\n{2}{3}\n\n{4}".format(sep, name, args, doc, doc2)
+    return txt
 
 
 class Help(ttk.Frame):
@@ -19,9 +118,6 @@ class Help(ttk.Frame):
 
         self.help_cmds = help_cmds  # {source: help_cmd}
         self._source = tk.StringVar(self)
-
-        with open(CSS_PATH) as f:
-            self.stylesheet = f.read()
 
         top_bar = ttk.Frame(self)
 
@@ -40,48 +136,35 @@ class Help(ttk.Frame):
         self.entry.pack(side='left', padx=4, pady=4, fill='x', expand=True)
 
         self.html = HtmlFrame(self)
+        self.load_stylesheet()
         self._source.set('Console')
 
         # --- placement
         top_bar.pack(fill='x')
         self.html.pack(fill='both', expand=True)
 
-    @staticmethod
-    def doc2html(doc):
-        rst_opts = {
-            'no_generator': True,
-            'no_source_link': True,
-            'tab_width': 4,
-            'file_insertion_enabled': False,
-            'raw_enabled': False,
-            'stylesheet_path': None,
-            'traceback': True,
-            'halt_level': 5,
-            'template': TEMPLATE_PATH
-        }
-
-        if not doc:
-            doc = """
-                  .. error::
-                        No documentation available
-                  """
-        out = publish_string(doc, writer_name='html', settings_overrides=rst_opts)
-
-        return out.decode()
+    def load_stylesheet(self):
+        with open(CSS_PATH.format(theme=CONFIG.get('General', 'theme'))) as f:
+            self.stylesheet = f.read()
+        try:
+            self.html.set_style(self.stylesheet)
+        except tk.TclError:
+            pass
 
     def show_help(self, event=None):
         obj = self.entry.get()
         try:
-            name, doc = self.help_cmds[self._source.get()](obj)
+            jedi_def = self.help_cmds[self._source.get()](obj)
         except Exception as e:
             print(type(e), e)
-            name, doc = "", ""
-        if doc:
+            jedi_def = None
+        if jedi_def:
             self.entry['values'] = [obj] + list(self.entry['values'])
-            args = "::\n\n    %s\n\n" % doc.splitlines()[0]
-            doc = dedent('\n'.join(doc.splitlines()[1:]))
-            txt = '#' * len(name) + '\n' + name + '\n' + '#' * len(name) + '\n\n' + args + doc
+            txt = get_docstring(jedi_def)
         else:
             txt = ''
-        self.html.set_content(self.doc2html(txt))
-        self.html.set_style(self.stylesheet)
+        try:
+            self.html.set_content(doc2html(txt))
+            self.html.set_style(self.stylesheet)
+        except tk.TclError:
+            pass

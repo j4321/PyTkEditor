@@ -97,7 +97,7 @@ class TextConsole(tk.Text):
         self.bind('<Control-c>', self.on_ctrl_c)
         self.bind('<<Paste>>', self.on_paste)
         self.bind('<Destroy>', self.quit)
-        self.bind('<FocusOut>', lambda e: self._comp.withdraw())
+        self.bind('<FocusOut>', self._on_focusout)
         self.bind("<ButtonPress>", self._on_press)
 
     def quit(self, event=None):
@@ -111,9 +111,13 @@ class TextConsole(tk.Text):
         self.insert('insert', '\n')
         self.prompt()
 
+    def _on_focusout(self, event):
+        self._comp.withdraw()
+        self._tootip.withdraw()
+
     def _on_press(self, event):
-        if self._comp.winfo_ismapped():
-            self._comp.withdraw()
+        self._comp.withdraw()
+        self._tootip.withdraw()
 
     def _comp_sel(self):
         txt = self._comp.get()
@@ -139,10 +143,10 @@ class TextConsole(tk.Text):
         tags = list(self.tag_names())
         tags.remove('sel')
         tag_props = {key: '' for key in self.tag_configure('sel')}
-        for tag in tags:
-            self.tag_configure(tag, **tag_props)
         for tag, opts in CONSOLE_SYNTAX_HIGHLIGHTING.items():
-            self.tag_configure(tag, **opts)
+            props = tag_props.copy()
+            props.update(opts)
+            self.tag_configure(tag, **props)
 
     def index_to_tuple(self, index):
         return tuple(map(int, self.index(index).split(".")))
@@ -312,9 +316,9 @@ class TextConsole(tk.Text):
                              'help.py')
         res = script.goto_definitions()
         if res:
-            return res[-1].full_name, res[-1].docstring()
+            return res[-1]
         else:
-            return ("", "")
+            return None
 
     def _jedi_script(self):
 

@@ -23,7 +23,7 @@ class MyLexer(Python3Lexer):
 PYTHON_LEX = MyLexer()
 
 PATH = os.path.dirname(__file__)
-CSS_PATH = os.path.join(PATH, 'html', 'basic.css')
+CSS_PATH = os.path.join(PATH, 'html', '{theme}.css')
 TEMPLATE_PATH = os.path.join(PATH, 'html', 'template.txt')
 IMG_PATH = os.path.join(PATH, 'images')
 
@@ -48,6 +48,7 @@ IM_QUIT = os.path.join(IMG_PATH, 'quit.png')
 IM_FIND = os.path.join(IMG_PATH, 'find.png')
 IM_REPLACE = os.path.join(IMG_PATH, 'replace.png')
 IM_SETTINGS = os.path.join(IMG_PATH, 'settings.png')
+IM_CLOSE = os.path.join(IMG_PATH, 'close_{theme}.png')
 ICON = os.path.join(IMG_PATH, 'icon.png')
 
 if os.access(PATH, os.W_OK):
@@ -68,9 +69,7 @@ CLIENT_CERT = os.path.join(PATH, 'ssl', 'client.crt')
 # --- config
 CONFIG = configparser.ConfigParser()
 
-if os.path.exists(CONFIG_PATH):
-    CONFIG.read(CONFIG_PATH)
-else:
+if not CONFIG.read(CONFIG_PATH):
     CONFIG.add_section('General')
     CONFIG.set('General', 'theme', "light")
     CONFIG.set('General', 'fontfamily', "DejaVu Sans Mono")
@@ -81,6 +80,38 @@ else:
     CONFIG.set('Editor', 'style', "colorful")
     CONFIG.add_section('Console')
     CONFIG.set('Console', 'style', "monokai")
+    CONFIG.add_section('Dark Theme')
+    CONFIG.set('Dark Theme', 'bg', '#454545')
+    CONFIG.set('Dark Theme', 'activebg', '#525252')
+    CONFIG.set('Dark Theme', 'pressedbg', '#262626')
+    CONFIG.set('Dark Theme', 'fg', '#E6E6E6')
+    CONFIG.set('Dark Theme', 'fieldbg', '#303030')
+    CONFIG.set('Dark Theme', 'lightcolor', '#454545')
+    CONFIG.set('Dark Theme', 'darkcolor', '#454545')
+    CONFIG.set('Dark Theme', 'bordercolor', '#131313')
+    CONFIG.set('Dark Theme', 'focusbordercolor', '#353535')
+    CONFIG.set('Dark Theme', 'selectbg', '#1f1f1f')
+    CONFIG.set('Dark Theme', 'selectfg', '#E6E6E6')
+    CONFIG.set('Dark Theme', 'unselectedfg', '#999999')
+    CONFIG.set('Dark Theme', 'disabledfg', '#666666')
+    CONFIG.set('Dark Theme', 'disabledbg', '#454545')
+    CONFIG.set('Dark Theme', 'tooltip_bg', '#131313')
+    CONFIG.add_section('Light Theme')
+    CONFIG.set('Light Theme', 'bg', '#dddddd')
+    CONFIG.set('Light Theme', 'activebg', '#efefef')
+    CONFIG.set('Light Theme', 'pressedbg', '#c1c1c1')
+    CONFIG.set('Light Theme', 'fg', 'black')
+    CONFIG.set('Light Theme', 'fieldbg', 'white')
+    CONFIG.set('Light Theme', 'lightcolor', '#ededed')
+    CONFIG.set('Light Theme', 'darkcolor', '#cfcdc8')
+    CONFIG.set('Light Theme', 'bordercolor', '#888888')
+    CONFIG.set('Light Theme', 'focusbordercolor', '#5E5E5E')
+    CONFIG.set('Light Theme', 'selectbg', '#c1c1c1')
+    CONFIG.set('Light Theme', 'selectfg', 'black')
+    CONFIG.set('Light Theme', 'unselectedfg', '#666666')
+    CONFIG.set('Light Theme', 'disabledfg', '#999999')
+    CONFIG.set('Light Theme', 'disabledbg', '#dddddd')
+    CONFIG.set('Light Theme', 'tooltip_bg', 'light yellow')
 
 
 def save_config():

@@ -1,3 +1,8 @@
+body {
+    background-color: #303030;
+    color: #E6E6E6;
+}
+
 ul {
     padding-left: 5px;
     line-height: 1.4;
@@ -8,20 +13,20 @@ ol {
 }
 
 a {
-    color: #0000FF;
+    color: #006FFF;
     font-style: italic;
 }
 
 a:hover
 {
     font-style: italic;
-    border-bottom: 1px solid #0000FF;
+    border-bottom: 1px solid #006FFF;
 }
 
 tt
 {
     font-family: FreeMono;
-    background-color: #ecf0f3;
+    background-color: #636363;
     line-height: 1.4;
 }
 
@@ -29,11 +34,12 @@ pre, code
 {
     padding: 6px;
     padding-left: 10px;
-    background-color: #ecf0f3;
+    background-color: #636363;
     font-family: FreeMono;
     line-height: 1.4;
     margin: 0px;
-    border: 1px solid #BDBDBE
+    border: 1px solid #848484;
+    white-space: normal;
 }
 
 blockquote
@@ -107,8 +113,8 @@ div.hint, div.important, div.note, div.tip, div.warning {
   padding: 1em }
 
 div.error {
-    background-color: #ffe4e4;
-    border: 1px solid #f66;
+    background-color: #760303;
+    border: 1px solid #FF0000;
 }
 
 div.admonition p.admonition-title, div.hint p.admonition-title,
@@ -120,7 +126,7 @@ div.tip p.admonition-title {
 div.attention p.admonition-title, div.caution p.admonition-title,
 div.danger p.admonition-title, div.error p.admonition-title,
 div.warning p.admonition-title, .code .error {
-  color: red ;
+  color: #FF0000 ;
   font-weight: bold ;
   font-family: sans-serif }
 
