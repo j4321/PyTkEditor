@@ -13,8 +13,8 @@ from tkinter import Menu
 from tkinter.messagebox import askyesnocancel, askyesno
 from tkfilebrowser import asksaveasfilename
 from subprocess import Popen
-from watchdog.observers import Observer
-from watchdog.events import FileSystemEventHandler
+from threading import Thread, Event
+from time import sleep
 
 
 class EditorNotebook(Notebook):
@@ -28,39 +28,79 @@ class EditorNotebook(Notebook):
                               command=self.close_other_tabs)
         self.menu.add_command(label='Close tabs to the right',
                               command=self.close_tabs_right)
-        self.event_handler = FileSystemEventHandler()
-        self.event_handler.on_modified = self._on_file_modification
-        self.event_handler.on_deleted = self._on_file_deletion
-        self.event_handler.on_moved = self._on_file_move
-        self.observer = Observer()
-        self._watches = []
-        self.observed_paths = []
-        self.observer.start()
+
+        self._files_mtime = {}  # file_path: mtime
+        self._files_check_deletion = {}  # file_path: bool
+        self._modif_watchers = {}  # file_path: thread
+        self._is_modified = {}  # file_path: event
+        self._is_deleted = {}  # file_path: event
+        self._stop_thread = {}  # file_path: bool
+        self._modif_polling_id = self.after(10000, self._modif_poll)
+
         self.bind('<Destroy>', self._on_destroy)
 
+    def _watch_modif(self, file):
+        sleep(5)
+        while not self._stop_thread[file]:
+            try:
+                mtime = os.stat(file).st_mtime
+                if mtime > self._files_mtime[file]:
+                    self._is_modified[file].set()
+            except FileNotFoundError:
+                self._is_deleted[file].set()
+            sleep(5)
+        del self._stop_thread[file]
+
+    def _start_watching(self, file):
+        self._files_mtime[file] = os.stat(file).st_mtime
+        self._files_check_deletion[file] = True
+        self._stop_thread[file] = False
+        self._is_modified[file] = Event()
+        self._is_deleted[file] = Event()
+        self._modif_watchers[file] = Thread(target=self._watch_modif,
+                                            args=(file,), daemon=True)
+        self._modif_watchers[file].start()
+
+    def _stop_watching(self, file):
+        self._stop_thread[file] = True
+        del self._modif_watchers[file]
+        del self._files_check_deletion[file]
+        del self._is_modified[file]
+        del self._is_deleted[file]
+        del self._files_mtime[file]
+
+    def _modif_poll(self):
+        rev_files = {path: tab for tab, path in self.files.items()}
+        for file, modif, deletion in zip(self._is_modified.keys(), self._is_modified.values(), self._is_deleted.values()):
+            if modif.is_set():
+                print(file, 'has been modified')
+                tab = rev_files[file]
+                self.edit_modified(True, tab=tab, generate=True)
+                self.update_idletasks()
+                rep = askyesno('Warning',
+                               '{} has been modified outside TkEditor. Do you want to reload it?'.format(file))
+                if rep:
+                    self.select(tab)
+                    self.event_generate('<<Reload>>')
+                self._files_mtime[file] = os.stat(file).st_mtime
+                modif.clear()
+            elif deletion.is_set():
+                print(file, 'has been deleted')
+                if self._files_check_deletion[file]:
+                    tab = rev_files[file]
+                    self.edit_modified(True, tab=tab, generate=True)
+                    self.update_idletasks()
+                    rep = askyesno('Warning',
+                                   '{} has been deleted. Do you want to save it?'.format(file))
+                    if rep:
+                        self.save(tab=tab)
+                        self.edit_modified(False, tab=tab, generate=True)
+                    self._files_check_deletion[file] = rep
+                deletion.clear()
+        self._modif_polling_id = self.after(2000, self._modif_poll)
+
     def _on_destroy(self, event):
-        self.observer.stop()
-
-    def _on_file_modification(self, event):
-        if not event.is_directory and event.src_path in self.files.values():
-            print('{} has been modified'.format(event.src_path))
-
-    def _on_file_deletion(self, event):
-        if not event.is_directory and event.src_path in self.files.values():
-            print('{} has been deleted'.format(event.src_path))
-            rev_files = {path: tab for tab, path in self.files.items()}
-            tab = rev_files[event.src_path]
-            self.edit_modified(True, tab=tab, generate=True)
-            self.update_idletasks()
-            rep = askyesno('Warning',
-                           '{} has been deleted. Do you want to save it?'.format(event.src_path))
-            if rep:
-                self.save(tab=tab)
-                self.edit_modified(False, tab=tab, generate=True)
-
-    def _on_file_move(self, event):
-        if not event.is_directory and event.src_path in self.files.values():
-            print('{} has been moved'.format(event.src_path))
+        self.after_cancel(self._modif_polling_id)
 
     @property
     def filename(self):
@@ -82,9 +122,17 @@ class EditorNotebook(Notebook):
                                  disabledforeground=disabledforeground)
         self._canvas.configure(bg=self._canvas.option_get('background', '*Canvas'))
 
-    def insert(self, index, text):
-        if self.current_tab >= 0:
-            self._tabs[self.current_tab].insert(index, text)
+    def insert(self, index, text, tab=None):
+        if tab is None:
+            tab = self.current_tab
+        if tab >= 0:
+            self._tabs[tab].insert(index, text)
+
+    def delete(self, index1, index2=None, tab=None):
+        if tab is None:
+            tab = self.current_tab
+        if tab >= 0:
+            self._tabs[tab].delete(index1, index2)
 
     def edit_reset(self):
         if self.current_tab >= 0:
@@ -150,10 +198,8 @@ class EditorNotebook(Notebook):
             file = ''
         else:
             title = os.path.split(file)[-1]
-            folder = os.path.dirname(file)
-            if folder not in self.observed_paths:
-                self._watches.append(self.observer.schedule(self.event_handler, path=folder, recursive=False))
-                self.observed_paths.append(folder)
+            self._start_watching(file)
+
         editor = Editor(self)
         tab = self.add(editor, text=title)
         self.tab(tab, closecmd=self.close)
@@ -213,6 +259,7 @@ class EditorNotebook(Notebook):
         ed = self._tabs[tab]
         if self.files[tab]:
             self.last_closed.append(self.files[tab])
+        self._stop_watching(self.files[tab])
         del self.files[tab]
         self.forget(tab)
         if not self._visible_tabs:
@@ -242,6 +289,8 @@ class EditorNotebook(Notebook):
             with open(self.files[tab], 'w') as f:
                 f.write(self.get(tab))
             res = True
+            self._files_mtime[self.files[tab]] = os.stat(self.files[tab]).st_mtime
+            self._files_check_deletion[self.files[tab]] = True
         return res
 
     def saveas(self, tab=None):
@@ -252,15 +301,14 @@ class EditorNotebook(Notebook):
                                  initialdir=initialdir, defaultext='.py',
                                  filetypes=[('Python', '*.py'), ('All files', '*')])
         if name:
+            if self.files[tab]:
+                self._stop_watching(self.files[tab])
             self.files[tab] = name
             self._tabs[tab].file = name
             self._tab_labels[tab].tab_configure(text=os.path.split(name)[1])
             self.wrapper.set_tooltip_text(self._tab_labels[tab], name)
             self.save(tab)
-            folder = os.path.dirname(name)
-            if folder not in self.observed_paths:
-                self._watches.append(self.observer.schedule(self.event_handler, path=folder, recursive=False))
-                self.observed_paths.append(folder)
+            self._start_watching(name)
             return True
         else:
             return False

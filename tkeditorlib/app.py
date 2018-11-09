@@ -1,7 +1,7 @@
 from tkeditorlib.editornotebook import EditorNotebook
 from tkeditorlib.syntax_check import check_file
 from tkeditorlib.filestructure import CodeStructure
-from tkeditorlib.constants import ICON, CONFIG, save_config, IMG_PATH, IM_CLOSE
+from tkeditorlib.constants import ICON, CONFIG, save_config, IM_CLOSE
 from tkeditorlib import constants as cst
 from tkeditorlib.textconsole import TextConsole
 from tkeditorlib.history import HistoryFrame
@@ -167,6 +167,7 @@ class App(tk.Tk):
         self.editor.bind('<<NotebookEmpty>>', self.codestruct.clear)
         self.editor.bind('<<NotebookTabChanged>>', self._on_tab_changed)
         self.editor.bind('<<Modified>>', lambda e: self._edit_modified())
+        self.editor.bind('<<Reload>>', self.reload)
 
         self.bind_class('Text', '<Control-o>', lambda e: None)
         self.bind('<Control-Shift-T>', self.restore_last_closed)
@@ -477,6 +478,24 @@ class App(tk.Tk):
         if len(self.recent_files) > 10:
             del self.recent_files[-1]
             self.menu_recent_files.delete(self.menu_recent_files.index('end'))
+
+    def reload(self, event):
+        file = self.editor.files[self.editor.current_tab]
+        try:
+            with open(file) as f:
+                txt = f.read()
+        except FileNotFoundError:
+            pass
+        except Exception:
+            showerror('Error', traceback.format_exc())
+        else:
+            self.editor.delete('1.0', 'end')
+            self.editor.insert('1.0', txt)
+            self.editor.edit_reset()
+            self._edit_modified(0)
+            self.codestruct.populate(self.editor.filename, self.editor.get(strip=False))
+            self.check_syntax()
+            self.editor.goto_start()
 
     def open_file(self, file):
         files = list(self.editor.files.values())
