@@ -45,7 +45,7 @@ class Editor(ttk.Frame):
         self.file = ''
 
         self.text = tk.Text(self, undo=True,
-                            autoseparators=True,
+                            autoseparators=False,
                             wrap='none')
 
         self.sep = tk.Frame(self.text)
@@ -296,6 +296,7 @@ class Editor(ttk.Frame):
                 self._comp.withdraw()
         elif (event.char in [' ', ':', ',', ';', '(', '[', '{', ')', ']', '}'] or
               key in ['BackSpace', 'Left', 'Right']):
+            self.text.edit_separator()
             self.parse(self.text.get("insert linestart", "insert lineend"),
                        "insert linestart")
         elif key == 'x':
@@ -318,6 +319,7 @@ class Editor(ttk.Frame):
         else:
             self.text.insert('insert', event.char + self._autoclose[event.char], 'Token.Punctuation')
             self.text.mark_set('insert', 'insert-1c')
+        self.text.edit_separator()
         return 'break'
 
     def auto_close_string(self, event):
@@ -338,6 +340,7 @@ class Editor(ttk.Frame):
             self.text.insert('insert', event.char * 2)
             self.text.mark_set('insert', 'insert-1c')
         self.parse_all()
+        self.text.edit_separator()
         return 'break'
 
     def close_brackets(self, event):
@@ -348,6 +351,7 @@ class Editor(ttk.Frame):
         return 'break'
 
     def on_paste(self, event):
+        self.text.edit_separator()
         self._paste = True
         sel = self.text.tag_ranges('sel')
         if sel:
@@ -360,6 +364,7 @@ class Editor(ttk.Frame):
         return "break"
 
     def toggle_comment(self, event):
+        self.text.edit_separator()
         sel = self.text.tag_ranges('sel')
         if sel:
             lines = self.text.get('sel.first linestart', 'sel.last lineend').splitlines()
@@ -427,6 +432,7 @@ class Editor(ttk.Frame):
             self._comp_sel()
             return "break"
 
+        self.text.edit_separator()
         sel = self.text.tag_ranges('sel')
         if sel:
             start = str(self.text.index('sel.first'))
@@ -503,10 +509,12 @@ class Editor(ttk.Frame):
         self.text.insert('insert', txt)
 
     def on_ctrl_return(self, event):
+        self.text.edit_separator()
         self.master.event_generate('<<CtrlReturn>>')
         return 'break'
 
     def on_return(self, event):
+        self.text.edit_separator()
         if self._comp.winfo_ismapped():
             self._comp_sel()
             return "break"
@@ -549,6 +557,7 @@ class Editor(ttk.Frame):
         self.filebar.update_highlight()
 
     def on_backspace(self, event):
+        self.text.edit_separator()
         txt = event.widget
         sel = self.text.tag_ranges('sel')
         if sel:
@@ -565,6 +574,7 @@ class Editor(ttk.Frame):
         return "break"
 
     def unindent(self, event):
+        self.text.edit_separator()
         txt = event.widget
         sel = txt.tag_ranges('sel')
         if sel:
@@ -616,6 +626,7 @@ class Editor(ttk.Frame):
         return "break"
 
     def replace_sel(self, notify_no_match=True):
+        self.text.edit_separator()
         pattern = self.entry_search.get()
         new_text = self.entry_replace.get()
         sel = self.text.tag_ranges('sel')
@@ -638,6 +649,7 @@ class Editor(ttk.Frame):
             self.search()
 
     def replace_all(self):
+        self.text.edit_separator()
         res = True
         self.text.mark_set('insert', '1.0')
         # replace all occurences in text
@@ -729,6 +741,7 @@ class Editor(ttk.Frame):
             self.parse_all()
             self.text.mark_set('insert', index)
             self.yview('moveto', yview)
+        self.text.edit_separator()
         return txt
 
     def get_end(self):
@@ -745,11 +758,13 @@ class Editor(ttk.Frame):
             return None
 
     def delete(self, index1, index2=None):
+        self.text.edit_separator()
         self.text.delete(index1, index2=index2)
         self.update_nb_line()
         self.parse_all()
 
     def insert(self, index, text):
+        self.text.edit_separator()
         self.text.insert(index, text)
         self.update_nb_line()
         self.parse_all()
