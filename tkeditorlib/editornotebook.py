@@ -10,15 +10,17 @@ from tkeditorlib.editor import Editor
 from tkeditorlib.tooltip import TooltipNotebookWrapper
 import os
 from tkinter import Menu
-from tkinter.messagebox import askyesnocancel
+from tkinter.messagebox import askyesnocancel, askyesno
 from tkfilebrowser import asksaveasfilename
 from subprocess import Popen
+from watchdog.observers import Observer
+from watchdog.events import FileSystemEventHandler
 
 
 class EditorNotebook(Notebook):
     def __init__(self, master):
         Notebook.__init__(self, master)
-        self.files = {}
+        self.files = {}      # tab: file_path
         self.wrapper = TooltipNotebookWrapper(self)
         self.last_closed = []
         self.menu = Menu(self, tearoff=False)
@@ -26,6 +28,39 @@ class EditorNotebook(Notebook):
                               command=self.close_other_tabs)
         self.menu.add_command(label='Close tabs to the right',
                               command=self.close_tabs_right)
+        self.event_handler = FileSystemEventHandler()
+        self.event_handler.on_modified = self._on_file_modification
+        self.event_handler.on_deleted = self._on_file_deletion
+        self.event_handler.on_moved = self._on_file_move
+        self.observer = Observer()
+        self._watches = []
+        self.observed_paths = []
+        self.observer.start()
+        self.bind('<Destroy>', self._on_destroy)
+
+    def _on_destroy(self, event):
+        self.observer.stop()
+
+    def _on_file_modification(self, event):
+        if not event.is_directory and event.src_path in self.files.values():
+            print('{} has been modified'.format(event.src_path))
+
+    def _on_file_deletion(self, event):
+        if not event.is_directory and event.src_path in self.files.values():
+            print('{} has been deleted'.format(event.src_path))
+            rev_files = {path: tab for tab, path in self.files.items()}
+            tab = rev_files[event.src_path]
+            self.edit_modified(True, tab=tab, generate=True)
+            self.update_idletasks()
+            rep = askyesno('Warning',
+                           '{} has been deleted. Do you want to save it?'.format(event.src_path))
+            if rep:
+                self.save(tab=tab)
+                self.edit_modified(False, tab=tab, generate=True)
+
+    def _on_file_move(self, event):
+        if not event.is_directory and event.src_path in self.files.values():
+            print('{} has been moved'.format(event.src_path))
 
     @property
     def filename(self):
@@ -115,6 +150,10 @@ class EditorNotebook(Notebook):
             file = ''
         else:
             title = os.path.split(file)[-1]
+            folder = os.path.dirname(file)
+            if folder not in self.observed_paths:
+                self._watches.append(self.observer.schedule(self.event_handler, path=folder, recursive=False))
+                self.observed_paths.append(folder)
         editor = Editor(self)
         tab = self.add(editor, text=title)
         self.tab(tab, closecmd=self.close)
@@ -218,6 +257,10 @@ class EditorNotebook(Notebook):
             self._tab_labels[tab].tab_configure(text=os.path.split(name)[1])
             self.wrapper.set_tooltip_text(self._tab_labels[tab], name)
             self.save(tab)
+            folder = os.path.dirname(name)
+            if folder not in self.observed_paths:
+                self._watches.append(self.observer.schedule(self.event_handler, path=folder, recursive=False))
+                self.observed_paths.append(folder)
             return True
         else:
             return False

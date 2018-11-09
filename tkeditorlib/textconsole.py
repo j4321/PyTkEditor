@@ -113,11 +113,11 @@ class TextConsole(tk.Text):
 
     def _on_focusout(self, event):
         self._comp.withdraw()
-        self._tootip.withdraw()
+        self._tooltip.withdraw()
 
     def _on_press(self, event):
         self._comp.withdraw()
-        self._tootip.withdraw()
+        self._tooltip.withdraw()
 
     def _comp_sel(self):
         txt = self._comp.get()
