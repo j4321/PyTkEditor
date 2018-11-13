@@ -16,6 +16,7 @@ import signal
 from constants import CLIENT_CERT, SERVER_CERT
 import tkinter
 import time
+from tempfile import mkstemp
 
 
 class SocketConsole(InteractiveConsole):
@@ -79,7 +80,7 @@ class SocketConsole(InteractiveConsole):
         self.socket.setblocking(False)
         while True:
             try:
-                line = self.socket.recv(1048576).decode()
+                line = self.socket.recv(65536).decode()
                 if self.buffer:
                     self.resetbuffer()
                 with redirect_stdout(self.stdout):
@@ -93,7 +94,13 @@ class SocketConsole(InteractiveConsole):
                         res = False
                 output = self.stdout.getvalue()
                 err = self.stderr.getvalue()
-                self.socket.send(('%s, %r, %r' % (res, output, err)).encode())
+                msg = '%s, %r, %r' % (res, output, err)
+                if len(msg) > 65536:
+                    fileno, filename = mkstemp(text=True)
+                    with open(filename, 'w') as tmpfile:
+                        tmpfile.write(msg)
+                    msg = '%s, %r, "Too long"' % (res, filename)
+                self.socket.send(msg.encode())
                 self.stdout.close()
                 self.stderr.close()
                 self.stdout = StringIO()

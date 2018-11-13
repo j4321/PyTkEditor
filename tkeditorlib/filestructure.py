@@ -100,11 +100,13 @@ class CodeTree(Treeview):
                     children = self.get_children(parent)
                     i += 1
 
-                max_length = max(max_length, self.font.measure(name) + 18 + (i + 1) * 18)
+                max_length = max(max_length, self.font.measure(name) + 20 + (i + 1) * 20)
                 self.insert(parent, 'end', text=name,
                             tag=(obj_type, name),
                             values=('%i.%i' % token.start, '%i.%i' % token.end))
         self.column('#0', width=max_length, minwidth=max_length)
+        for item in self.get_children(''):
+            self.item(item, open=True)
         return names
 
 

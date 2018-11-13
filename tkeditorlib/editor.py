@@ -159,7 +159,7 @@ class Editor(ttk.Frame):
         self.text.bind('<Control-r>', self.replace)
         self.text.bind('<Control-l>', self.goto_line)
         self.text.bind('<Control-e>', self.toggle_comment)
-        self.text.bind('<Configure>', self.filebar.update_highlight)
+        self.text.bind('<Configure>', self.filebar.update_positions)
         self.text.bind('<4>', self._on_b4)
         self.line_nb.bind('<4>', self._on_b4)
         self.text.bind('<5>', self._on_b5)
@@ -499,7 +499,6 @@ class Editor(ttk.Frame):
             x = xr + xb
             if y + hcomp > screen[3]:
                 y = yr + yb - hcomp
-            print(xb, yb, h, hcomp)
             self._comp.geometry('+%i+%i' % (x, y))
             self._comp.deiconify()
 
@@ -554,7 +553,7 @@ class Editor(ttk.Frame):
             self.syntax_checks.delete('%i.0' % (row + 1), 'end')
         self.line_nb.configure(width=len(str(row)), state='disabled')
         self.syntax_checks.configure(state='disabled')
-        self.filebar.update_highlight()
+        self.filebar.update_positions()
 
     def on_backspace(self, event):
         self.text.edit_separator()
@@ -595,7 +594,7 @@ class Editor(ttk.Frame):
         self.syntax_checks.yview(*args)
         res = self.text.yview(*args)
         if args:
-            self.filebar.update_highlight()
+            self.filebar.update_positions()
         return res
 
     # --- find and replace

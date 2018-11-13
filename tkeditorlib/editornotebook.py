@@ -45,6 +45,7 @@ class EditorNotebook(Notebook):
             try:
                 mtime = os.stat(file).st_mtime
                 if mtime > self._files_mtime[file]:
+                    print('watch', mtime, self._files_mtime[file], file)
                     self._is_modified[file].set()
             except FileNotFoundError:
                 self._is_deleted[file].set()
@@ -62,12 +63,13 @@ class EditorNotebook(Notebook):
         self._modif_watchers[file].start()
 
     def _stop_watching(self, file):
-        self._stop_thread[file] = True
-        del self._modif_watchers[file]
-        del self._files_check_deletion[file]
-        del self._is_modified[file]
-        del self._is_deleted[file]
-        del self._files_mtime[file]
+        if file in self._modif_watchers:
+            self._stop_thread[file] = True
+            del self._modif_watchers[file]
+            del self._files_check_deletion[file]
+            del self._is_modified[file]
+            del self._is_deleted[file]
+            del self._files_mtime[file]
 
     def _modif_poll(self):
         rev_files = {path: tab for tab, path in self.files.items()}
@@ -288,9 +290,11 @@ class EditorNotebook(Notebook):
         else:
             with open(self.files[tab], 'w') as f:
                 f.write(self.get(tab))
-            res = True
             self._files_mtime[self.files[tab]] = os.stat(self.files[tab]).st_mtime
+            print('save', self._files_mtime[self.files[tab]])
+            res = True
             self._files_check_deletion[self.files[tab]] = True
+            self.after(100, lambda: print('save2', os.stat(self.files[tab]).st_mtime))
         return res
 
     def saveas(self, tab=None):

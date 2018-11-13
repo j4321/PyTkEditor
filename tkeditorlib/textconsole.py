@@ -9,7 +9,7 @@ Created on Wed Aug 22 12:28:48 2018
 import tkinter as tk
 import sys
 import re
-from os import kill
+from os import kill, remove
 from os.path import join, dirname
 from tkeditorlib.complistbox import CompListbox
 from tkeditorlib.tooltip import Tooltip
@@ -429,6 +429,12 @@ class TextConsole(tk.Text):
             if not cmd:
                 return
             res, output, err = eval(cmd)
+
+            if err == "Too long":
+                filename = output
+                with open(filename) as tmpfile:
+                    res, output, err = eval(tmpfile.read())
+                remove(filename)
             self.configure(state='normal')
 
             if err.strip():

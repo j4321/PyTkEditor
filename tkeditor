@@ -29,7 +29,9 @@ try:
     app = App(*sys.argv[1:])
     app.mainloop()
 except Exception:
-    showerror(_("Error"), traceback.format_exc())
+    msg = traceback.format_exc()
+    print(msg)
+    showerror("Error", msg)
 finally:
     try:
         os.unlink(PIDFILE)
