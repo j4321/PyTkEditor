@@ -428,13 +428,8 @@ class TextConsole(tk.Text):
         else:
             if not cmd:
                 return
+<<<<<<< HEAD
             res, output, err, wait = eval(cmd)
-
-            if err == "Too long":
-                filename = output
-                with open(filename) as tmpfile:
-                    res, output, err, wait = eval(tmpfile.read())
-                remove(filename)
 
             if wait:
                 if output.strip():
@@ -445,9 +440,18 @@ class TextConsole(tk.Text):
                 self.configure(state='disabled')
                 self.after(1, self._check_result, auto_indent, lines, index)
                 return
+=======
+            res, output, err = eval(cmd)
+
+            if err == "Too long":
+                filename = output
+                with open(filename) as tmpfile:
+                    res, output, err = eval(tmpfile.read())
+                remove(filename)
+            self.configure(state='normal')
+>>>>>>> master
 
             self.configure(state='normal')
-
             if err.strip():
                 if err == 'SystemExit\n':
                     self._shell_clear()

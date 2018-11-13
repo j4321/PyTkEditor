@@ -195,6 +195,8 @@ class HistoryFrame(ttk.Frame):
         self.frame_search.grid(row=1, columnspan=2, sticky='we')
         self.frame_search.grid_remove()
 
+        self.update_style = self.history.update_style
+
     def find(self, event=None):
         self.frame_search.grid()
         self.entry_search.focus_set()

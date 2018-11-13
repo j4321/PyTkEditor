@@ -87,14 +87,7 @@ class SocketConsole(InteractiveConsole):
         return False
 
     def send_cmd(self, line):
-        msg = 'False, %r, "", True' % (line + '\n')
-        if len(msg) > 65536:
-            print('too long')
-            fileno, filename = mkstemp(text=True)
-            with open(filename, 'w') as tmpfile:
-                tmpfile.write(msg)
-                msg = 'False, %r, "Too long", True' % (filename)
-        self.socket.send(msg.encode())
+        self.socket.send(('False, %r, "", True' % (line + '\n')).encode())
 
     def interact(self):
         self.socket.setblocking(False)
@@ -114,14 +107,17 @@ class SocketConsole(InteractiveConsole):
                         res = False
                 # output = self.stdout.getvalue()
                 err = self.stderr.getvalue()
-                msg = '%s, %r, %r, %s' % (res, '', err, False)
+<<<<<<< HEAD
+                self.socket.send(('%s, %r, %r, %s' % (res, '', err, False)).encode())
+=======
+                msg = '%s, %r, %r' % (res, output, err)
                 if len(msg) > 65536:
-                    print('too long')
                     fileno, filename = mkstemp(text=True)
                     with open(filename, 'w') as tmpfile:
                         tmpfile.write(msg)
                     msg = '%s, %r, "Too long"' % (res, filename)
                 self.socket.send(msg.encode())
+>>>>>>> master
                 self.stdout.close()
                 self.stderr.close()
                 self.stdout = Stdout(self.send_cmd)

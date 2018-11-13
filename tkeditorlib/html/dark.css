@@ -1,0 +1,215 @@
+/*
+:Authors: Ian Bicking, Michael Foord, Juliette Monsel
+:Contact: fuzzyman@voidspace.org.uk
+:Date: 2005/08/26 
+:Version: 0.1.0
+:Copyright: This stylesheet has been placed in the public domain.
+
+Stylesheet for Docutils.
+Based on ``blue_box.css`` by Ian Bicking
+and ``html4css1.css`` revision 1.46.
+*/
+
+@import url(html4css1.css);
+
+body {
+  font-family: Arial, sans-serif;
+  background-color: #303030;
+  color: #E6E6E6
+}
+
+em, i {
+  /* Typically serif fonts have much nicer italics */
+  font-family: Times New Roman, Times, serif;
+}
+
+a {
+    color: #006FFF;
+    font-style: italic;
+}
+
+a.target {
+  color: #006FFF;
+}
+
+a.target {
+  color: #006FFF;
+}
+
+a.toc-backref {
+  text-decoration: none;
+  color: black;
+}
+
+a.toc-backref:hover {
+  background-color: inherit;
+}
+
+a:hover
+{
+    font-style: italic;
+    border-bottom: 1px solid #006FFF;
+}
+
+div.hint, div.note, div.tip {
+  background-color: #124371;
+  width: 80%;
+  margin: 1em ;
+  border: 1px solid #3E7FBC;
+  padding: 10px
+}
+
+div.attention, div.caution, div.danger, div.error, div.important,
+div.warning {
+  background-color: #760303;
+  width: 80%;
+  margin: 1em ;
+  border: 1px solid #FF0000;
+  padding: 10px
+}
+
+div.admonition p.admonition-title, div.hint p.admonition-title,
+div.important p.admonition-title, div.note p.admonition-title,
+div.tip p.admonition-title  {
+  color: #3E7FBC;
+  text-align: left;
+  margin: 0;
+  font-weight: bold ;
+  font-family: sans-serif;
+}
+
+div.attention p.admonition-title, div.caution p.admonition-title,
+div.danger p.admonition-title, div.error p.admonition-title,
+div.warning p.admonition-title {
+  color: #cc0000;
+  font-weight: bold ;
+  font-family: sans-serif;
+  text-align: left;
+  margin: 0;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: Arial, sans-serif;
+  border: thin solid #cccccc;
+  /* This makes the borders rounded on Mozilla, which pleases me */
+  -moz-border-radius: 8px;
+  padding: 4px;
+}
+
+h1 {
+  background-color: #305B92;
+  color: #ffffff;
+  border: medium solid #4F82C5;
+  font-size: large;
+}
+
+h1 a.toc-backref, h2 a.toc-backref { 
+  color: #ffffff;
+}
+
+h2 {
+  background-color: #4F4F4F;
+  color: #ffffff;
+  border: medium solid #7A7A7A;
+}
+
+h3, h4, h5, h6 {
+  background-color: #303030;
+  color: white;
+}
+
+h3 a.toc-backref, h4 a.toc-backref, h5 a.toc-backref, 
+h6 a.toc-backref { 
+  color: #000000;
+}
+
+h1.title {
+  text-align: left;
+  background-color: #305B92;
+  color: #eeeeee;
+  border: thick solid #4F82C5;
+  -moz-border-radius: 20px;
+  font-size: x-large;
+}
+
+table.footnote {
+  padding-left: 0.5ex;
+}
+
+table.citation {
+  padding-left: 0.5ex
+}
+
+
+.image img { border-style : solid;
+            border-width : 2px;
+}
+
+h1 tt, h2 tt, h3 tt, h4 tt, h5 tt, h6 tt {
+  font-size: 100%;
+}
+
+tt {
+  font-family: FreeMono;
+  background-color: #494949;
+  color: white;
+  padding: 1px;
+  border: 1px solid #848484;
+}
+
+span.data, span.exc, span.func, span.class, span.const, span.attr, span.meth, span.mod, span.obj, span.py_data, span.py_exc, span.py_func, span.py_class, span.py_const, span.py_attr, span.py_meth, span.py_mod, span.py_obj {
+  font-family: FreeMono;
+  padding: 1px;
+  border: 1px solid #848484;
+  background-color: #303030;
+}
+
+pre, code
+{
+    padding: 6px;
+    padding-left: 10px;
+    background-color: #494949;
+    color: white;
+    font-family: FreeMono;
+    line-height: 1.4;
+    margin: 0px;
+    border: 1px solid #848484;
+}
+
+.code .comment                     { color: #008800; font-style: italic }
+.code .error                       { border: 1px solid #FF0000 }
+.code .generic.deleted             { color: #A00000 }
+.code .generic.emph                { font-style: italic }
+.code .generic.error               { color: #FF0000 }
+.code .generic.heading             { color: #000080; font-weight: bold }
+.code .generic.inserted            { color: #00A000 }
+.code .generic.output              { color: #808080 }
+.code .generic.prompt              { color: #000080; font-weight: bold }
+.code .generic.strong              { font-weight: bold }
+.code .generic.subheading          { color: #800080; font-weight: bold }
+.code .generic.traceback           { color: #0040D0 }
+.code .keyword                     { color: #4F4FC6; font-weight: bold }
+.code .keyword.pseudo              { font-weight: normal }
+.code .literal.number              { color: #666666 }
+.code .literal.string              { color: #AA7700 }
+.code .literal.string.doc          { color: #AA7700; font-style: italic }
+.code .literal.string.escape       { color: #BB6622; font-weight: bold }
+.code .literal.string.interpol     { color: #BB6688; font-weight: bold }
+.code .literal.string.other        { color: #008000 }
+.code .literal.string.regex        { color: #BB6688 }
+.code .literal.string.symbol       { color: #B8860B }
+.code .name.attribute              { color: #BB4444 }
+.code .name.builtin                { color: #80B1E0 }
+.code .name.class                  { color: #0000FF }
+.code .name.constant               { color: #880000 }
+.code .name.decorator              { color: #1E90FF }
+.code .name.entity                 { color: #999999; font-weight: bold }
+.code .name.exception              { color: #D2413A; font-weight: bold }
+.code .name.function               { color: #00A000 }
+.code .name.label                  { color: #A0A000 }
+.code .name.namespace              { color: #0000FF; font-weight: bold }
+.code .name.tag                    { color: #008000; font-weight: bold }
+.code .name.variable               { color: #B8860B }
+.code .punctuation                 { color: #FF0000 }
+.code .operator                    { color: #FF0000 }
+.code .operator.word               { color: #4F4FC6; font-weight: bold }

@@ -12,6 +12,7 @@ from subprocess import Popen, PIPE
 
 builtin_vars.append('_')
 
+
 class Logger(object):
     """Logger to collect checks output."""
     def __init__(self):
@@ -50,6 +51,7 @@ def parse_message_style(message, results):
         results[line][2] = '%s\n%s: %s' % (results[line][2], txt[2], msg)
     else:
         results[line] = ['warning', [msg], '%s: %s' % (txt[2], msg)]
+
 
 def parse_message_flake(message, category, results):
     txt = message.split(':')

@@ -1,7 +1,7 @@
 from tkeditorlib.editornotebook import EditorNotebook
 from tkeditorlib.syntax_check import check_file
 from tkeditorlib.filestructure import CodeStructure
-from tkeditorlib.constants import ICON, CONFIG, save_config, IMG_PATH
+from tkeditorlib.constants import ICON, CONFIG, save_config, IM_CLOSE
 from tkeditorlib import constants as cst
 from tkeditorlib.textconsole import TextConsole
 from tkeditorlib.history import HistoryFrame
@@ -15,6 +15,7 @@ from tkinter.messagebox import showerror
 from tkfilebrowser import askopenfilenames, asksaveasfilename
 import traceback
 import os
+import signal
 
 
 class App(tk.Tk):
@@ -167,6 +168,7 @@ class App(tk.Tk):
         self.editor.bind('<<NotebookEmpty>>', self.codestruct.clear)
         self.editor.bind('<<NotebookTabChanged>>', self._on_tab_changed)
         self.editor.bind('<<Modified>>', lambda e: self._edit_modified())
+        self.editor.bind('<<Reload>>', self.reload)
 
         self.bind_class('Text', '<Control-o>', lambda e: None)
         self.bind('<Control-Shift-T>', self.restore_last_closed)
@@ -187,150 +189,124 @@ class App(tk.Tk):
         if file:
             self.open_file(file)
         self.protocol('WM_DELETE_WINDOW', self.quit)
+        signal.signal(signal.SIGUSR1, self._on_signal)
+
+    def _on_signal(self, *args):
+        self.lift()
+        self.focus_get()
+        if os.path.exists(cst.OPENFILE_PATH):
+            with open(cst.OPENFILE_PATH) as f:
+                file = f.read()
+            os.remove(cst.OPENFILE_PATH)
+            self.open_file(file)
 
     def _setup_style(self):
-
-        FONT = (CONFIG.get("General", "fontfamily"),
+        font = (CONFIG.get("General", "fontfamily"),
                 CONFIG.getint("General", "fontsize"))
+        theme_name = CONFIG.get('General', 'theme')
+        theme = dict(CONFIG.items('{} Theme'.format(theme_name.capitalize())))
+        self._im_close.configure(file=IM_CLOSE.format(theme=theme_name))
 
-        if CONFIG.get('General', 'theme') == 'dark':
-            BG = '#454545'
-            ACTIVEBG = '#525252'
-            PRESSEDBG = '#262626'
-            FG = '#E6E6E6'
-            FIELDBG = '#303030'
-            LIGHTCOLOR = BG
-            DARKCOLOR = BG
-            BORDERCOLOR = '#131313'
-            FOCUSBORDERCOLOR = '#353535'
-            SELECTBG = '#1f1f1f'
-            SELECTFG = FG
-            UNSELECTEDFG = '#999999'
-            DISABLEDFG = '#666666'
-            DISABLEDBG = BG
-            IM_CLOSE = os.path.join(IMG_PATH, 'close_dark.png')
-            TOOLTIP_BG = BORDERCOLOR
-        #    DISABLEDBG = '#595959'
-        else:
-            BG = '#dddddd'
-            ACTIVEBG = '#efefef'
-            PRESSEDBG = '#c1c1c1'
-            FG = 'black'
-            FIELDBG = 'white'
-            LIGHTCOLOR = '#ededed'
-            DARKCOLOR = '#cfcdc8'
-            BORDERCOLOR = '#888888'
-            FOCUSBORDERCOLOR = '#5E5E5E'
-            SELECTBG = PRESSEDBG
-            SELECTFG = 'black'
-            UNSELECTEDFG = '#666666'
-            DISABLEDFG = '#999999'
-            DISABLEDBG = BG
-            IM_CLOSE = os.path.join(IMG_PATH, 'close.png')
-            TOOLTIP_BG = 'light yellow'
-        #    DISABLEDBG = ''
-        self._im_close.configure(file=IM_CLOSE)
+        button_style_config = {'bordercolor': theme['bordercolor'],
+                               'background': theme['bg'],
+                               'fieldbackground': theme['fieldbg'],
+                               'indicatorbackground': theme['fieldbg'],
+                               'indicatorforeground': theme['fg'],
+                               'foreground': theme['fg'],
+                               'arrowcolor': theme['fg'],
+                               'insertcolor': theme['fg'],
+                               'upperbordercolor': theme['bordercolor'],
+                               'lowerbordercolor': theme['bordercolor'],
+                               'lightcolor': theme['lightcolor'],
+                               'darkcolor': theme['darkcolor']}
 
-        BUTTON_STYLE_CONFIG = {'bordercolor': BORDERCOLOR,
-                               'background': BG,
-                               'fieldbackground': FIELDBG,
-                               'indicatorbackground': FIELDBG,
-                               'indicatorforeground': FG,
-                               'foreground': FG,
-                               'arrowcolor': FG,
-                               'insertcolor': FG,
-                               'upperbordercolor': BORDERCOLOR,
-                               'lowerbordercolor': BORDERCOLOR,
-                               'lightcolor': LIGHTCOLOR,
-                               'darkcolor': DARKCOLOR}
+        button_style_map = {'background': [('active', theme['activebg']),
+                                           ('disabled', theme['disabledbg']),
+                                           ('pressed', theme['pressedbg'])],
+                            'lightcolor': [('pressed', theme['darkcolor'])],
+                            'darkcolor': [('pressed', theme['lightcolor'])],
+                            'bordercolor': [('focus', theme['focusbordercolor'])],
+                            'foreground': [('disabled', theme['disabledfg'])],
+                            'arrowcolor': [('disabled', theme['disabledfg'])],
+                            'fieldbackground': [('disabled', theme['fieldbg'])],
+                            'selectbackground': [('focus', theme['selectbg'])],
+                            'selectforeground': [('focus', theme['selectfg'])]}
 
-        BUTTON_STYLE_MAP = {'background': [('active', ACTIVEBG),
-                                           ('disabled', DISABLEDBG),
-                                           ('pressed', PRESSEDBG)],
-                            'lightcolor': [('pressed', DARKCOLOR)],
-                            'darkcolor': [('pressed', LIGHTCOLOR)],
-                            'bordercolor': [('focus', FOCUSBORDERCOLOR)],
-                            'foreground': [('disabled', DISABLEDFG)],
-                            'arrowcolor': [('disabled', DISABLEDFG)],
-                            'fieldbackground': [('disabled', FIELDBG)],
-                            'selectbackground': [('focus', SELECTBG)],
-                            'selectforeground': [('focus', SELECTFG)]}
-
-        STYLE_CONFIG = {'bordercolor': BORDERCOLOR,
-                        'background': BG,
-                        'foreground': FG,
-                        'arrowcolor': FG,
+        style_config = {'bordercolor': theme['bordercolor'],
+                        'background': theme['bg'],
+                        'foreground': theme['fg'],
+                        'arrowcolor': theme['fg'],
                         'gripcount': 0,
-                        'lightcolor': LIGHTCOLOR,
-                        'darkcolor': DARKCOLOR,
-                        'troughcolor': PRESSEDBG}
+                        'lightcolor': theme['lightcolor'],
+                        'darkcolor': theme['darkcolor'],
+                        'troughcolor': theme['pressedbg']}
 
-        STYLE_MAP = {'background': [('active', ACTIVEBG), ('disabled', BG)],
-                     'lightcolor': [('pressed', DARKCOLOR)],
-                     'darkcolor': [('pressed', LIGHTCOLOR)],
-                     'foreground': [('disabled', DISABLEDFG)]}
+        style_map = {'background': [('active', theme['activebg']), ('disabled', theme['bg'])],
+                     'lightcolor': [('pressed', theme['darkcolor'])],
+                     'darkcolor': [('pressed', theme['lightcolor'])],
+                     'foreground': [('disabled', theme['disabledfg'])]}
 
         style = ttk.Style(self)
         style.theme_use('clam')
-        style.configure('TFrame', **STYLE_CONFIG)
-        style.configure('TSeparator', **STYLE_CONFIG)
-        style.configure('TLabel', **STYLE_CONFIG)
-        style.configure('Sash', **STYLE_CONFIG)
-        style.configure('TPanedwindow', **STYLE_CONFIG)
-        style.configure('TScrollbar', **STYLE_CONFIG)
-        style.map('TFrame', **STYLE_MAP)
-        style.map('TLabel', **STYLE_MAP)
-        style.map('Sash', **STYLE_MAP)
-        style.map('TScrollbar', **STYLE_MAP)
-        style.map('TPanedwindow', **STYLE_MAP)
-        style.configure('TButton', **BUTTON_STYLE_CONFIG)
-        style.configure('TMenubutton', **BUTTON_STYLE_CONFIG)
-        style.configure('TCheckbutton', **BUTTON_STYLE_CONFIG)
-        style.configure('TRadiobutton', **BUTTON_STYLE_CONFIG)
-        style.configure('TEntry', **BUTTON_STYLE_CONFIG)
-        style.configure('TCombobox', **BUTTON_STYLE_CONFIG)
-        style.configure('TNotebook', **STYLE_CONFIG)
-        style.configure('TNotebook.Tab', **STYLE_CONFIG)
-        style.configure('Treeview', **BUTTON_STYLE_CONFIG)
-        style.configure('Treeview.Heading', **BUTTON_STYLE_CONFIG)
-        style.configure('Treeview.Item', foreground=FG)
-        style.map('TButton', **BUTTON_STYLE_MAP)
-        style.map('TMenubutton', **BUTTON_STYLE_MAP)
-        style.map('TCheckbutton', **BUTTON_STYLE_MAP)
-        style.map('TRadiobutton', **BUTTON_STYLE_MAP)
-        style.map('TEntry', **BUTTON_STYLE_MAP)
-        style.map('TCombobox', **BUTTON_STYLE_MAP)
-        style.map('TNotebook', **BUTTON_STYLE_MAP)
-        style.map('TNotebook.Tab', **BUTTON_STYLE_MAP)
-        style.map('Treeview', **BUTTON_STYLE_MAP)
-        style.map('Treeview', background=[('selected', SELECTBG)],
-                  foreground=[('selected', SELECTFG)])
-        style.map('Treeview.Heading', **BUTTON_STYLE_MAP)
-        style.configure('tooltip.TLabel', background=TOOLTIP_BG, foreground=FG)
-        style.configure('tooltip.TFrame', background=TOOLTIP_BG)
+        style.configure('TFrame', **style_config)
+        style.configure('TSeparator', **style_config)
+        style.configure('TLabel', **style_config)
+        style.configure('Sash', **style_config)
+        style.configure('TPanedwindow', **style_config)
+        style.configure('TScrollbar', **style_config)
+        style.map('TFrame', **style_map)
+        style.map('TLabel', **style_map)
+        style.map('Sash', **style_map)
+        style.map('TScrollbar', **style_map)
+        style.map('TPanedwindow', **style_map)
+        style.configure('TButton', **button_style_config)
+        style.configure('TMenubutton', **button_style_config)
+        style.configure('TCheckbutton', **button_style_config)
+        style.configure('TRadiobutton', **button_style_config)
+        style.configure('TEntry', **button_style_config)
+        style.configure('TCombobox', **button_style_config)
+        style.configure('TNotebook', **style_config)
+        style.configure('TNotebook.Tab', **style_config)
+        style.configure('Treeview', **button_style_config)
+        style.configure('Treeview.Heading', **button_style_config)
+        style.configure('Treeview.Item', foreground=theme['fg'])
+        style.map('TButton', **button_style_map)
+        style.map('TMenubutton', **button_style_map)
+        style.map('TCheckbutton', **button_style_map)
+        style.map('TRadiobutton', **button_style_map)
+        style.map('TEntry', **button_style_map)
+        style.map('TCombobox', **button_style_map)
+        style.map('TNotebook', **button_style_map)
+        style.map('TNotebook.Tab', **button_style_map)
+        style.map('Treeview', **button_style_map)
+        style.map('Treeview', background=[('selected', theme['selectbg'])],
+                  foreground=[('selected', theme['selectfg'])])
+        style.map('Treeview.Heading', **button_style_map)
+        style.configure('tooltip.TLabel', background=theme['tooltip_bg'], foreground=theme['fg'])
+        style.configure('tooltip.TFrame', background=theme['tooltip_bg'])
         style.configure('title.tooltip.TLabel', font='TkDefaultFont 9 bold')
         style.configure('syntax.title.tooltip.TLabel', foreground='#FF4D00')
         style.configure('args.title.tooltip.TLabel', foreground='#4169E1')
 
-        self.option_add('*TCombobox*Listbox.selectBackground', SELECTBG)
-        self.option_add('*TCombobox*Listbox.selectForeground', FG)
-        self.option_add('*TCombobox*Listbox.foreground', FG)
-        self.option_add('*TCombobox*Listbox.background', FIELDBG)
-        self.option_add('*Text.foreground', UNSELECTEDFG)
-        self.option_add('*Text.selectForeground', UNSELECTEDFG)
-        self.option_add('*Text.background', BG)
-        self.option_add('*Text.selectBackground', BG)
-        self.option_add('*Text.inactiveSelectBackground', BG)
+        self.option_add('*TCombobox*Listbox.selectBackground', theme['selectbg'])
+        self.option_add('*TCombobox*Listbox.selectForeground', theme['fg'])
+        self.option_add('*TCombobox*Listbox.foreground', theme['fg'])
+        self.option_add('*TCombobox*Listbox.background', theme['fieldbg'])
+        self.option_add('*Text.foreground', theme['unselectedfg'])
+        self.option_add('*Text.selectForeground', theme['unselectedfg'])
+        self.option_add('*Text.background', theme['bg'])
+        self.option_add('*Text.selectBackground', theme['bg'])
+        self.option_add('*Text.inactiveSelectBackground', theme['bg'])
         self.option_add('*Text.relief', 'flat')
         self.option_add('*Text.highlightThickness', 0)
         self.option_add('*Text.borderWidth', 0)
-        self.option_add('*Text.font', FONT)
-        self.option_add('*Canvas.background', BG)
-        self.option_add('*Canvas.fill', ACTIVEBG)
+        self.option_add('*Text.font', font)
+        self.option_add('*Canvas.background', theme['bg'])
+        self.option_add('*Canvas.fill', theme['activebg'])
         self.option_add('*Canvas.relief', 'flat')
         self.option_add('*Canvas.highlightThickness', 0)
         self.option_add('*Canvas.borderWidth', 0)
-        self.option_add('*Toplevel.background', BG)
+        self.option_add('*Toplevel.background', theme['bg'])
 
         style.layout('Down.TButton',
                      [('Button.padding',
@@ -348,7 +324,7 @@ class App(tk.Tk):
                                       {'sticky': 'nswe',
                                        'children': [('Button.close', {'sticky': 'nswe'})]})]})])
         style.configure('border.TFrame', borderwidth=1, relief='sunken')
-        style.configure('separator.TFrame', background=BORDERCOLOR, padding=1)
+        style.configure('separator.TFrame', background=theme['bordercolor'], padding=1)
         style.configure('Up.TButton', arrowsize=20)
         style.configure('Down.TButton', arrowsize=20)
         style.configure('close.TButton', borderwidth=1, relief='flat')
@@ -357,35 +333,37 @@ class App(tk.Tk):
                      [('Treeview.padding',
                        {'sticky': 'nswe',
                         'children': [('Treeview.treearea', {'sticky': 'nswe'})]})])
-        style.configure('flat.Treeview', background=FIELDBG)
-        self.configure(bg=BG, padx=6, pady=2)
+        style.configure('flat.Treeview', background=theme['fieldbg'])
+        self.configure(bg=theme['bg'], padx=6, pady=2)
         # --- menu
-        self.menu.configure(bg=BG, fg=FG,
+        self.menu.configure(bg=theme['bg'], fg=theme['fg'],
                             borderwidth=0, activeborderwidth=0,
-                            activebackground=SELECTBG,
-                            activeforeground=SELECTFG)
-        self.menu_file.configure(bg=FIELDBG, activebackground=SELECTBG,
-                                 fg=FG, activeforeground=FG,
-                                 disabledforeground=DISABLEDFG,
-                                 selectcolor=FG)
-        self.menu_recent_files.configure(bg=FIELDBG, activebackground=SELECTBG,
-                                         fg=FG, activeforeground=FG,
-                                         disabledforeground=DISABLEDFG,
-                                         selectcolor=FG)
-        self.menu_edit.configure(bg=FIELDBG, activebackground=SELECTBG,
-                                 fg=FG, activeforeground=FG,
-                                 disabledforeground=DISABLEDFG,
-                                 selectcolor=FG)
-        self.menu_errors.configure(bg=FIELDBG, activebackground=SELECTBG,
-                                   fg=FG, activeforeground=FG,
-                                   disabledforeground=DISABLEDFG,
-                                   selectcolor=FG)
-        self.option_add('*Menu.background', FIELDBG)
-        self.option_add('*Menu.activeBackground', SELECTBG)
-        self.option_add('*Menu.activeForeground', FG)
-        self.option_add('*Menu.disabledForeground', DISABLEDFG)
-        self.option_add('*Menu.foreground', FG)
-        self.option_add('*Menu.selectColor', FG)
+                            activebackground=theme['selectbg'],
+                            activeforeground=theme['selectfg'])
+        self.menu_file.configure(bg=theme['fieldbg'], activebackground=theme['selectbg'],
+                                 fg=theme['fg'], activeforeground=theme['fg'],
+                                 disabledforeground=theme['disabledfg'],
+                                 selectcolor=theme['fg'])
+        self.menu_recent_files.configure(bg=theme['fieldbg'], activebackground=theme['selectbg'],
+                                         fg=theme['fg'], activeforeground=theme['fg'],
+                                         disabledforeground=theme['disabledfg'],
+                                         selectcolor=theme['fg'])
+        self.menu_edit.configure(bg=theme['fieldbg'], activebackground=theme['selectbg'],
+                                 fg=theme['fg'], activeforeground=theme['fg'],
+                                 disabledforeground=theme['disabledfg'],
+                                 selectcolor=theme['fg'])
+        self.menu_errors.configure(bg=theme['fieldbg'],
+                                   activebackground=theme['selectbg'],
+                                   fg=theme['fg'],
+                                   activeforeground=theme['fg'],
+                                   disabledforeground=theme['disabledfg'],
+                                   selectcolor=theme['fg'])
+        self.option_add('*Menu.background', theme['fieldbg'])
+        self.option_add('*Menu.activeBackground', theme['selectbg'])
+        self.option_add('*Menu.activeForeground', theme['fg'])
+        self.option_add('*Menu.disabledForeground', theme['disabledfg'])
+        self.option_add('*Menu.foreground', theme['fg'])
+        self.option_add('*Menu.selectColor', theme['fg'])
         # --- notebook
         style.layout('Notebook', style.layout('TFrame'))
         style.layout('Notebook.TMenubutton',
@@ -393,7 +371,8 @@ class App(tk.Tk):
                        {'sticky': 'nswe',
                         'children': [('Menubutton.focus',
                                       {'sticky': 'nswe',
-                                       'children': [('Menubutton.indicator', {'side': 'right', 'sticky': ''}),
+                                       'children': [('Menubutton.indicator',
+                                                     {'side': 'right', 'sticky': ''}),
                                                     ('Menubutton.padding',
                                                      {'expand': '1',
                                                       'sticky': 'we'})]})]})])
@@ -416,44 +395,45 @@ class App(tk.Tk):
                      [('Button.padding',
                        {'sticky': 'nswe',
                         'children': [('Button.rightarrow', {'sticky': 'nswe'})]})])
-        style.configure('Notebook', **STYLE_CONFIG)
+        style.configure('Notebook', **style_config)
         style.configure('Notebook.Tab', relief='raised', borderwidth=1,
-                        **STYLE_CONFIG)
+                        **style_config)
         style.configure('Notebook.Tab.Frame', relief='flat', borderwidth=0,
-                        **STYLE_CONFIG)
+                        **style_config)
         style.configure('Notebook.Tab.Label', relief='flat', borderwidth=1,
-                        padding=0, **STYLE_CONFIG)
-        style.configure('Notebook.Tab.Label', foreground=UNSELECTEDFG)
+                        padding=0, **style_config)
+        style.configure('Notebook.Tab.Label', foreground=theme['unselectedfg'])
         style.configure('Notebook.Tab.Close', relief='flat', borderwidth=1,
-                        padding=0, **STYLE_CONFIG)
-        style.configure('Notebook.Tab.Frame', background=BG)
-        style.configure('Notebook.Tab.Label', background=BG)
-        style.configure('Notebook.Tab.Close', background=BG)
+                        padding=0, **style_config)
+        style.configure('Notebook.Tab.Frame', background=theme['bg'])
+        style.configure('Notebook.Tab.Label', background=theme['bg'])
+        style.configure('Notebook.Tab.Close', background=theme['bg'])
 
         style.map('Notebook.Tab.Frame',
-                  **{'background': [('selected', '!disabled', ACTIVEBG)]})
+                  **{'background': [('selected', '!disabled', theme['activebg'])]})
         style.map('Notebook.Tab.Label',
-                  **{'background': [('selected', '!disabled', ACTIVEBG)],
-                     'foreground': [('selected', '!disabled', FG)]})
+                  **{'background': [('selected', '!disabled', theme['activebg'])],
+                     'foreground': [('selected', '!disabled', theme['fg'])]})
         style.map('Notebook.Tab.Close',
-                  **{'background': [('selected', ACTIVEBG),
-                                    ('pressed', DARKCOLOR),
-                                    ('active', ACTIVEBG)],
+                  **{'background': [('selected', theme['activebg']),
+                                    ('pressed', theme['darkcolor']),
+                                    ('active', theme['activebg'])],
                      'relief': [('hover', '!disabled', 'raised'),
                                 ('active', '!disabled', 'raised'),
                                 ('pressed', '!disabled', 'sunken')],
-                     'lightcolor': [('pressed', DARKCOLOR)],
-                     'darkcolor': [('pressed', LIGHTCOLOR)]})
+                     'lightcolor': [('pressed', theme['darkcolor'])],
+                     'darkcolor': [('pressed', theme['lightcolor'])]})
         style.map('Notebook.Tab',
-                  **{'background': [('selected', '!disabled', ACTIVEBG)]})
+                  **{'background': [('selected', '!disabled', theme['activebg'])]})
 
         style.configure('Notebook.Left.TButton', padding=0)
         style.configure('Notebook.Right.TButton', padding=0)
 
-        style.configure('TNotebook.Tab', background=BG, foreground=UNSELECTEDFG)
+        style.configure('TNotebook.Tab', background=theme['bg'],
+                        foreground=theme['unselectedfg'])
         style.map('TNotebook.Tab',
-                  **{'background': [('selected', '!disabled', ACTIVEBG)],
-                     'foreground': [('selected', '!disabled', FG)]})
+                  **{'background': [('selected', '!disabled', theme['activebg'])],
+                     'foreground': [('selected', '!disabled', theme['fg'])]})
 
     def _on_populate(self, event):
         cells = self.codestruct.get_cells()
@@ -478,6 +458,7 @@ class App(tk.Tk):
         self.editor.update_style()
         self.console.update_style()
         self.history.update_style()
+        self.help.load_stylesheet()
 
     def quit(self):
         files = ', '.join([f for f in self.editor.files.values() if f])
@@ -507,6 +488,24 @@ class App(tk.Tk):
         if len(self.recent_files) > 10:
             del self.recent_files[-1]
             self.menu_recent_files.delete(self.menu_recent_files.index('end'))
+
+    def reload(self, event):
+        file = self.editor.files[self.editor.current_tab]
+        try:
+            with open(file) as f:
+                txt = f.read()
+        except FileNotFoundError:
+            pass
+        except Exception:
+            showerror('Error', traceback.format_exc())
+        else:
+            self.editor.delete('1.0', 'end')
+            self.editor.insert('1.0', txt)
+            self.editor.edit_reset()
+            self._edit_modified(0)
+            self.codestruct.populate(self.editor.filename, self.editor.get(strip=False))
+            self.check_syntax()
+            self.editor.goto_start()
 
     def open_file(self, file):
         files = list(self.editor.files.values())
@@ -566,8 +565,8 @@ class App(tk.Tk):
         saved = self.editor.save(tab)
         if update and saved:
             self._edit_modified(0, tab=tab)
-            self.codestruct.populate(self.editor.filename, self.editor.get(strip=False))
             self.check_syntax()
+            self.codestruct.populate(self.editor.filename, self.editor.get(strip=False))
         return saved
 
     def saveall(self, event=None):
