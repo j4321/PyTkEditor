@@ -18,10 +18,20 @@ import tkinter
 import time
 
 
+class Stdout(StringIO):
+    def __init__(self, send_cmd, *args):
+        StringIO.__init__(self, *args)
+        self.send_cmd = send_cmd
+
+    def write(self, line):
+        StringIO.write(self, line)
+        self.send_cmd(line)
+
+
 class SocketConsole(InteractiveConsole):
     def __init__(self, hostname, port, locals=None, filename='<console>'):
         InteractiveConsole.__init__(self, locals, filename)
-        self.stdout = StringIO()
+        self.stdout = Stdout(self.send_cmd)
         self.stderr = StringIO()
         self.locals['exit'] = self._exit
         self.locals['quit'] = self._exit
@@ -75,6 +85,9 @@ class SocketConsole(InteractiveConsole):
         self.runcode(code)
         return False
 
+    def send_cmd(self, line):
+        self.socket.send(('False, %r, "", True' % (line + '\n')).encode())
+
     def interact(self):
         self.socket.setblocking(False)
         while True:
@@ -91,12 +104,12 @@ class SocketConsole(InteractiveConsole):
                     except KeyboardInterrupt:
                         self.write('KeyboardInterrupt\n')
                         res = False
-                output = self.stdout.getvalue()
+                # output = self.stdout.getvalue()
                 err = self.stderr.getvalue()
-                self.socket.send(('%s, %r, %r' % (res, output, err)).encode())
+                self.socket.send(('%s, %r, %r, %s' % (res, '', err, False)).encode())
                 self.stdout.close()
                 self.stderr.close()
-                self.stdout = StringIO()
+                self.stdout = Stdout(self.send_cmd)
                 self.stderr = StringIO()
             except BrokenPipeError:
                 self.socket.close()

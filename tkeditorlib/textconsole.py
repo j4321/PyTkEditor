@@ -209,10 +209,10 @@ class TextConsole(tk.Text):
 
     def prompt(self, result=False):
         if result:
-            self.insert('insert', self._prompt2, 'prompt')
+            self.insert('end', self._prompt2, 'prompt')
         else:
-            self.insert('insert', self._prompt1, 'prompt')
-        self.mark_set('input', 'insert')
+            self.insert('end', self._prompt1, 'prompt')
+        self.mark_set('input', 'end-1c')
 
     def on_key_press(self, event):
         self._tooltip.withdraw()
@@ -424,17 +424,25 @@ class TextConsole(tk.Text):
         else:
             if not cmd:
                 return
-            res, output, err = eval(cmd)
-            self.configure(state='normal')
+            res, output, err, wait = eval(cmd)
 
+            if wait:
+                if output.strip():
+                    self.configure(state='normal')
+                    self.insert('end', output, 'output')
+                    self.mark_set('input', 'end')
+                    self.see('end')
+                self.configure(state='disabled')
+                self.after(1, self._check_result, auto_indent, lines, index)
+                return
+
+            self.configure(state='normal')
             if err.strip():
                 if err == 'SystemExit\n':
                     self._shell_clear()
                     return
                 else:
                     self.insert('end', err, 'error')
-            elif output.strip():
-                self.insert('end', output, 'output')
 
             if not res and self.compare('insert linestart', '>', 'insert'):
                 self.insert('insert', '\n')
