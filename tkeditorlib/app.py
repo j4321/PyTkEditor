@@ -15,6 +15,7 @@ from tkinter.messagebox import showerror
 from tkfilebrowser import askopenfilenames, asksaveasfilename
 import traceback
 import os
+import signal
 
 
 class App(tk.Tk):
@@ -188,9 +189,18 @@ class App(tk.Tk):
         if file:
             self.open_file(file)
         self.protocol('WM_DELETE_WINDOW', self.quit)
+        signal.signal(signal.SIGUSR1, self._on_signal)
+
+    def _on_signal(self, *args):
+        self.lift()
+        self.focus_get()
+        if os.path.exists(cst.OPENFILE_PATH):
+            with open(cst.OPENFILE_PATH) as f:
+                file = f.read()
+            os.remove(cst.OPENFILE_PATH)
+            self.open_file(file)
 
     def _setup_style(self):
-
         font = (CONFIG.get("General", "fontfamily"),
                 CONFIG.getint("General", "fontsize"))
         theme_name = CONFIG.get('General', 'theme')
@@ -555,8 +565,8 @@ class App(tk.Tk):
         saved = self.editor.save(tab)
         if update and saved:
             self._edit_modified(0, tab=tab)
-            self.codestruct.populate(self.editor.filename, self.editor.get(strip=False))
             self.check_syntax()
+            self.codestruct.populate(self.editor.filename, self.editor.get(strip=False))
         return saved
 
     def saveall(self, event=None):

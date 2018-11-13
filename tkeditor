@@ -2,6 +2,36 @@
 # -*- coding: utf-8 -*-
 import sys
 from tkeditorlib.app import App
+from tkeditorlib.constants import PIDFILE, OPENFILE_PATH
+import os
+import signal
+from tkinter.messagebox import showerror
+import traceback
 
-app = App(*sys.argv[1:])
-app.mainloop()
+pid = str(os.getpid())
+
+if os.path.isfile(PIDFILE):
+    with open(PIDFILE) as fich:
+        old_pid = fich.read().strip()
+    if os.path.exists("/proc/%s" % old_pid):
+        if len(sys.argv) > 1:
+            with open(OPENFILE_PATH, 'w') as f:
+                f.write(sys.argv[1])
+        os.kill(int(old_pid), signal.SIGUSR1)
+        sys.exit()
+    else:
+        # it is an old pid file (certainly due to session logout then login)
+        os.remove(PIDFILE)
+open(PIDFILE, 'w').write(pid)
+
+
+try:
+    app = App(*sys.argv[1:])
+    app.mainloop()
+except Exception:
+    showerror(_("Error"), traceback.format_exc())
+finally:
+    try:
+        os.unlink(PIDFILE)
+    except Exception:
+        pass

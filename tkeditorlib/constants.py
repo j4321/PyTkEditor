@@ -12,7 +12,9 @@ from jedi import settings
 import configparser
 from pygments.lexers import Python3Lexer
 from pygments.token import Comment
+
 settings.case_insensitive_completion = False
+os.environ['PYFLAKES_BUILTINS'] = '_'
 
 
 class MyLexer(Python3Lexer):
@@ -61,6 +63,8 @@ if not os.path.exists(LOCAL_PATH):
 
 HISTFILE = os.path.join(LOCAL_PATH, 'tkeditor.history')
 CONFIG_PATH = os.path.join(LOCAL_PATH, 'tkeditor.ini')
+PIDFILE = os.path.join(LOCAL_PATH, "tkeditor.pid")
+OPENFILE_PATH = os.path.join(LOCAL_PATH, ".file")
 
 # --- ssl
 SERVER_CERT = os.path.join(PATH, 'ssl', 'server.crt')
