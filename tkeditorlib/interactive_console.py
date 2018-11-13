@@ -79,7 +79,7 @@ class SocketConsole(InteractiveConsole):
         self.socket.setblocking(False)
         while True:
             try:
-                line = self.socket.recv(65536).decode()
+                line = self.socket.recv(1048576).decode()
                 if self.buffer:
                     self.resetbuffer()
                 with redirect_stdout(self.stdout):

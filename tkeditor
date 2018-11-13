@@ -16,11 +16,11 @@ if os.path.isfile(PIDFILE):
     if os.path.exists("/proc/%s" % old_pid):
         if len(sys.argv) > 1:
             with open(OPENFILE_PATH, 'w') as f:
-                f.write(sys.argv[1])
+                f.write(os.path.abspath(sys.argv[1]))
         os.kill(int(old_pid), signal.SIGUSR1)
         sys.exit()
     else:
-        # it is an old pid file (certainly due to session logout then login)
+        # it is an old pid file
         os.remove(PIDFILE)
 open(PIDFILE, 'w').write(pid)
 
