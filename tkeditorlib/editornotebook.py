@@ -316,7 +316,7 @@ class EditorNotebook(Notebook):
             self.files[tab] = name
             self._tabs[tab].file = name
             self.tab(tab, text=os.path.split(name)[1])
-            self.wrapper.set_tooltip_text(tab, name)
+            self.wrapper.set_tooltip_text(tab, os.path.abspath(name))
             self.save(tab)
             return True
         else:

@@ -184,10 +184,10 @@ class App(tk.Tk):
         ofiles = CONFIG.get('General', 'opened_files').split(', ')
         for f in ofiles:
             if os.path.exists(f):
-                self.open_file(f)
+                self.open_file(os.path.abspath(f))
 
         for f in files:
-            self.open_file(f)
+            self.open_file(os.path.abspath(f))
 
         self.protocol('WM_DELETE_WINDOW', self.quit)
         signal.signal(signal.SIGUSR1, self._on_signal)
@@ -200,7 +200,7 @@ class App(tk.Tk):
                 files = f.read().splitlines()
             os.remove(cst.OPENFILE_PATH)
             for f in files:
-                self.open_file(f)
+                self.open_file(os.path.abspath(f))
 
     def _setup_style(self):
         # --- load theme
@@ -464,7 +464,7 @@ class App(tk.Tk):
         """Log exceptions."""
         err = "".join(traceback.format_exception(*args))
         print(err)
-        showerror(_("Error"), str(args[1]), err, True)
+        showerror("Error", str(args[1]), err, True)
 
     def config(self):
         c = Config(self)
