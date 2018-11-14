@@ -15,23 +15,37 @@ class AutoHideScrollbar(ttk.Scrollbar):
         self._pack_kw = {}
         self._place_kw = {}
         self._layout = 'place'
+        self._timer = 0
+        self._visible = False
+        self._incr_timer()
 
     def set(self, lo, hi):
-        if float(lo) <= 0.0 and float(hi) >= 1.0:
-            if self._layout == 'place':
-                self.place_forget()
-            elif self._layout == 'pack':
-                self.pack_forget()
+        if self._timer > 10:
+            if float(lo) <= 0.0 and float(hi) >= 1.0:
+                if self._layout == 'place':
+                    self.place_forget()
+                elif self._layout == 'pack':
+                    self.pack_forget()
+                else:
+                    self.grid_remove()
+                if self._visible:
+                    self._timer = 0
+                self._visible = False
             else:
-                self.grid_remove()
-        else:
-            if self._layout == 'place':
-                self.place(**self._place_kw)
-            elif self._layout == 'pack':
-                self.pack(**self._pack_kw)
-            else:
-                self.grid()
+                if self._layout == 'place':
+                    self.place(**self._place_kw)
+                elif self._layout == 'pack':
+                    self.pack(**self._pack_kw)
+                else:
+                    self.grid()
+                if not self._visible:
+                    self._timer = 0
+                self._visible = True
         ttk.Scrollbar.set(self, lo, hi)
+
+    def _incr_timer(self):
+        self._timer += 1
+        self.after(100, self._incr_timer)
 
     def _get_info(self, layout):
         """Alternative to pack_info and place_info in case of bug."""
