@@ -20,6 +20,7 @@ class History(tk.Text):
 
     def __init__(self, master=None, histfile=HISTFILE, max_size=10000, **kw):
         """ Crée un historique vide """
+        kw.setdefault('width', 1)
         tk.Text.__init__(self, master, **kw)
         self._syntax_highlighting_tags = []
         self.update_style()

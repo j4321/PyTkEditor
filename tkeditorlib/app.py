@@ -16,6 +16,7 @@ from tkfilebrowser import askopenfilenames, asksaveasfilename
 import traceback
 import os
 import signal
+from ewmh import ewmh, EWMH
 
 
 class App(tk.Tk):
@@ -45,6 +46,7 @@ class App(tk.Tk):
         self.option_add('*Menu.borderWidth', 1)
         self.option_add('*Menu.activeBorderWidth', 0)
         self.option_add('*Menu.relief', 'sunken')
+        self.option_add('*Menu.tearOff', False)
 
         self.menu = tk.Menu(self, tearoff=False, relief='flat')
         self.menu_file = tk.Menu(self.menu, tearoff=False)
@@ -70,7 +72,7 @@ class App(tk.Tk):
         # ----- code structure tree
         self.codestruct = CodeStructure(pane)
         # ----- editor notebook
-        self.editor = EditorNotebook(pane)
+        self.editor = EditorNotebook(pane, width=696)
         # ----- right pane
         right_nb = ttk.Notebook(pane)
         # -------- command history
@@ -99,8 +101,8 @@ class App(tk.Tk):
 
         # ----- placement
         pane.add(self.codestruct, weight=1)
-        pane.add(self.editor, weight=3)
-        pane.add(right_nb, weight=2)
+        pane.add(self.editor, weight=50)
+        pane.add(right_nb, weight=5)
         pane.pack(fill='both', expand=True, pady=(0, 4))
 
         # --- menu
@@ -180,6 +182,17 @@ class App(tk.Tk):
         self.editor.bind('<<CtrlReturn>>', lambda e: self.console.execute(self.editor.get_cell()))
         self.bind('<F5>', self.run)
         self.bind('<F9>', lambda e: self.console.execute(self.editor.get_selection()))
+
+        self.update_idletasks()
+        e = EWMH()
+        try:
+            for w in e.getClientList():
+                if w.get_wm_name() == self.title():
+                    e.setWmState(w, 1, '_NET_WM_STATE_MAXIMIZED_VERT')
+                    e.setWmState(w, 1, '_NET_WM_STATE_MAXIMIZED_HORZ')
+            e.display.flush()
+        except ewmh.display.error.BadWindow:
+            pass
 
         ofiles = CONFIG.get('General', 'opened_files').split(', ')
         for f in ofiles:
@@ -372,7 +385,6 @@ class App(tk.Tk):
         self.option_add('*Menu.disabledForeground', theme['disabledfg'])
         self.option_add('*Menu.foreground', theme['fg'])
         self.option_add('*Menu.selectColor', theme['fg'])
-        self.option_add('*Menu.tearOff', False)
         # --- notebook
         style.layout('Notebook', style.layout('TFrame'))
         style.layout('Notebook.TMenubutton',

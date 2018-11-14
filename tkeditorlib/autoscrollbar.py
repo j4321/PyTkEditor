@@ -15,7 +15,7 @@ class AutoHideScrollbar(ttk.Scrollbar):
         self._pack_kw = {}
         self._place_kw = {}
         self._layout = 'place'
-        self._timer = 0
+        self._timer = 11
         self._visible = False
         self._incr_timer()
 

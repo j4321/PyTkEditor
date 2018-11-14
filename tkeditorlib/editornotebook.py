@@ -18,8 +18,8 @@ from time import sleep
 
 
 class EditorNotebook(Notebook):
-    def __init__(self, master):
-        Notebook.__init__(self, master)
+    def __init__(self, master, **kw):
+        Notebook.__init__(self, master, **kw)
         self.files = {}      # tab: file_path
         self.wrapper = TooltipNotebookWrapper(self)
         self.last_closed = []

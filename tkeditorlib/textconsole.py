@@ -26,6 +26,7 @@ import signal
 
 class TextConsole(tk.Text):
     def __init__(self, master, history, **kw):
+        kw.setdefault('width', 50)
         kw.setdefault('wrap', 'word')
         kw.setdefault('prompt1', '>>> ')
         kw.setdefault('prompt2', '... ')

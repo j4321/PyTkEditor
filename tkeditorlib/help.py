@@ -126,8 +126,8 @@ class Help(ttk.Frame):
         menu_source.add_radiobutton(label='Console', value='Console', variable=self._source)
         menu_source.add_radiobutton(label='Editor', value='Editor', variable=self._source)
         self.source = ttk.Menubutton(top_bar, textvariable=self._source,
-                                     menu=menu_source, padding=1)
-        self.entry = ttk.Combobox(top_bar)
+                                     menu=menu_source, padding=1, width=7)
+        self.entry = ttk.Combobox(top_bar, width=15)
         self.entry.bind('<Return>', self.show_help)
         self.entry.bind('<<ComboboxSelected>>', self.show_help)
         ttk.Label(top_bar, text='Source').pack(side='left', padx=4, pady=4)

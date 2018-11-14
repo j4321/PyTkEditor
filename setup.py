@@ -17,4 +17,5 @@ setup(name="tkeditor",
                   ("/usr/share/applications", ["tkeditor.desktop"])],
       scripts=["tkeditor"],
       long_description="""Python IDE in Tkinter.""",
-      install_requires=["screeninfo", "pygments", "pyflakes", "pycodestyle", "tkfilebrowser"])
+      install_requires=["screeninfo", "pygments", "pyflakes", "pycodestyle",
+                        "tkfilebrowser", "ewmh"])

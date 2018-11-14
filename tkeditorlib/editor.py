@@ -44,9 +44,8 @@ class Editor(ttk.Frame):
 
         self.file = ''
 
-        self.text = tk.Text(self, undo=True,
-                            autoseparators=False,
-                            wrap='none')
+        self.text = tk.Text(self, undo=True, autoseparators=False,
+                            width=81, height=45, wrap='none')
 
         self.sep = tk.Frame(self.text)
 
