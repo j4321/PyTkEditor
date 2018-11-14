@@ -57,8 +57,6 @@ class App(tk.Tk):
         recent_files = CONFIG.get('General', 'recent_files', fallback='').split(', ')
         self.recent_files = [f for f in recent_files if f and os.path.exists(f)]
 
-        self.file = ''
-
         # -- style
         for seq in self.bind_class('TButton'):
             self.bind_class('Notebook.Tab.Close', seq, self.bind_class('TButton', seq), True)
@@ -580,7 +578,12 @@ class App(tk.Tk):
                 self.open_file(file)
 
     def saveas(self, event=None):
-        initialdir, initialfile = os.path.split(os.path.abspath(self.file))
+        tab = self.editor.select()
+        file = self.editor.files.get(tab, '')
+        if file:
+            initialdir, initialfile = os.path.split(file)
+        else:
+            initialdir, initialfile = '', 'new.py'
         name = asksaveasfilename(self, initialfile=initialfile,
                                  initialdir=initialdir, defaultext='.py',
                                  filetypes=[('Python', '*.py'), ('All files', '*')])

@@ -306,7 +306,7 @@ class EditorNotebook(Notebook):
         if tab is None:
             tab = self.current_tab
         if name is None:
-            initialdir, initialfile = os.path.split(os.path.abspath(self.files[tab]))
+            initialdir, initialfile = os.path.split(self.files[tab])
             name = asksaveasfilename(self, initialfile=initialfile,
                                      initialdir=initialdir, defaultext='.py',
                                      filetypes=[('Python', '*.py'), ('All files', '*')])
