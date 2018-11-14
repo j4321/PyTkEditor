@@ -10,7 +10,7 @@ from tkeditorlib.editor import Editor
 from tkeditorlib.tooltip import TooltipNotebookWrapper
 import os
 from tkinter import Menu
-from tkinter.messagebox import askyesnocancel, askyesno
+from tkeditorlib.messagebox import askyesnocancel, askyesno
 from tkfilebrowser import asksaveasfilename
 from subprocess import Popen
 from threading import Thread, Event
@@ -79,7 +79,8 @@ class EditorNotebook(Notebook):
                 self.edit_modified(True, tab=tab, generate=True)
                 self.update_idletasks()
                 rep = askyesno('Warning',
-                               '{} has been modified outside TkEditor. Do you want to reload it?'.format(file))
+                               '{} has been modified outside TkEditor. Do you want to reload it?'.format(file),
+                               icon='warning')
                 if rep:
                     self.select(tab)
                     self.event_generate('<<Reload>>')
@@ -92,7 +93,8 @@ class EditorNotebook(Notebook):
                     self.edit_modified(True, tab=tab, generate=True)
                     self.update_idletasks()
                     rep = askyesno('Warning',
-                                   '{} has been deleted. Do you want to save it?'.format(file))
+                                   '{} has been deleted. Do you want to save it?'.format(file),
+                                   icon='warning')
                     if rep:
                         self.save(tab=tab)
                         self.edit_modified(False, tab=tab, generate=True)

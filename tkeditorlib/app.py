@@ -9,9 +9,9 @@ from tkeditorlib.config import Config
 from tkeditorlib.autoscrollbar import AutoHideScrollbar
 from tkeditorlib.menu import LongMenu
 from tkeditorlib.help import Help
+from tkeditorlib.messagebox import showerror
 import tkinter as tk
 from tkinter import ttk
-from tkinter.messagebox import showerror
 from tkfilebrowser import askopenfilenames, asksaveasfilename
 import traceback
 import os
@@ -203,12 +203,14 @@ class App(tk.Tk):
                 self.open_file(f)
 
     def _setup_style(self):
+        # --- load theme
         font = (CONFIG.get("General", "fontfamily"),
                 CONFIG.getint("General", "fontsize"))
         theme_name = CONFIG.get('General', 'theme')
         theme = dict(CONFIG.items('{} Theme'.format(theme_name.capitalize())))
         self._im_close.configure(file=IM_CLOSE.format(theme=theme_name))
 
+        # --- configuration dict
         button_style_config = {'bordercolor': theme['bordercolor'],
                                'background': theme['bg'],
                                'fieldbackground': theme['fieldbg'],
@@ -247,7 +249,7 @@ class App(tk.Tk):
                      'lightcolor': [('pressed', theme['darkcolor'])],
                      'darkcolor': [('pressed', theme['lightcolor'])],
                      'foreground': [('disabled', theme['disabledfg'])]}
-
+        # --- update style
         style = ttk.Style(self)
         style.theme_use('clam')
         style.configure('TFrame', **style_config)
@@ -284,12 +286,7 @@ class App(tk.Tk):
         style.map('Treeview', background=[('selected', theme['selectbg'])],
                   foreground=[('selected', theme['selectfg'])])
         style.map('Treeview.Heading', **button_style_map)
-        style.configure('tooltip.TLabel', background=theme['tooltip_bg'], foreground=theme['fg'])
-        style.configure('tooltip.TFrame', background=theme['tooltip_bg'])
-        style.configure('title.tooltip.TLabel', font='TkDefaultFont 9 bold')
-        style.configure('syntax.title.tooltip.TLabel', foreground='#FF4D00')
-        style.configure('args.title.tooltip.TLabel', foreground='#4169E1')
-
+        # --- set options
         self.option_add('*TCombobox*Listbox.selectBackground', theme['selectbg'])
         self.option_add('*TCombobox*Listbox.selectForeground', theme['fg'])
         self.option_add('*TCombobox*Listbox.foreground', theme['fg'])
@@ -309,7 +306,16 @@ class App(tk.Tk):
         self.option_add('*Canvas.highlightThickness', 0)
         self.option_add('*Canvas.borderWidth', 0)
         self.option_add('*Toplevel.background', theme['bg'])
-
+        # --- special themes
+        style.configure('tooltip.TLabel', background=theme['tooltip_bg'],
+                        foreground=theme['fg'])
+        style.configure('tooltip.TFrame', background=theme['tooltip_bg'])
+        style.configure('title.tooltip.TLabel', font='TkDefaultFont 9 bold')
+        style.configure('syntax.title.tooltip.TLabel', foreground='#FF4D00')
+        style.configure('args.title.tooltip.TLabel', foreground='#4169E1')
+        style.configure("url.TLabel",
+                        foreground="light" * (theme_name == 'dark') + "blue")
+        style.configure("txt.TFrame", background=theme['fieldbg'])
         style.layout('Down.TButton',
                      [('Button.padding',
                        {'sticky': 'nswe',
@@ -366,6 +372,7 @@ class App(tk.Tk):
         self.option_add('*Menu.disabledForeground', theme['disabledfg'])
         self.option_add('*Menu.foreground', theme['fg'])
         self.option_add('*Menu.selectColor', theme['fg'])
+        self.option_add('*Menu.tearOff', False)
         # --- notebook
         style.layout('Notebook', style.layout('TFrame'))
         style.layout('Notebook.TMenubutton',
@@ -453,6 +460,12 @@ class App(tk.Tk):
         else:
             self.menu_file.entryconfigure('Save', state='disabled')
 
+    def report_callback_exception(self, *args):
+        """Log exceptions."""
+        err = "".join(traceback.format_exception(*args))
+        print(err)
+        showerror(_("Error"), str(args[1]), err, True)
+
     def config(self):
         c = Config(self)
         self.wait_window(c)
@@ -491,16 +504,29 @@ class App(tk.Tk):
             del self.recent_files[-1]
             self.menu_recent_files.delete(self.menu_recent_files.index('end'))
 
-    def reload(self, event):
-        file = self.editor.files[self.editor.current_tab]
+    def load_file(self, file):
         try:
             with open(file) as f:
                 txt = f.read()
-        except FileNotFoundError:
-            pass
-        except Exception:
-            showerror('Error', traceback.format_exc())
-        else:
+            return txt
+        except Exception as e:
+            if file in self.recent_files:
+                ind = self.recent_files.index(file)
+                del self.recent_files[ind]
+                self.menu_recent_files.delete(ind)
+            if isinstance(e, FileNotFoundError):
+                return
+            elif isinstance(e, UnicodeDecodeError):
+                showerror('Error', 'Invalid file format: {}.'.format(file), parent=self)
+            else:
+                err = traceback.format_exc()
+                print(err)
+                showerror('Error', "{}: {}".format(type(e), e), err, parent=self)
+
+    def reload(self, event):
+        file = self.editor.files[self.editor.current_tab]
+        txt = self.load_file(file)
+        if txt is not None:
             self.editor.delete('1.0', 'end')
             self.editor.insert('1.0', txt)
             self.editor.edit_reset()
@@ -515,14 +541,8 @@ class App(tk.Tk):
             self.editor.select(list(self.editor.files.keys())[files.index(file)])
             self._update_recent_files(file)
         else:
-            try:
-                with open(file) as f:
-                    txt = f.read()
-            except FileNotFoundError:
-                pass
-            except Exception:
-                showerror('Error', traceback.format_exc())
-            else:
+            txt = self.load_file(file)
+            if txt is not None:
                 self.editor.new(file)
                 self.editor.insert('1.0', txt)
                 self.editor.edit_reset()

@@ -5,7 +5,7 @@ from tkeditorlib.app import App
 from tkeditorlib.constants import PIDFILE, OPENFILE_PATH
 import os
 import signal
-from tkinter.messagebox import showerror
+from tkeditorlib.messagebox import showerror
 import traceback
 
 pid = str(os.getpid())
@@ -28,10 +28,10 @@ open(PIDFILE, 'w').write(pid)
 try:
     app = App(*sys.argv[1:])
     app.mainloop()
-except Exception:
+except Exception as e:
     msg = traceback.format_exc()
     print(msg)
-    showerror("Error", msg)
+    showerror("Error", "{}: {}".format(type(e), e), msg)
 finally:
     try:
         os.unlink(PIDFILE)

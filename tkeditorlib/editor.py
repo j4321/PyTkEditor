@@ -5,7 +5,7 @@ import jedi
 from pygments import lex
 import tkinter as tk
 from tkinter import ttk
-from tkinter import messagebox
+from tkeditorlib import messagebox
 from tkinter.font import Font
 import re
 from tkeditorlib.autoscrollbar import AutoHideScrollbar
@@ -693,7 +693,7 @@ class Editor(ttk.Frame):
             self.see(res)
         else:
             if notify_no_match:
-                messagebox.showinfo("Search complete", "No match found")
+                messagebox.showinfo("Search complete", "No match found", self)
 
     # --- goto
     def goto_line(self, event):
