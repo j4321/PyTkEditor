@@ -19,7 +19,7 @@ import signal
 
 
 class App(tk.Tk):
-    def __init__(self, file=None):
+    def __init__(self, *files):
         tk.Tk.__init__(self, className='TkEditor')
         self.title('TkEditor')
         self._icon = tk.PhotoImage(file=ICON, master=self)
@@ -181,13 +181,14 @@ class App(tk.Tk):
         self.bind('<F5>', self.run)
         self.bind('<F9>', lambda e: self.console.execute(self.editor.get_selection()))
 
-        files = CONFIG.get('General', 'opened_files').split(', ')
-        for f in files:
+        ofiles = CONFIG.get('General', 'opened_files').split(', ')
+        for f in ofiles:
             if os.path.exists(f):
                 self.open_file(f)
 
-        if file:
-            self.open_file(file)
+        for f in files:
+            self.open_file(f)
+
         self.protocol('WM_DELETE_WINDOW', self.quit)
         signal.signal(signal.SIGUSR1, self._on_signal)
 
@@ -196,9 +197,10 @@ class App(tk.Tk):
         self.focus_get()
         if os.path.exists(cst.OPENFILE_PATH):
             with open(cst.OPENFILE_PATH) as f:
-                file = f.read()
+                files = f.read().splitlines()
             os.remove(cst.OPENFILE_PATH)
-            self.open_file(file)
+            for f in files:
+                self.open_file(f)
 
     def _setup_style(self):
         font = (CONFIG.get("General", "fontfamily"),
