@@ -206,9 +206,9 @@ class TooltipNotebookWrapper:
         self.bind_enter_ids[tab] = ttk.Frame.bind(self.notebook._tab_labels[tab], '<Enter>', lambda e: self._on_enter(e, tab))
         self.bind_leave_ids[tab] = ttk.Frame.bind(self.notebook._tab_labels[tab], '<Leave>', lambda e: self._on_leave(e, tab))
 
-    def set_tooltip_text(self, widget, text):
+    def set_tooltip_text(self, tab, text):
         """Change tooltip text for given widget."""
-        self.tooltips[str(widget)] = text
+        self.tooltips[tab] = text
 
     def remove_all(self):
         """Remove all tooltips."""

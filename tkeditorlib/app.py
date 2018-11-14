@@ -552,8 +552,10 @@ class App(tk.Tk):
                                  filetypes=[('Python', '*.py'), ('All files', '*')])
         if name:
             tab = self.editor.select()
-            self.editor.files[tab] = name
-            self.save()
+            self.editor.saveas(tab=tab, name=name)
+            self._edit_modified(0, tab=tab)
+            self.check_syntax()
+            self.codestruct.populate(self.editor.filename, self.editor.get(strip=False))
             return True
         else:
             return False

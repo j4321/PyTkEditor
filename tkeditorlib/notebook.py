@@ -60,7 +60,11 @@ class Tab(ttk.Frame):
             self._closecommand = kwargs.pop('closecmd')
             if not kwargs:
                 return
-        return self.label.configure(*args, **kwargs)
+        res = self.label.configure(*args, **kwargs)
+        self.update_idletasks()
+        self.configure(width=self.frame.winfo_reqwidth() + 6,
+                       height=self.frame.winfo_reqheight() + 6)
+        return res
 
     def tab_cget(self, option):
         return self.label.cget(option)

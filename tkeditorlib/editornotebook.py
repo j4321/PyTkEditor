@@ -291,28 +291,31 @@ class EditorNotebook(Notebook):
                 f.write(self.get(tab))
             file = self.files[tab]
             self._files_mtime[file] = os.stat(self.files[tab]).st_mtime
-            self._is_modified[file].clear()
-            self._is_deleted[file].clear()
+            try:
+                self._is_modified[file].clear()
+                self._is_deleted[file].clear()
+            except KeyError:
+                self._start_watching(file)
             res = True
             self._files_check_deletion[self.files[tab]] = True
         return res
 
-    def saveas(self, tab=None):
+    def saveas(self, tab=None, name=None):
         if tab is None:
             tab = self.current_tab
-        initialdir, initialfile = os.path.split(os.path.abspath(self.files[tab]))
-        name = asksaveasfilename(self, initialfile=initialfile,
-                                 initialdir=initialdir, defaultext='.py',
-                                 filetypes=[('Python', '*.py'), ('All files', '*')])
+        if name is None:
+            initialdir, initialfile = os.path.split(os.path.abspath(self.files[tab]))
+            name = asksaveasfilename(self, initialfile=initialfile,
+                                     initialdir=initialdir, defaultext='.py',
+                                     filetypes=[('Python', '*.py'), ('All files', '*')])
         if name:
             if self.files[tab]:
                 self._stop_watching(self.files[tab])
             self.files[tab] = name
             self._tabs[tab].file = name
-            self._tab_labels[tab].tab_configure(text=os.path.split(name)[1])
-            self.wrapper.set_tooltip_text(self._tab_labels[tab], name)
+            self.tab(tab, text=os.path.split(name)[1])
+            self.wrapper.set_tooltip_text(tab, name)
             self.save(tab)
-            self._start_watching(name)
             return True
         else:
             return False
