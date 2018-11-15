@@ -406,11 +406,11 @@ class App(tk.Tk):
                                        'sticky': 'nsew',
                                        'children': [('Close.close',
                                                      {'sticky': 'ewsn'})]})]})])
-        style.layout('Notebook.Left.TButton',
+        style.layout('Left.Notebook.TButton',
                      [('Button.padding',
                        {'sticky': 'nswe',
                         'children': [('Button.leftarrow', {'sticky': 'nswe'})]})])
-        style.layout('Notebook.Right.TButton',
+        style.layout('Right.Notebook.TButton',
                      [('Button.padding',
                        {'sticky': 'nswe',
                         'children': [('Button.rightarrow', {'sticky': 'nswe'})]})])
@@ -443,10 +443,10 @@ class App(tk.Tk):
                      'lightcolor': [('pressed', theme['darkcolor'])],
                      'darkcolor': [('pressed', theme['lightcolor'])]})
         style.map('Notebook.Tab',
-                  **{'background': [('selected', '!disabled', theme['activebg'])]})
+                  **{'ba.ckground': [('selected', '!disabled', theme['activebg'])]})
 
-        style.configure('Notebook.Left.TButton', padding=0)
-        style.configure('Notebook.Right.TButton', padding=0)
+        style.configure('Left.Notebook.TButton', padding=0)
+        style.configure('Right.Notebook.TButton', padding=0)
 
         style.configure('TNotebook.Tab', background=theme['bg'],
                         foreground=theme['unselectedfg'])

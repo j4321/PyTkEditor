@@ -20,6 +20,7 @@ from time import sleep
 class EditorNotebook(Notebook):
     def __init__(self, master, **kw):
         Notebook.__init__(self, master, **kw)
+        self._closecommand = self.close
         self.files = {}      # tab: file_path
         self.wrapper = TooltipNotebookWrapper(self)
         self.last_closed = []
@@ -205,7 +206,6 @@ class EditorNotebook(Notebook):
 
         editor = Editor(self)
         tab = self.add(editor, text=title)
-        self.tab(tab, closecmd=self.close)
         if file in self.last_closed:
             self.last_closed.remove(file)
         self.files[tab] = file
