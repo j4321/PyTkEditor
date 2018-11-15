@@ -48,6 +48,7 @@ class Editor(ttk.Frame):
                             width=81, height=45, wrap='none')
 
         self.sep = tk.Frame(self.text)
+        self._sep_x = 0
 
         self.line_nb = tk.Text(self, width=1, cursor='arrow')
         self.line_nb.insert('1.0', '1')
@@ -63,8 +64,13 @@ class Editor(ttk.Frame):
 
         sx = AutoHideScrollbar(self, orient='horizontal', command=self.text.xview)
         sy = AutoHideScrollbar(self, orient='vertical', command=self.yview)
+
+        def xscroll(x0, x1):
+            sx.set(x0, x1)
+            self.sep.place_configure(relx=self._sep_x / self.text.winfo_width() - float(x0))
+
         self.filebar = FileBar(self, self, width=10)
-        self.text.configure(xscrollcommand=sx.set, yscrollcommand=sy.set)
+        self.text.configure(xscrollcommand=xscroll, yscrollcommand=sy.set)
         self.line_nb.configure(yscrollcommand=sy.set)
         self.syntax_checks.configure(yscrollcommand=sy.set)
 
@@ -188,8 +194,8 @@ class Editor(ttk.Frame):
         FONT = (CONFIG.get("General", "fontfamily"),
                 CONFIG.getint("General", "fontsize"))
         font = Font(self, FONT)
-
-        self.sep.place(y=0, relheight=1, x=font.measure(' ' * 79), width=1)
+        self._sep_x = font.measure(' ' * 79)
+        self.sep.place(y=0, relheight=1, relx=self._sep_x / self.text.winfo_width(), width=1)
 
         EDITOR_BG, EDITOR_HIGHLIGHT_BG, EDITOR_SYNTAX_HIGHLIGHTING = load_style(CONFIG.get('Editor', 'style'))
         EDITOR_FG = EDITOR_SYNTAX_HIGHLIGHTING.get('Token.Name', {}).get('foreground', 'black')
