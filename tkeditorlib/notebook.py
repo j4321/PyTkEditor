@@ -550,23 +550,23 @@ class Notebook(ttk.Frame):
 
     def select_next(self, rotate=False):
         """Go to next tab."""
-        if self._current_tab >= 0:
-            index = self._active_tabs.index(self.current_tab)
+        if self.current_tab >= 0:
+            index = self._visible_tabs.index(self.current_tab)
             index += 1
-            if index < len(self._active_tabs):
-                self._show(self._active_tabs[index])
+            if index < len(self._visible_tabs):
+                self._show(self._visible_tabs[index])
             elif rotate:
-                self._show(self._active_tabs[0])
+                self._show(self._visible_tabs[0])
 
     def select_prev(self, rotate=False):
         """Go to prev tab."""
-        if self._current_tab >= 0:
-            index = self._active_tabs.index(self.current_tab)
+        if self.current_tab >= 0:
+            index = self._visible_tabs.index(self.current_tab)
             index -= 1
             if index >= 0:
-                self._show(self._active_tabs[index])
+                self._show(self._visible_tabs[index])
             elif rotate:
-                self._show(self._active_tabs[-1])
+                self._show(self._visible_tabs[-1])
 
     def see(self, tab_id):
         """Make label of tab TAB_ID visible."""
