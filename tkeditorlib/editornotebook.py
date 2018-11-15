@@ -106,6 +106,19 @@ class EditorNotebook(Notebook):
     def _on_destroy(self, event):
         self.after_cancel(self._modif_polling_id)
 
+    def _menu_insert(self, tab, text):
+        label = '{} - {}'.format(text, self.files.get(tab, ''))
+        menu = []
+        for t in self._tabs.keys():
+            menu.append((self.tab(t, 'text'), t))
+        menu.sort()
+        ind = menu.index((text, tab))
+        self._tab_menu.insert_radiobutton(ind, label=label,
+                                          variable=self._tab_var, value=tab,
+                                          command=lambda t=tab: self._show(t))
+        for i, (text, tab) in enumerate(menu):
+            self._tab_menu_entries[tab] = i
+
     @property
     def filename(self):
         return self.tab(self.current_tab, 'text')
@@ -209,6 +222,8 @@ class EditorNotebook(Notebook):
         if file in self.last_closed:
             self.last_closed.remove(file)
         self.files[tab] = file
+        self._tab_menu.entryconfigure(self._tab_menu_entries[tab],
+                                      label="{} - {}".format(title, os.path.dirname(file)))
         self._tabs[tab].file = file
         self.wrapper.add_tooltip(tab, file if file else title)
         editor.text.bind('<<Modified>>', lambda e: self.edit_modified(widget=editor, generate=True))

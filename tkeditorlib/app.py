@@ -181,6 +181,7 @@ class App(tk.Tk):
         self.bind('<F5>', self.run)
         self.bind('<F9>', lambda e: self.console.execute(self.editor.get_selection()))
 
+        # --- maximize window
         self.update_idletasks()
         e = EWMH()
         try:
@@ -192,11 +193,12 @@ class App(tk.Tk):
         except ewmh.display.error.BadWindow:
             pass
 
+        # --- restore opened files
         ofiles = CONFIG.get('General', 'opened_files').split(', ')
         for f in ofiles:
             if os.path.exists(f):
                 self.open_file(os.path.abspath(f))
-
+        # --- open files passed in argument
         for f in files:
             self.open_file(os.path.abspath(f))
 
