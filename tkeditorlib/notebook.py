@@ -196,12 +196,12 @@ class Notebook(ttk.Frame):
         # canvas to scroll through tab labels
         self._canvas = tk.Canvas(self, bg=bg, highlightthickness=0,
                                  borderwidth=0, takefocus=False)
-        self._tab_frame2 = ttk.Frame(self, height=25, style='Notebook',
+        self._tab_frame2 = ttk.Frame(self, height=26, style='Notebook',
                                      relief='flat')
         # self._tab_frame2 is a trick to be able to drag a tab on the full
         # canvas width even if self._tab_frame is smaller.
         self._tab_frame = ttk.Frame(self._tab_frame2, style='Notebook',
-                                    relief='flat')  # to display tab labels
+                                    relief='flat', height=26)  # to display tab labels
         self._sep = ttk.Separator(self._tab_frame2, orient='horizontal')
         self._sep.place(bordermode='outside', anchor='sw', x=0, rely=1,
                         relwidth=1, height=1)
@@ -261,10 +261,10 @@ class Notebook(ttk.Frame):
         # ensure that canvas has the same height as the tabs
         h = self._tab_frame.winfo_reqheight()
         self._canvas.configure(height=h)
-        # update canvas scrollregion
-        self._canvas.configure(scrollregion=self._canvas.bbox('all'))
         # ensure that _tab_frame2 fills the canvas if _tab_frame is smaller
         self._canvas.itemconfigure('window', width=max(self._canvas.winfo_width(), self._tab_frame.winfo_reqwidth()))
+        # update canvas scrollregion
+        self._canvas.configure(scrollregion=self._canvas.bbox('all'))
         # ensure visibility of current tab
         self.see(self.current_tab)
         # check wheter next/prev buttons needs to be displayed
@@ -588,6 +588,7 @@ class Notebook(ttk.Frame):
             self._canvas.xview_moveto(x1)
         elif x2 > xc2:
             self._canvas.xview_moveto(xc1 + x2 - xc2)
+        print(x1, x2, xc1, xc2)
         i = self._visible_tabs.index(tab)
         if i == 0:
             self._btn_left.state(['disabled'])
