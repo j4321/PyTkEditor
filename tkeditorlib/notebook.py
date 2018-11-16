@@ -410,6 +410,11 @@ class Notebook(ttk.Frame):
         self.update_idletasks()
         self.event_generate('<<NotebookTabChanged>>')
 
+    def _popup_menu(self, event, tab):
+        self._show(tab)
+        if self.menu is not None:
+            self.menu.tk_popup(event.x_root, event.y_root)
+
     @property
     def current_tab(self):
         return self._current_tab
@@ -494,6 +499,7 @@ class Notebook(ttk.Frame):
                                         closebutton=self._closebutton,
                                         **kwargs)
             self._tab_labels[ind].bind('<ButtonRelease-1>', self._on_click)
+            self._tab_labels[ind].bind('<ButtonRelease-3>', lambda e: self._popup_menu(e, ind))
             self._tab_labels[ind].bind('<ButtonPress-1>', lambda e: self._on_press(e, ind))
             self._body.configure(height=max(self._body.winfo_height(), widget.winfo_reqheight()),
                                  width=max(self._body.winfo_width(), widget.winfo_reqwidth()))
