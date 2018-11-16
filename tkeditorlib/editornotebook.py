@@ -119,6 +119,9 @@ class EditorNotebook(Notebook):
         for i, (text, tab) in enumerate(menu):
             self._tab_menu_entries[tab] = i
 
+    def get_open_files(self):
+        return [self.files[tab] for tab in self._visible_tabs]
+
     @property
     def filename(self):
         return self.tab(self.current_tab, 'text')

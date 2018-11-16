@@ -5,7 +5,7 @@ from tkinter import ttk
 
 class AutoHideScrollbar(ttk.Scrollbar):
     """Scrollbar that automatically hides when not needed."""
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, threshold=2, **kwargs):
         """
         Create the scrollbar.
 
@@ -15,12 +15,13 @@ class AutoHideScrollbar(ttk.Scrollbar):
         self._pack_kw = {}
         self._place_kw = {}
         self._layout = 'place'
-        self._timer = 11
+        self.timer = threshold + 1
+        self.threshold = threshold
         self._visible = False
         self._incr_timer()
 
     def set(self, lo, hi):
-        if self._timer > 10:
+        if self.timer > self.threshold:
             if float(lo) <= 0.0 and float(hi) >= 1.0:
                 if self._layout == 'place':
                     self.place_forget()
@@ -29,7 +30,7 @@ class AutoHideScrollbar(ttk.Scrollbar):
                 else:
                     self.grid_remove()
                 if self._visible:
-                    self._timer = 0
+                    self.timer = 0
                 self._visible = False
             else:
                 if self._layout == 'place':
@@ -39,13 +40,13 @@ class AutoHideScrollbar(ttk.Scrollbar):
                 else:
                     self.grid()
                 if not self._visible:
-                    self._timer = 0
+                    self.timer = 0
                 self._visible = True
         ttk.Scrollbar.set(self, lo, hi)
 
     def _incr_timer(self):
-        self._timer += 1
-        self.after(100, self._incr_timer)
+        self.timer += 1
+        self.after(10, self._incr_timer)
 
     def _get_info(self, layout):
         """Alternative to pack_info and place_info in case of bug."""

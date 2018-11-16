@@ -15,6 +15,7 @@ from tkeditorlib.complistbox import CompListbox
 from tkeditorlib.tooltip import Tooltip
 from tkeditorlib.constants import get_screen, load_style, CONFIG, SERVER_CERT, \
     CLIENT_CERT
+from tkeditorlib.messagebox import askyesno
 from pygments import lex
 from pygments.lexers import Python3Lexer
 import jedi
@@ -30,7 +31,6 @@ class TextConsole(tk.Text):
         kw.setdefault('wrap', 'word')
         kw.setdefault('prompt1', '>>> ')
         kw.setdefault('prompt2', '... ')
-        kw.setdefault('promptcolor', 'black')
         kw.setdefault('error_foreground', 'tomato')
         banner = kw.pop('banner', 'Python %s\n' % sys.version)
 
@@ -43,7 +43,6 @@ class TextConsole(tk.Text):
         self._prompt1 = kw.pop('prompt1')
         self._prompt2 = kw.pop('prompt2')
         error_foreground = kw.pop('error_foreground')
-        promptcolor = kw.pop('promptcolor')
 
         tk.Text.__init__(self, master, **kw)
 
@@ -54,30 +53,17 @@ class TextConsole(tk.Text):
                                 titlestyle='args.title.tooltip.TLabel')
         self._tooltip.withdraw()
 
+        self.menu = tk.Menu(self)
+        self.menu.add_command(label='Clear console', command=self._shell_clear)
+        self.menu.add_command(label='Restart console', command=self.restart_shell)
+
         # --- shell socket
-        context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
-        context.verify_mode = ssl.CERT_REQUIRED
-        context.load_cert_chain(certfile=SERVER_CERT)
-        context.load_verify_locations(CLIENT_CERT)
-
-        self.shell_socket = socket.socket()
-        self.shell_socket.bind(('127.0.0.1', 0))
-        host, port = self.shell_socket.getsockname()
-        self.shell_socket.listen(5)
-
-        p = Popen(['python',
-                   join(dirname(__file__), 'interactive_console.py'),
-                   host, str(port)])
-        self.shell_pid = p.pid
-        client, addr = self.shell_socket.accept()
-        self.shell_client = context.wrap_socket(client, server_side=True)
-        self.shell_client.setblocking(False)
+        self._init_shell()
 
         # --- initialization
         self.update_style()
 
         self.tag_configure('error', foreground=error_foreground)
-        self.tag_configure('prompt', foreground=promptcolor)
 
         self.insert('end', banner, 'banner')
         self.prompt()
@@ -106,6 +92,35 @@ class TextConsole(tk.Text):
         self.shell_client.shutdown(socket.SHUT_RDWR)
         self.shell_client.close()
         self.shell_socket.close()
+
+    def _init_shell(self):
+        context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
+        context.verify_mode = ssl.CERT_REQUIRED
+        context.load_cert_chain(certfile=SERVER_CERT)
+        context.load_verify_locations(CLIENT_CERT)
+
+        self.shell_socket = socket.socket()
+        self.shell_socket.bind(('127.0.0.1', 0))
+        host, port = self.shell_socket.getsockname()
+        self.shell_socket.listen(5)
+
+        p = Popen(['python',
+                   join(dirname(__file__), 'interactive_console.py'),
+                   host, str(port)])
+        self.shell_pid = p.pid
+        client, addr = self.shell_socket.accept()
+        self.shell_client = context.wrap_socket(client, server_side=True)
+        self.shell_client.setblocking(False)
+
+    def restart_shell(self):
+        rep = askyesno('Confirmation', 'Do you really want to restart the console?')
+        if rep:
+            kill(self.shell_pid, signal.SIGTERM)
+            self.shell_client.shutdown(socket.SHUT_RDWR)
+            self.shell_client.close()
+            self.shell_socket.close()
+            self._shell_clear()
+            self._init_shell()
 
     def _shell_clear(self):
         self.delete('banner.last', 'end')
@@ -137,6 +152,7 @@ class TextConsole(tk.Text):
                        selectbackground=CONSOLE_HIGHLIGHT_BG,
                        inactiveselectbackground=CONSOLE_HIGHLIGHT_BG,
                        insertbackground=CONSOLE_FG)
+        self.tag_configure('prompt', **CONSOLE_SYNTAX_HIGHLIGHTING['Token.Generic.Prompt'])
         self.tag_configure('error', background=CONSOLE_BG)
         self.tag_configure('output', foreground=CONSOLE_FG,
                            background=CONSOLE_BG)

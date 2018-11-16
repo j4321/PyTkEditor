@@ -240,7 +240,10 @@ class TooltipNotebookWrapper:
         """Hide tooltip if visible or cancel tooltip display."""
         if self.tooltip.winfo_ismapped():
             x, y = self.notebook.winfo_pointerxy()
-            if not self.notebook.winfo_containing(x, y) == self.tooltip:
+            try:
+                if self.notebook.winfo_containing(x, y) != self.tooltip:
+                    self.tooltip.withdraw()
+            except KeyError:
                 self.tooltip.withdraw()
         else:
             try:
@@ -254,8 +257,11 @@ class TooltipNotebookWrapper:
         if self.current_tab is None:
             return
         x, y = event.widget.winfo_pointerxy()
-        if not event.widget.winfo_containing(x, y) in self.notebook._tab_labels[self.current_tab].children.values():
-            self.tooltip.withdraw()
+        try:
+            if not event.widget.winfo_containing(x, y) in self.notebook._tab_labels[self.current_tab].children.values():
+                self.tooltip.withdraw()
+        except KeyError:
+                self.tooltip.withdraw()
 
     def display_tooltip(self):
         """Display tooltip with text corresponding to current widget."""

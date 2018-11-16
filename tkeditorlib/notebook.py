@@ -243,6 +243,18 @@ class Notebook(ttk.Frame):
         self._btn_right.grid(row=0, column=3, sticky='ns', pady=(0, 1))
         self._body.grid(row=1, columnspan=4, sticky='ewns', padx=1, pady=1)
 
+        ttk.Frame(self, height=1,
+                  style='separator.TFrame').place(x=1, anchor='nw',
+                                                  rely=1, height=1,
+                                                  relwidth=1)
+
+        self._border_left = ttk.Frame(self, width=1, style='separator.TFrame')
+        self._border_right = ttk.Frame(self, width=1, style='separator.TFrame')
+        self._border_left.place(bordermode='outside', in_=self._body, x=-1, y=-2,
+                                width=1, height=self._body.winfo_reqheight() + 2, relheight=1)
+        self._border_right.place(bordermode='outside', in_=self._body, relx=1, y=-2,
+                                 width=1, height=self._body.winfo_reqheight() + 2, relheight=1)
+
         # --- bindings
         self._tab_frame.bind('<Configure>', self._on_configure)
         self._canvas.bind('<Configure>', self._on_configure)
@@ -588,7 +600,6 @@ class Notebook(ttk.Frame):
             self._canvas.xview_moveto(x1)
         elif x2 > xc2:
             self._canvas.xview_moveto(xc1 + x2 - xc2)
-        print(x1, x2, xc1, xc2)
         i = self._visible_tabs.index(tab)
         if i == 0:
             self._btn_left.state(['disabled'])
@@ -703,4 +714,3 @@ class Notebook(ttk.Frame):
     def tabs(self):
         """Return the tuple of visible tab ids in the order of display."""
         return tuple(self._visible_tabs)
-

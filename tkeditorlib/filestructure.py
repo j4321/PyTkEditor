@@ -119,8 +119,8 @@ class CodeStructure(Frame):
 
         self.filename = Label(self, padding=(4, 2))
         self.codetree = CodeTree(self)
-        sx = Scrollbar(self, orient='horizontal', command=self.codetree.xview)
-        sy = Scrollbar(self, orient='vertical', command=self.codetree.yview)
+        self._sx = Scrollbar(self, orient='horizontal', command=self.codetree.xview)
+        self._sy = Scrollbar(self, orient='vertical', command=self.codetree.yview)
 
         self.goto_frame = Frame(self)
         Label(self.goto_frame, text='Go to:').pack(side='left')
@@ -128,13 +128,13 @@ class CodeStructure(Frame):
         self.goto_entry.pack(side='left', fill='x', pady=4, padx=4)
         self._goto_index = 0
 
-        self.codetree.configure(xscrollcommand=sx.set,
-                                yscrollcommand=sy.set)
+        self.codetree.configure(xscrollcommand=self._sx.set,
+                                yscrollcommand=self._sy.set)
 
         self.filename.grid(row=0, column=0, sticky='w')
         self.codetree.grid(row=1, column=0, sticky='ewns')
-        sx.grid(row=2, column=0, sticky='ew')
-        sy.grid(row=1, column=1, sticky='ns')
+        self._sx.grid(row=2, column=0, sticky='ew')
+        self._sy.grid(row=1, column=1, sticky='ns')
         Frame(self, style='separator.TFrame', height=1).grid(row=3, column=0, columnspan=2, sticky='ew')
         self.goto_frame.grid(row=4, column=0, columnspan=2, sticky='nsew')
 
@@ -156,6 +156,8 @@ class CodeStructure(Frame):
 
     def populate(self, title, text):
         self.filename.configure(text=title)
+        self._sx.timer = self._sx.threshold + 1
+        self._sy.timer = self._sy.threshold + 1
         names = list(self.codetree.populate(text))
         names.sort()
         self.goto_entry.delete(0, "end")

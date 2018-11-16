@@ -72,35 +72,34 @@ class App(tk.Tk):
         # ----- editor notebook
         self.editor = EditorNotebook(pane, width=696)
         # ----- right pane
-        right_nb = ttk.Notebook(pane)
+        self.right_nb = ttk.Notebook(pane)
         # -------- command history
-        self.history = HistoryFrame(right_nb, padding=1)
+        self.history = HistoryFrame(self.right_nb, padding=1)
         # -------- python console
-        console_frame = ttk.Frame(right_nb, padding=1)
+        console_frame = ttk.Frame(self.right_nb, padding=1)
         console_frame.columnconfigure(0, weight=1)
         console_frame.rowconfigure(0, weight=1)
         sy = AutoHideScrollbar(console_frame, orient='vertical')
         self.console = TextConsole(console_frame, self.history.history,
-                                   promptcolor='skyblue',
                                    yscrollcommand=sy.set, relief='flat',
                                    borderwidth=0, highlightthickness=0)
         sy.configure(command=self.console.yview)
         sy.grid(row=0, column=1, sticky='ns')
         self.console.grid(row=0, column=0, sticky='nswe')
         # -------- help
-        self.help = Help(right_nb,
+        self.help = Help(self.right_nb,
                          help_cmds={'Editor': self.editor.get_docstring,
                                     'Console': self.console.get_docstring},
                          padding=1)
         # -------- placement
-        right_nb.add(console_frame, text='Console')
-        right_nb.add(self.history, text='History')
-        right_nb.add(self.help, text='Help')
+        self.right_nb.add(console_frame, text='Console')
+        self.right_nb.add(self.history, text='History')
+        self.right_nb.add(self.help, text='Help')
 
         # ----- placement
         pane.add(self.codestruct, weight=1)
         pane.add(self.editor, weight=50)
-        pane.add(right_nb, weight=5)
+        pane.add(self.right_nb, weight=5)
         pane.pack(fill='both', expand=True, pady=(0, 4))
 
         # --- menu
@@ -170,6 +169,8 @@ class App(tk.Tk):
         self.editor.bind('<<Modified>>', lambda e: self._edit_modified())
         self.editor.bind('<<Reload>>', self.reload)
 
+        self.right_nb.bind('<ButtonRelease-3>', self._show_menu_nb)
+
         self.bind_class('Text', '<Control-o>', lambda e: None)
         self.bind('<Control-Shift-T>', self.restore_last_closed)
         self.bind('<Control-n>', self.new)
@@ -204,6 +205,12 @@ class App(tk.Tk):
 
         self.protocol('WM_DELETE_WINDOW', self.quit)
         signal.signal(signal.SIGUSR1, self._on_signal)
+
+    def _show_menu_nb(self, event):
+        tab = self.right_nb.index('@%i,%i' % (event.x, event.y))
+        if tab is not None:
+            if self.right_nb.tab(tab, 'text') == 'Console':
+                self.console.menu.tk_popup(event.x_root, event.y_root)
 
     def _on_signal(self, *args):
         self.lift()
@@ -488,7 +495,7 @@ class App(tk.Tk):
         self.help.load_stylesheet()
 
     def quit(self):
-        files = ', '.join([f for f in self.editor.files.values() if f])
+        files = ', '.join(self.editor.get_open_files())
         CONFIG.set('General', 'opened_files', files)
         save_config()
         self.editor.closeall()
