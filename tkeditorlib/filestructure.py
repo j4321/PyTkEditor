@@ -63,7 +63,7 @@ class CodeTree(Treeview):
                 token = tokens.send(None)
             except StopIteration:
                 break
-            except TokenError:
+            except (TokenError, IndentationError):
                 continue
             add = False
             if token.type == 1 and token.string in ['class', 'def']:

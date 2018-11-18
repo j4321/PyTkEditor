@@ -12,6 +12,9 @@ from jedi import settings
 import configparser
 from pygments.lexers import Python3Lexer
 from pygments.token import Comment
+import logging
+from logging.handlers import TimedRotatingFileHandler
+import warnings
 
 settings.case_insensitive_completion = False
 os.environ['PYFLAKES_BUILTINS'] = '_'
@@ -27,11 +30,28 @@ class MyLexer(Python3Lexer):
 
 PYTHON_LEX = MyLexer()
 
+
+# --- paths
 PATH = os.path.dirname(__file__)
 CSS_PATH = os.path.join(PATH, 'html', '{theme}.css')
 TEMPLATE_PATH = os.path.join(PATH, 'html', 'template.txt')
 IMG_PATH = os.path.join(PATH, 'images')
 
+if os.access(PATH, os.W_OK):
+    LOCAL_PATH = os.path.join(PATH, 'config')
+else:
+    LOCAL_PATH = os.path.join(os.path.expanduser('~'), '.tkeditor')
+
+if not os.path.exists(LOCAL_PATH):
+    os.mkdir(LOCAL_PATH)
+
+HISTFILE = os.path.join(LOCAL_PATH, 'tkeditor.history')
+CONFIG_PATH = os.path.join(LOCAL_PATH, 'tkeditor.ini')
+LOG_PATH = os.path.join(LOCAL_PATH, 'tkeditor.log')
+PIDFILE = os.path.join(LOCAL_PATH, "tkeditor.pid")
+OPENFILE_PATH = os.path.join(LOCAL_PATH, ".file")
+
+# --- images
 IM_CLASS = os.path.join(IMG_PATH, 'c.png')
 IM_FCT = os.path.join(IMG_PATH, 'f.png')
 IM_HFCT = os.path.join(IMG_PATH, 'hf.png')
@@ -200,18 +220,22 @@ ICONS = {"information": IM_INFO_DATA, "error": IM_ERROR_DATA,
          "question": IM_QUESTION_DATA, "warning": IM_WARNING_DATA}
 
 
-if os.access(PATH, os.W_OK):
-    LOCAL_PATH = os.path.join(PATH, 'config')
-else:
-    LOCAL_PATH = os.path.join(os.path.expanduser('~'), '.tkeditor')
+# --- log
+handler = TimedRotatingFileHandler(LOG_PATH, when='midnight',
+                                   interval=1, backupCount=7)
+logging.basicConfig(level=logging.INFO,
+                    format='%(asctime)-15s %(levelname)s: %(message)s',
+                    handlers=[handler])
+logging.getLogger().addHandler(logging.StreamHandler())
 
-if not os.path.exists(LOCAL_PATH):
-    os.mkdir(LOCAL_PATH)
 
-HISTFILE = os.path.join(LOCAL_PATH, 'tkeditor.history')
-CONFIG_PATH = os.path.join(LOCAL_PATH, 'tkeditor.ini')
-PIDFILE = os.path.join(LOCAL_PATH, "tkeditor.pid")
-OPENFILE_PATH = os.path.join(LOCAL_PATH, ".file")
+def customwarn(message, category, filename, lineno, file=None, line=None):
+    """Redirect warnings to log"""
+    logging.warn(warnings.formatwarning(message, category, filename, lineno))
+
+
+warnings.showwarning = customwarn
+
 
 # --- ssl
 SERVER_CERT = os.path.join(PATH, 'ssl', 'server.crt')

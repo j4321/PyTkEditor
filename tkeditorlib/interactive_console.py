@@ -17,9 +17,6 @@ from constants import CLIENT_CERT, SERVER_CERT
 import tkinter
 import time
 from tempfile import mkstemp
-import logging
-
-logging.basicConfig(level=logging.INFO, filename='/tmp/tkeditor.log')
 
 
 class Stdout(StringIO):
@@ -93,12 +90,9 @@ class SocketConsole(InteractiveConsole):
         msg = 'False, %r, "", True' % (line + '\n')
         if len(msg) > 16300:
             fileno, filename = mkstemp(text=True)
-            logging.warning(msg + ' %i' % len(msg))
             with open(filename, 'w') as tmpfile:
                 tmpfile.write(msg)
                 msg = 'False, %r, "Too long", True' % (filename)
-        else:
-            logging.info(msg + ' %i' % len(msg))
         self.socket.send(msg.encode())
 
     def interact(self):

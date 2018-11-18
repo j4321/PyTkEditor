@@ -17,6 +17,7 @@ import traceback
 import os
 import signal
 from ewmh import ewmh, EWMH
+import logging
 
 
 class App(tk.Tk):
@@ -482,7 +483,7 @@ class App(tk.Tk):
     def report_callback_exception(self, *args):
         """Log exceptions."""
         err = "".join(traceback.format_exception(*args))
-        print(err)
+        logging.error(err)
         showerror("Error", str(args[1]), err, True)
 
     def config(self):
@@ -536,10 +537,12 @@ class App(tk.Tk):
             if isinstance(e, FileNotFoundError):
                 return
             elif isinstance(e, UnicodeDecodeError):
-                showerror('Error', 'Invalid file format: {}.'.format(file), parent=self)
+                msg = 'Invalid file format: {}.'.format(file)
+                showerror('Error', msg, parent=self)
+                logging.error(msg)
             else:
                 err = traceback.format_exc()
-                print(err)
+                logging.exception(str(e))
                 showerror('Error', "{}: {}".format(type(e), e), err, parent=self)
 
     def reload(self, event):

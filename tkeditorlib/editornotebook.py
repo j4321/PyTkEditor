@@ -204,7 +204,8 @@ class EditorNotebook(Notebook):
         widget.text.edit_modified(*args)
         b = widget.text.edit_modified()
         title = self._tab_labels[tab].tab_cget('text').strip('*')
-        self._tab_labels[tab].tab_configure(text=title + '*' * b)
+        # self._tab_labels[tab].tab_configure(text=title + '*' * b)
+        self.tab(tab, text=title + '*' * b)
         if generate:
             self.event_generate('<<Modified>>')
         return b
