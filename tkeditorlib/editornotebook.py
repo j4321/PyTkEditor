@@ -15,6 +15,7 @@ from tkfilebrowser import asksaveasfilename
 from subprocess import Popen
 from threading import Thread, Event
 from time import sleep
+import logging
 
 
 class EditorNotebook(Notebook):
@@ -75,7 +76,7 @@ class EditorNotebook(Notebook):
         rev_files = {path: tab for tab, path in self.files.items()}
         for file, modif, deletion in zip(self._is_modified.keys(), self._is_modified.values(), self._is_deleted.values()):
             if modif.is_set():
-                print(file, 'has been modified')
+                logging.info(file + ' has been modified')
                 tab = rev_files[file]
                 self.edit_modified(True, tab=tab, generate=True)
                 self.update_idletasks()
@@ -88,7 +89,7 @@ class EditorNotebook(Notebook):
                 self._files_mtime[file] = os.stat(file).st_mtime
                 modif.clear()
             elif deletion.is_set():
-                print(file, 'has been deleted')
+                logging.info(file + 'has been deleted')
                 if self._files_check_deletion[file]:
                     tab = rev_files[file]
                     self.edit_modified(True, tab=tab, generate=True)
