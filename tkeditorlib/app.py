@@ -534,7 +534,7 @@ class App(tk.Tk):
                 ind = self.recent_files.index(file)
                 del self.recent_files[ind]
                 self.menu_recent_files.delete(ind)
-            if isinstance(e, FileNotFoundError):
+            if isinstance(e, FileNotFoundError) or isinstance(e, IsADirectoryError):
                 return
             elif isinstance(e, UnicodeDecodeError):
                 msg = 'Invalid file format: {}.'.format(file)
