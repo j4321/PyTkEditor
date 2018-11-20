@@ -7,9 +7,10 @@ Created on Mon Aug 20 20:25:11 2018
 """
 from tkeditorlib.notebook import Notebook
 from tkeditorlib.editor import Editor
+from tkeditorlib.autocomplete import AutoCompleteCombobox2
 from tkeditorlib.tooltip import TooltipNotebookWrapper
 import os
-from tkinter import Menu
+from tkinter import Menu, Toplevel
 from tkeditorlib.messagebox import askyesnocancel, askyesno
 from tkfilebrowser import asksaveasfilename
 from subprocess import Popen
@@ -172,6 +173,30 @@ class EditorNotebook(Notebook):
             return self._tabs[self.current_tab].get_docstring(obj)
         else:
             return ("", "")
+
+    def file_switch(self, event):
+
+        def ok(event):
+            file = c.get()
+            if file not in files:
+                top.destroy()
+            else:
+                self.select(list(self.files.keys())[files.index(file)])
+                top.destroy()
+
+        top = Toplevel(self)
+        top.geometry('+%i+%i' % self.winfo_pointerxy())
+        top.transient(self)
+        top.title('Switch file')
+        top.grab_set()
+        top.resizable(True, False)
+
+        files = ["{1} - {0}".format(*os.path.split(file)) for file in self.files.values()]
+        c = AutoCompleteCombobox2(top, completevalues=files, width=40)
+        c.pack(fill='x', expand=True)
+        c.bind('<Escape>', lambda e: top.destroy())
+        c.bind('<Return>', ok)
+        c.focus_set()
 
     def find(self):
         if self.current_tab >= 0:

@@ -175,6 +175,7 @@ class App(tk.Tk):
         self.bind_class('Text', '<Control-o>', lambda e: None)
         self.bind('<Control-Shift-T>', self.restore_last_closed)
         self.bind('<Control-n>', self.new)
+        self.bind('<Control-p>', self.editor.file_switch)
         self.bind('<Control-s>', self.save)
         self.bind('<Control-o>', lambda e: self.open())
         self.bind('<Control-Shift-S>', self.saveall)
