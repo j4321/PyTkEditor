@@ -49,11 +49,12 @@ class App(tk.Tk):
         self.option_add('*Menu.relief', 'sunken')
         self.option_add('*Menu.tearOff', False)
 
-        self.menu = tk.Menu(self, tearoff=False, relief='flat')
-        self.menu_file = tk.Menu(self.menu, tearoff=False)
-        self.menu_recent_files = tk.Menu(self.menu_file, tearoff=False)
-        self.menu_edit = tk.Menu(self.menu, tearoff=False)
-        self.menu_errors = LongMenu(self.menu, 40, tearoff=False)
+        self.menu = tk.Menu(self, relief='flat')
+        self.menu_file = tk.Menu(self.menu)
+        self.menu_recent_files = tk.Menu(self.menu_file)
+        self.menu_edit = tk.Menu(self.menu)
+        self.menu_doc = tk.Menu(self.menu)
+        self.menu_errors = LongMenu(self.menu, 40)
 
         recent_files = CONFIG.get('General', 'recent_files', fallback='').split(', ')
         self.recent_files = [f for f in recent_files if f and os.path.exists(f)]
@@ -104,7 +105,7 @@ class App(tk.Tk):
         pane.pack(fill='both', expand=True, pady=(0, 4))
 
         # --- menu
-        # file
+        # --- --- file
         self.menu_file.add_command(label='New', command=self.new, image=self._im_new,
                                    accelerator='Ctrl+N', compound='left')
         self.menu_file.add_separator()
@@ -115,7 +116,9 @@ class App(tk.Tk):
                                    command=self.restore_last_closed,
                                    image=self._im_reopen, compound='left',
                                    accelerator='Ctrl+Shift+T')
-        # file --- recent
+        self.menu_file.add_command(label='File switcher', command=self.editor.file_switch,
+                                   accelerator='Ctrl+P')
+        # --- --- file --- recent
         for f in self.recent_files:
             self.menu_recent_files.add_command(label=f,
                                                command=lambda file=f: self.open_file(file))
@@ -138,7 +141,7 @@ class App(tk.Tk):
                                    command=self.editor.closeall, compound='left')
         self.menu_file.add_command(label='Quit', command=self.quit,
                                    image=self._im_quit, compound='left')
-        # edit
+        # --- --- edit
         self.menu_edit.add_command(label='Undo', command=self.editor.undo,
                                    image=self._im_undo,
                                    accelerator='Ctrl+Z', compound='left')
@@ -146,21 +149,25 @@ class App(tk.Tk):
                                    image=self._im_redo,
                                    accelerator='Ctrl+Y', compound='left')
         self.menu_edit.add_separator()
-        self.menu_edit.add_command(label='Find', command=self.editor.find,
-                                   accelerator='Ctrl+F', compound='left',
-                                   image=self._im_find)
-        self.menu_edit.add_command(label='Replace', command=self.editor.replace,
-                                   accelerator='Ctrl+R', compound='left',
-                                   image=self._im_replace)
-        self.menu_edit.add_separator()
         self.menu_edit.add_command(label='Settings', command=self.config,
                                    compound='left', image=self._im_settings)
+        # --- --- doc
+        self.menu_doc.add_command(label='Find', command=self.editor.find,
+                                   accelerator='Ctrl+F', compound='left',
+                                   image=self._im_find)
+        self.menu_doc.add_command(label='Replace', command=self.editor.replace,
+                                   accelerator='Ctrl+R', compound='left',
+                                   image=self._im_replace)
+        self.menu_doc.add_command(label='Goto line', accelerator='Ctrl+L',
+                                  command=self.editor.goto_line)
 
         self.menu.add_cascade(label='File', underline=0, menu=self.menu_file)
         self.menu.add_cascade(label='Edit', underline=0, menu=self.menu_edit)
+        self.menu.add_cascade(label='Document', underline=0, menu=self.menu_doc)
         self.menu.add_cascade(label='Error list', underline=6, menu=self.menu_errors)
         self.menu.add_command(image=self._im_run, command=self.run,
                               compound='left', label='Run', underline=0)
+
         self.configure(menu=self.menu)
 
         # --- bindings
@@ -388,6 +395,12 @@ class App(tk.Tk):
                                    activeforeground=theme['fg'],
                                    disabledforeground=theme['disabledfg'],
                                    selectcolor=theme['fg'])
+        self.menu_doc.configure(bg=theme['fieldbg'],
+                                activebackground=theme['selectbg'],
+                                fg=theme['fg'],
+                                activeforeground=theme['fg'],
+                                disabledforeground=theme['disabledfg'],
+                                selectcolor=theme['fg'])
         self.option_add('*Menu.background', theme['fieldbg'])
         self.option_add('*Menu.activeBackground', theme['selectbg'])
         self.option_add('*Menu.activeForeground', theme['fg'])

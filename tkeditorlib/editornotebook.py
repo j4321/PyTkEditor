@@ -174,7 +174,7 @@ class EditorNotebook(Notebook):
         else:
             return ("", "")
 
-    def file_switch(self, event):
+    def file_switch(self, event=None):
 
         def ok(event):
             file = c.get()
@@ -187,7 +187,7 @@ class EditorNotebook(Notebook):
         top = Toplevel(self)
         top.geometry('+%i+%i' % self.winfo_pointerxy())
         top.transient(self)
-        top.title('Switch file')
+        top.title('File switcher')
         top.grab_set()
         top.resizable(True, False)
 
@@ -197,6 +197,10 @@ class EditorNotebook(Notebook):
         c.bind('<Escape>', lambda e: top.destroy())
         c.bind('<Return>', ok)
         c.focus_set()
+
+    def goto_line(self):
+        if self.current_tab >= 0:
+            self._tabs[self.current_tab].goto_line()
 
     def find(self):
         if self.current_tab >= 0:
