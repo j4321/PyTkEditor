@@ -160,8 +160,8 @@ class AutoCompleteCombobox2(AutoCompleteCombobox):
             values = self.cget('values')
             txt = txt[:int(pos)] + modif + txt[int(pos):]
             l = [i for i in values if i[:len(txt)] == txt]
-            self['values'] = l
             if l:
+                self['values'] = l
                 self.current(0)
                 index = self.index("insert")
                 self.delete(0, "end")
