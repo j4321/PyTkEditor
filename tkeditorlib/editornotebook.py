@@ -7,9 +7,10 @@ Created on Mon Aug 20 20:25:11 2018
 """
 from tkeditorlib.notebook import Notebook
 from tkeditorlib.editor import Editor
+from tkeditorlib.autocomplete import AutoCompleteEntryListbox
 from tkeditorlib.tooltip import TooltipNotebookWrapper
 import os
-from tkinter import Menu
+from tkinter import Menu, Toplevel
 from tkeditorlib.messagebox import askyesnocancel, askyesno
 from tkfilebrowser import asksaveasfilename
 from subprocess import Popen
@@ -172,6 +173,40 @@ class EditorNotebook(Notebook):
             return self._tabs[self.current_tab].get_docstring(obj)
         else:
             return ("", "")
+
+    def file_switch(self, event=None):
+
+        def ok(event):
+            file = c.get()
+            if file not in files:
+                top.destroy()
+            else:
+                self.select(list(self.files.keys())[files.index(file)])
+                top.destroy()
+
+        def sel(event):
+            self.select(list(self.files.keys())[files.index(c.get())])
+            self.after(2, c.entry.focus_set)
+
+        top = Toplevel(self)
+        top.geometry('+%i+%i' % self.winfo_pointerxy())
+        top.transient(self)
+        top.title('File switcher')
+        top.grab_set()
+
+        files = ["{1} - {0}".format(*os.path.split(file)) for file in self.files.values()]
+        c = AutoCompleteEntryListbox(top, completevalues=files, width=60)
+        c.pack(fill='both', expand=True)
+        c.entry.bind('<Escape>', lambda e: top.destroy())
+        c.listbox.bind('<Escape>', lambda e: top.destroy())
+        c.entry.bind('<Return>', ok)
+        c.listbox.bind('<Return>', ok)
+        c.bind('<<ItemSelect>>',  sel)
+        c.focus_set()
+
+    def goto_line(self):
+        if self.current_tab >= 0:
+            self._tabs[self.current_tab].goto_line()
 
     def find(self):
         if self.current_tab >= 0:

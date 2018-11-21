@@ -328,3 +328,12 @@ def get_screen(x, y):
         raise ValueError("(%i, %i) is out of screen" % (x, y))
     else:
         return monitors[i]
+
+
+def valide_entree_nb(d, S):
+    """ commande de validation des champs devant contenir
+        seulement des chiffres """
+    if d == '1':
+        return S.isdigit()
+    else:
+        return True

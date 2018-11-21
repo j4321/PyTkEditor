@@ -10,7 +10,7 @@ from tkinter.font import Font
 import re
 from tkeditorlib.autoscrollbar import AutoHideScrollbar
 from tkeditorlib.constants import IM_WARN, IM_ERR, get_screen,\
-    load_style, PYTHON_LEX, CONFIG
+    load_style, PYTHON_LEX, CONFIG, valide_entree_nb
 from tkeditorlib.complistbox import CompListbox
 from tkeditorlib.tooltip import TooltipTextWrapper, Tooltip
 from tkeditorlib.filebar import FileBar
@@ -22,6 +22,8 @@ class Editor(ttk.Frame):
 
         self.columnconfigure(2, weight=1)
         self.rowconfigure(0, weight=1)
+
+        self._valid_nb = self.register(valide_entree_nb)
 
         self._syntax_icons = {'warning': tk.PhotoImage(master=self, file=IM_WARN),
                               'error': tk.PhotoImage(master=self, file=IM_ERR)}
@@ -701,7 +703,7 @@ class Editor(ttk.Frame):
                 messagebox.showinfo("Search complete", "No match found", self)
 
     # --- goto
-    def goto_line(self, event):
+    def goto_line(self, event=None):
 
         def goto(event):
             try:
@@ -720,7 +722,8 @@ class Editor(ttk.Frame):
         top.title('Go to')
 
         ttk.Label(top, text='Line: ').pack(side='left', padx=4, pady=4)
-        e = ttk.Entry(top, width=5)
+        e = ttk.Entry(top, width=5, justify='center', validate='key',
+                      validatecommand=(self._valid_nb, '%d', "%S"))
         e.pack(side='left', padx=4, pady=4)
         e.focus_set()
         e.bind('<Escape>', lambda e: top.destroy())

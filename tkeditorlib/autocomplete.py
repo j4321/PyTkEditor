@@ -4,8 +4,9 @@
 Combobox with autocompletion
 """
 
-from tkinter import TclError
-from tkinter.ttk import Combobox
+from tkinter import TclError, Listbox
+from tkinter.ttk import Combobox, Frame, Entry
+from tkeditorlib.autoscrollbar import AutoHideScrollbar
 
 
 class AutoCompleteCombobox(Combobox):
@@ -160,8 +161,8 @@ class AutoCompleteCombobox2(AutoCompleteCombobox):
             values = self.cget('values')
             txt = txt[:int(pos)] + modif + txt[int(pos):]
             l = [i for i in values if i[:len(txt)] == txt]
-            self['values'] = l
             if l:
+                self['values'] = l
                 self.current(0)
                 index = self.index("insert")
                 self.delete(0, "end")
@@ -175,3 +176,164 @@ class AutoCompleteCombobox2(AutoCompleteCombobox):
     def set_completion_list(self, completevalues):
         self.complete_values = completevalues
         self['values'] = completevalues
+
+
+class AutoCompleteEntryListbox(Frame):
+    def __init__(self, master=None, completevalues=[], allow_other_values=False,
+                 **kwargs):
+        """
+        Create a Entry + Listbox with autocompletion.
+
+        Keyword arguments:
+         - allow_other_values (boolean): whether the user is allowed to enter values not in the list
+        """
+        exportselection = kwargs.pop('exportselection', False)
+        width = kwargs.pop('width', None)
+        justify = kwargs.pop('justify', None)
+        font = kwargs.pop('font', None)
+        Frame.__init__(self, master, padding=4, **kwargs)
+        self.columnconfigure(0, weight=1)
+        self.rowconfigure(1, weight=1)
+        self._allow_other_values = allow_other_values
+        self._completevalues = completevalues
+        self._validate = self.register(self.validate)
+        self.entry = Entry(self, width=width, justify=justify, font=font,
+                           validate='key', exportselection=exportselection,
+                           validatecommand=(self._validate, "%d", "%S", "%i", "%s", "%P"))
+        f = Frame(self, style='border.TFrame', padding=1)
+        self.listbox = Listbox(f, width=width, justify=justify, font=font,
+                               exportselection=exportselection, selectmode="browse",
+                               highlightthickness=0, relief='flat')
+        self.listbox.pack(fill='both', expand=True)
+        scroll = AutoHideScrollbar(self, orient='vertical', command=self.listbox.yview)
+        self.listbox.configure(yscrollcommand=scroll.set)
+        self.entry.grid(sticky='ew')
+        f.grid(sticky='nsew')
+        scroll.grid(row=1, column=1, sticky='ns')
+        for c in self._completevalues:
+            self.listbox.insert('end', c)
+
+        self.listbox.bind('<<ListboxSelect>>', self.update_entry)
+        self.listbox.bind("<KeyPress>", self.keypress)
+        self.entry.bind("<Tab>", self.tab)
+        self.entry.bind("<Down>", self.down)
+        self.entry.bind("<Up>", self.up)
+        self.entry.focus_set()
+
+    def tab(self, event):
+        """Move at the end of selected text on tab press."""
+        self.entry = event.widget
+        self.entry.selection_clear()
+        self.entry.icursor("end")
+        return "break"
+
+    def keypress(self, event):
+        """Select the first item which name begin by the key pressed."""
+        key = event.char.lower()
+        l = [i for i in self._completevalues if i[0].lower() == key]
+        if l:
+            i = self._completevalues.index(l[0])
+            self.listbox.selection_clear(0, "end")
+            self.listbox.selection_set(i)
+            self.listbox.see(i)
+            self.update_entry()
+
+    def up(self, event):
+        """Navigate in the listbox with up key."""
+        try:
+            i = self.listbox.curselection()[0]
+            self.listbox.selection_clear(0, "end")
+            if i <= 0:
+                i = len(self._completevalues)
+            self.listbox.see(i - 1)
+            self.listbox.select_set(i - 1)
+        except (TclError, IndexError):
+            self.listbox.selection_clear(0, "end")
+            i = len(self._completevalues)
+            self.listbox.see(i - 1)
+            self.listbox.select_set(i - 1)
+        self.listbox.event_generate('<<ListboxSelect>>')
+
+    def down(self, event):
+        """Navigate in the listbox with down key."""
+        try:
+            i = self.listbox.curselection()[0]
+            self.listbox.selection_clear(0, "end")
+            if i >= len(self._completevalues):
+                i = -1
+            self.listbox.see(i + 1)
+            self.listbox.select_set(i + 1)
+        except (TclError, IndexError):
+            self.listbox.selection_clear(0, "end")
+            self.listbox.see(0)
+            self.listbox.select_set(0)
+        self.listbox.event_generate('<<ListboxSelect>>')
+
+    def validate(self, action, modif, pos, prev_txt, new_txt):
+        """Complete the text in the entry with values."""
+        try:
+            sel = self.entry.selection_get()
+            txt = prev_txt.replace(sel, '')
+        except TclError:
+            txt = prev_txt
+        if action == "0":
+            txt = txt[:int(pos)] + txt[int(pos) + 1:]
+            return True
+        else:
+            txt = txt[:int(pos)] + modif + txt[int(pos):]
+            l = [i for i in self._completevalues if i[:len(txt)] == txt]
+            if l:
+                i = self._completevalues.index(l[0])
+                self.listbox.selection_clear(0, "end")
+                self.listbox.selection_set(i)
+                self.listbox.see(i)
+                index = self.entry.index("insert")
+                self.entry.delete(0, "end")
+                self.entry.insert(0, l[0].replace("\ ", " "))
+                self.entry.selection_range(index + 1, "end")
+                self.entry.icursor(index + 1)
+                return True
+            else:
+                return self._allow_other_values
+
+    def __getitem__(self, key):
+        return self.cget(key)
+
+    def update_entry(self, event=None):
+        """Update entry when an item is selected in the listbox."""
+        try:
+            sel = self.listbox.get(self.listbox.curselection()[0])
+        except (TclError, IndexError):
+            return
+        self.entry.delete(0, "end")
+        self.entry.insert(0, sel)
+        self.entry.selection_clear()
+        self.entry.icursor("end")
+        self.event_generate('<<ItemSelect>>')
+
+    def keys(self):
+        keys = Combobox.keys(self)
+        keys.append('allow_other_values')
+        return keys
+
+    def get(self):
+        return self.entry.get()
+
+    def cget(self, key):
+        if key == 'allow_other_values':
+            return self._allow_other_values
+        elif key == 'completevalues':
+            return self._completevalues
+        else:
+            return self.cget(self, key)
+
+    def config(self, dic={}, **kwargs):
+        self.configure(dic={}, **kwargs)
+
+    def configure(self, dic={}, **kwargs):
+        dic2 = {}
+        dic2.update(dic)
+        dic2.update(kwargs)
+        self._allow_other_values = dic2.pop('allow_other_values', self._allow_other_values)
+        self._completevalues = dic2.pop('completevalues', self._completevalues)
+        self.config(self, dic2)
