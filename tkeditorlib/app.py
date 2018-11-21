@@ -40,6 +40,7 @@ class App(tk.Tk):
         self._im_find = tk.PhotoImage(file=cst.IM_FIND, master=self)
         self._im_replace = tk.PhotoImage(file=cst.IM_REPLACE, master=self)
         self._im_settings = tk.PhotoImage(file=cst.IM_SETTINGS, master=self)
+        self._im_menu_dummy = tk.PhotoImage(width=18, height=18, master=self)
         self.iconphoto(True, self._icon)
         self._syntax_icons = {'warning': tk.PhotoImage(master=self, file=cst.IM_WARN),
                               'error': tk.PhotoImage(master=self, file=cst.IM_ERR)}
@@ -116,8 +117,9 @@ class App(tk.Tk):
                                    command=self.restore_last_closed,
                                    image=self._im_reopen, compound='left',
                                    accelerator='Ctrl+Shift+T')
-        self.menu_file.add_command(label='File switcher', command=self.editor.file_switch,
-                                   accelerator='Ctrl+P')
+        self.menu_file.add_command(label='File switcher', accelerator='Ctrl+P',
+                                   command=self.editor.file_switch,
+                                   image=self._im_menu_dummy, compound='left')
         # --- --- file --- recent
         for f in self.recent_files:
             self.menu_recent_files.add_command(label=f,
@@ -158,8 +160,8 @@ class App(tk.Tk):
         self.menu_doc.add_command(label='Replace', command=self.editor.replace,
                                   accelerator='Ctrl+R', compound='left',
                                   image=self._im_replace)
-        self.menu_doc.add_command(label='Goto line', accelerator='Ctrl+L',
-                                  command=self.editor.goto_line)
+        self.menu_doc.add_command(label='Goto line', accelerator='Ctrl+L', compound='left',
+                                  command=self.editor.goto_line, image=self._im_menu_dummy)
         self.menu_doc.add_command(image=self._im_run, command=self.run,
                                   compound='left', label='Run',
                                   accelerator='F5')

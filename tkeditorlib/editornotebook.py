@@ -201,7 +201,7 @@ class EditorNotebook(Notebook):
         c.listbox.bind('<Escape>', lambda e: top.destroy())
         c.entry.bind('<Return>', ok)
         c.listbox.bind('<Return>', ok)
-        c.bind('<<ItemSelect>>',  sel)
+        c.bind('<<ItemSelect>>', sel)
         c.focus_set()
 
     def goto_line(self):
