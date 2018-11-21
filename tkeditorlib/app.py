@@ -153,20 +153,21 @@ class App(tk.Tk):
                                    compound='left', image=self._im_settings)
         # --- --- doc
         self.menu_doc.add_command(label='Find', command=self.editor.find,
-                                   accelerator='Ctrl+F', compound='left',
-                                   image=self._im_find)
+                                  accelerator='Ctrl+F', compound='left',
+                                  image=self._im_find)
         self.menu_doc.add_command(label='Replace', command=self.editor.replace,
-                                   accelerator='Ctrl+R', compound='left',
-                                   image=self._im_replace)
+                                  accelerator='Ctrl+R', compound='left',
+                                  image=self._im_replace)
         self.menu_doc.add_command(label='Goto line', accelerator='Ctrl+L',
                                   command=self.editor.goto_line)
+        self.menu_doc.add_command(image=self._im_run, command=self.run,
+                                  compound='left', label='Run',
+                                  accelerator='F5')
 
         self.menu.add_cascade(label='File', underline=0, menu=self.menu_file)
         self.menu.add_cascade(label='Edit', underline=0, menu=self.menu_edit)
         self.menu.add_cascade(label='Document', underline=0, menu=self.menu_doc)
         self.menu.add_cascade(label='Error list', underline=6, menu=self.menu_errors)
-        self.menu.add_command(image=self._im_run, command=self.run,
-                              compound='left', label='Run', underline=0)
 
         self.configure(menu=self.menu)
 
