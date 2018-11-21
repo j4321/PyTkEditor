@@ -31,6 +31,8 @@ class EditorNotebook(Notebook):
                               command=self.close_other_tabs)
         self.menu.add_command(label='Close tabs to the right',
                               command=self.close_tabs_right)
+        self.menu.add_command(label='Close tabs to the left',
+                              command=self.close_tabs_left)
 
         self._files_mtime = {}  # file_path: mtime
         self._files_check_deletion = {}  # file_path: bool
@@ -160,6 +162,15 @@ class EditorNotebook(Notebook):
         if self.current_tab >= 0:
             self._tabs[self.current_tab].text.edit_reset()
 
+    def get_filetype(self):
+        if self.current_tab >= 0:
+            return self._tabs[self.current_tab].filetype
+
+    def set_filetype(self, filetype):
+        if self.current_tab >= 0:
+            self._tabs[self.current_tab].filetype = filetype
+            self.event_generate('<<FiletypeChanged>>')
+
     def undo(self):
         if self.current_tab >= 0:
             self._tabs[self.current_tab].undo()
@@ -257,7 +268,7 @@ class EditorNotebook(Notebook):
             title = os.path.split(file)[-1]
             self._start_watching(file)
 
-        editor = Editor(self)
+        editor = Editor(self, 'Python' if title.endswith('.py') else 'Text')
         tab = self.add(editor, text=title)
         if file in self.last_closed:
             self.last_closed.remove(file)
@@ -312,7 +323,7 @@ class EditorNotebook(Notebook):
         if rep:
             self.save(tab)
         elif rep is None:
-            return
+            return False
         self.wrapper.remove_tooltip(self._tab_labels[tab])
         ed = self._tabs[tab]
         if self.files[tab]:
@@ -323,10 +334,16 @@ class EditorNotebook(Notebook):
         if not self._visible_tabs:
             self.event_generate('<<NotebookEmpty>>')
         ed.destroy()
+        return True
 
     def closeall(self):
-        for tab in self.tabs():
-            self.close(tab)
+        b = True
+        tabs = self.tabs()
+        i = 0
+        while b and i < len(tabs):
+            b = self.close(tabs[i])
+            i += 1
+        return b
 
     def close_other_tabs(self):
         for tab in self.tabs():
@@ -336,6 +353,11 @@ class EditorNotebook(Notebook):
     def close_tabs_right(self):
         ind = self._visible_tabs.index(self.current_tab)
         for tab in self._visible_tabs[ind + 1:]:
+            self.close(tab)
+
+    def close_tabs_left(self):
+        ind = self._visible_tabs.index(self.current_tab)
+        for tab in self._visible_tabs[:ind]:
             self.close(tab)
 
     def save(self, tab=None):

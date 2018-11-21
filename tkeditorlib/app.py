@@ -1,6 +1,7 @@
 from tkeditorlib.editornotebook import EditorNotebook
 from tkeditorlib.syntax_check import check_file
-from tkeditorlib.filestructure import CodeStructure
+from tkeditorlib.codestructure import CodeStructure
+from tkeditorlib.filebrowser import Filebrowser
 from tkeditorlib.constants import ICON, CONFIG, save_config, IM_CLOSE
 from tkeditorlib import constants as cst
 from tkeditorlib.textconsole import TextConsole
@@ -55,6 +56,7 @@ class App(tk.Tk):
         self.menu_recent_files = tk.Menu(self.menu_file)
         self.menu_edit = tk.Menu(self.menu)
         self.menu_doc = tk.Menu(self.menu)
+        self.menu_filetype = tk.Menu(self.menu_doc)
         self.menu_errors = LongMenu(self.menu, 40)
 
         recent_files = CONFIG.get('General', 'recent_files', fallback='').split(', ')
@@ -94,10 +96,13 @@ class App(tk.Tk):
                          help_cmds={'Editor': self.editor.get_docstring,
                                     'Console': self.console.get_docstring},
                          padding=1)
+        # -------- filebrowser
+        self.filebrowser = Filebrowser(self, self.open_file)
         # -------- placement
         self.right_nb.add(console_frame, text='Console')
         self.right_nb.add(self.history, text='History')
         self.right_nb.add(self.help, text='Help')
+        self.right_nb.add(self.filebrowser, text='Filebrowser')
 
         # ----- placement
         pane.add(self.codestruct, weight=1)
@@ -106,7 +111,7 @@ class App(tk.Tk):
         pane.pack(fill='both', expand=True, pady=(0, 4))
 
         # --- menu
-        # --- --- file
+        # ------- file
         self.menu_file.add_command(label='New', command=self.new, image=self._im_new,
                                    accelerator='Ctrl+N', compound='left')
         self.menu_file.add_separator()
@@ -120,7 +125,7 @@ class App(tk.Tk):
         self.menu_file.add_command(label='File switcher', accelerator='Ctrl+P',
                                    command=self.editor.file_switch,
                                    image=self._im_menu_dummy, compound='left')
-        # --- --- file --- recent
+        # ------- file --- recent
         for f in self.recent_files:
             self.menu_recent_files.add_command(label=f,
                                                command=lambda file=f: self.open_file(file))
@@ -143,7 +148,7 @@ class App(tk.Tk):
                                    command=self.editor.closeall, compound='left')
         self.menu_file.add_command(label='Quit', command=self.quit,
                                    image=self._im_quit, compound='left')
-        # --- --- edit
+        # edit
         self.menu_edit.add_command(label='Undo', command=self.editor.undo,
                                    image=self._im_undo,
                                    accelerator='Ctrl+Z', compound='left')
@@ -153,7 +158,10 @@ class App(tk.Tk):
         self.menu_edit.add_separator()
         self.menu_edit.add_command(label='Settings', command=self.config,
                                    compound='left', image=self._im_settings)
-        # --- --- doc
+        # ------- doc
+        self.menu_doc.add_cascade(label='Filetype', menu=self.menu_filetype,
+                                  image=self._im_menu_dummy, compound='left')
+        self.menu_doc.add_separator()
         self.menu_doc.add_command(label='Find', command=self.editor.find,
                                   accelerator='Ctrl+F', compound='left',
                                   image=self._im_find)
@@ -162,9 +170,18 @@ class App(tk.Tk):
                                   image=self._im_replace)
         self.menu_doc.add_command(label='Goto line', accelerator='Ctrl+L', compound='left',
                                   command=self.editor.goto_line, image=self._im_menu_dummy)
+        self.menu_doc.add_separator()
         self.menu_doc.add_command(image=self._im_run, command=self.run,
                                   compound='left', label='Run',
                                   accelerator='F5')
+        # ------- doc --- filetypes
+        self.filetype = tk.StringVar(self, 'Python')
+        self.menu_filetype.add_radiobutton(label='Python', value='Python',
+                                           variable=self.filetype,
+                                           command=self.set_filetype)
+        self.menu_filetype.add_radiobutton(label='Text', value='Text',
+                                           variable=self.filetype,
+                                           command=self.set_filetype)
 
         self.menu.add_cascade(label='File', underline=0, menu=self.menu_file)
         self.menu.add_cascade(label='Edit', underline=0, menu=self.menu_edit)
@@ -179,6 +196,7 @@ class App(tk.Tk):
         self.codestruct.bind('<<Populate>>', self._on_populate)
         self.editor.bind('<<NotebookEmpty>>', self.codestruct.clear)
         self.editor.bind('<<NotebookTabChanged>>', self._on_tab_changed)
+        self.editor.bind('<<FiletypeChanged>>', self._filetype_change)
         self.editor.bind('<<Modified>>', lambda e: self._edit_modified())
         self.editor.bind('<<Reload>>', self.reload)
 
@@ -415,6 +433,12 @@ class App(tk.Tk):
                                 activeforeground=theme['fg'],
                                 disabledforeground=theme['disabledfg'],
                                 selectcolor=theme['fg'])
+        self.menu_filetype.configure(bg=theme['fieldbg'],
+                                     activebackground=theme['selectbg'],
+                                     fg=theme['fg'],
+                                     activeforeground=theme['fg'],
+                                     disabledforeground=theme['disabledfg'],
+                                     selectcolor=theme['fg'])
         self.option_add('*Menu.background', theme['fieldbg'])
         self.option_add('*Menu.activeBackground', theme['selectbg'])
         self.option_add('*Menu.activeForeground', theme['fg'])
@@ -497,9 +521,19 @@ class App(tk.Tk):
         self.editor.set_cells(cells)
 
     def _on_tab_changed(self, event):
+        self.filetype.set(self.editor.get_filetype())
         self.codestruct.set_callback(self.editor.goto_item)
         self.codestruct.populate(self.editor.filename, self.editor.get(strip=False))
         self.update_menu_errors()
+
+    def _filetype_change(self, event):
+        filetype = self.filetype.get()
+        if filetype == 'Python':
+            self.codestruct.populate(self.editor.filename, self.editor.get(strip=False))
+            self.check_syntax()
+        else:
+            self.codestruct.populate(self.editor.filename, '')
+            self.update_menu_errors()
 
     def _edit_modified(self, *args, tab=None):
         self.editor.edit_modified(*args, tab=tab)
@@ -527,8 +561,9 @@ class App(tk.Tk):
         files = ', '.join(self.editor.get_open_files())
         CONFIG.set('General', 'opened_files', files)
         save_config()
-        self.editor.closeall()
-        self.destroy()
+        res = self.editor.closeall()
+        if res:
+            self.destroy()
 
     def new(self, event=None):
         self.editor.new()
@@ -551,6 +586,9 @@ class App(tk.Tk):
         if len(self.recent_files) > 10:
             del self.recent_files[-1]
             self.menu_recent_files.delete(self.menu_recent_files.index('end'))
+
+    def set_filetype(self):
+        self.editor.set_filetype(self.filetype.get())
 
     def load_file(self, file):
         try:
@@ -592,6 +630,7 @@ class App(tk.Tk):
             self._update_recent_files(file)
         else:
             txt = self.load_file(file)
+            self.filebrowser.populate(os.path.dirname(file))
             if txt is not None:
                 self.editor.new(file)
                 self.editor.insert('1.0', txt)
@@ -659,7 +698,7 @@ class App(tk.Tk):
     def check_syntax(self, tab=None):
         if tab is None:
             tab = self.editor.select()
-        if self.editor.files[tab]:
+        if self.editor.files[tab] and self.filetype.get() == 'Python':
             results = check_file(self.editor.files[tab])
             self.editor.show_syntax_issues(results)
             self.update_menu_errors()

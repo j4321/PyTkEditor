@@ -1,4 +1,4 @@
-dpu# Maintainer: Juliette Monsel <j_4321@protonmail.com>
+# Maintainer: Juliette Monsel <j_4321@protonmail.com>
 pkgname=tkeditor
 pkgver=1.0.1
 pkgrel=1

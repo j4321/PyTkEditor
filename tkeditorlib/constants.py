@@ -20,7 +20,7 @@ settings.case_insensitive_completion = False
 os.environ['PYFLAKES_BUILTINS'] = '_'
 
 APP_NAME = 'TkEditor'
-REPORT_URL = "https://github.com/j4321/{}/issues".format(APP_NAME)
+REPORT_URL = "https://gitlab.com/j_4321/{}/issues".format(APP_NAME)
 
 
 class MyLexer(Python3Lexer):
@@ -71,6 +71,8 @@ IM_UNDO = os.path.join(IMG_PATH, 'undo.png')
 IM_REDO = os.path.join(IMG_PATH, 'redo.png')
 IM_QUIT = os.path.join(IMG_PATH, 'quit.png')
 IM_FIND = os.path.join(IMG_PATH, 'find.png')
+IM_FILE = os.path.join(IMG_PATH, 'file.png')
+IM_FOLDER = os.path.join(IMG_PATH, 'folder.png')
 IM_REPLACE = os.path.join(IMG_PATH, 'replace.png')
 IM_SETTINGS = os.path.join(IMG_PATH, 'settings.png')
 IM_CLOSE = os.path.join(IMG_PATH, 'close_{theme}.png')

@@ -17,11 +17,13 @@ from tkeditorlib.filebar import FileBar
 
 
 class Editor(ttk.Frame):
-    def __init__(self, master=None):
+    def __init__(self, master=None, filetype='Python'):
         ttk.Frame.__init__(self, master, class_='Editor')
 
         self.columnconfigure(2, weight=1)
         self.rowconfigure(0, weight=1)
+
+        self._filetype = filetype
 
         self._valid_nb = self.register(valide_entree_nb)
 
@@ -192,6 +194,20 @@ class Editor(ttk.Frame):
         self.yview('scroll', 3, 'units')
         return "break"
 
+    @property
+    def filetype(self):
+        return self._filetype
+
+    @filetype.setter
+    def filetype(self, filetype):
+        self.reset_syntax_issues()
+        self._filetype = filetype
+        if filetype == 'Python':
+            self.parse_all()
+        else:
+            for tag in self.text.tag_names():
+                self.text.tag_remove(tag, '1.0', 'end')
+
     def update_style(self):
         FONT = (CONFIG.get("General", "fontfamily"),
                 CONFIG.getint("General", "fontsize"))
@@ -258,6 +274,8 @@ class Editor(ttk.Frame):
         return "break"
 
     def parse(self, text, start):
+        if self.filetype != 'Python':
+            return
         data = text
         while data and '\n' == data[0]:
             start = self.text.index('%s+1c' % start)
@@ -788,7 +806,7 @@ class Editor(ttk.Frame):
         self.text.tag_remove('sel', '1.0', 'end')
         self.text.tag_add('sel', '%i.0' % line, '%i.end' % line)
 
-    def show_syntax_issues(self, results):
+    def reset_syntax_issues(self):
         self.syntax_checks.configure(state='normal')
         self.syntax_checks.delete('1.0', 'end')
         self.syntax_issues_menuentries.clear()
@@ -796,6 +814,9 @@ class Editor(ttk.Frame):
         self.filebar.clear_syntax_issues()
         end = int(str(self.text.index('end')).split('.')[0]) - 2
         self.syntax_checks.insert('end', '\n' * end)
+
+    def show_syntax_issues(self, results):
+        self.reset_syntax_issues()
         for line, (category, msgs, msg) in results.items():
             self.syntax_checks.image_create('%i.0' % line,
                                             image=self._syntax_icons[category])
