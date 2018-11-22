@@ -199,6 +199,7 @@ class App(tk.Tk):
         self.editor.bind('<<FiletypeChanged>>', self._filetype_change)
         self.editor.bind('<<Modified>>', lambda e: self._edit_modified())
         self.editor.bind('<<Reload>>', self.reload)
+        self.editor.bind('<<Filebrowser>>', self.view_in_filebrowser)
 
         self.right_nb.bind('<ButtonRelease-3>', self._show_menu_nb)
 
@@ -610,6 +611,11 @@ class App(tk.Tk):
                 err = traceback.format_exc()
                 logging.exception(str(e))
                 showerror('Error', "{}: {}".format(type(e), e), err, parent=self)
+
+    def view_in_filebrowser(self, event):
+        file = self.editor.files[self.editor.current_tab]
+        self.filebrowser.populate(os.path.dirname(file))
+        self.right_nb.select(3)
 
     def reload(self, event):
         file = self.editor.files[self.editor.current_tab]

@@ -58,7 +58,7 @@ class FileTree(Treeview):
         self.delete(*self.get_children())
         p = os.path.abspath(path)
         self.insert('', 0, '..', text='..', tags='prev')
-        self.insert('', 1, p, text=p, image=self._im_folder)
+        self.insert('', 1, p, text=p, image=self._im_folder, open=True)
         for (root, folders, files) in os.walk(p):
             for f in folders:
                 self.insert(root, 'end', os.path.join(root, f), text=f,

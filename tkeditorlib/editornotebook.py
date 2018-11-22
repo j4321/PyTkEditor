@@ -27,6 +27,8 @@ class EditorNotebook(Notebook):
         self.wrapper = TooltipNotebookWrapper(self)
         self.last_closed = []
         self.menu = Menu(self, tearoff=False)
+        self.menu.add_command(label='View in filebrowser',
+                              command=self.view_in_filebrowser)
         self.menu.add_command(label='Close all other tabs',
                               command=self.close_other_tabs)
         self.menu.add_command(label='Close tabs to the right',
@@ -170,6 +172,9 @@ class EditorNotebook(Notebook):
         if self.current_tab >= 0:
             self._tabs[self.current_tab].filetype = filetype
             self.event_generate('<<FiletypeChanged>>')
+
+    def view_in_filebrowser(self):
+        self.event_generate('<<Filebrowser>>')
 
     def undo(self):
         if self.current_tab >= 0:

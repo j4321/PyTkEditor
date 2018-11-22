@@ -78,6 +78,9 @@ class OneButtonBox(tk.Toplevel):
         display.insert("1.0", message)
         display.configure(state="disabled")
         display.grid(row=0, column=1, pady=(10, 4), padx=4, sticky="ewns")
+        display.update_idletasks()
+        if display.bbox('end-1c') is None:
+            display.configure(height=h + 1)
         display.bind("<Button-1>", lambda event: display.focus_set())
         if image:
             ttk.Label(frame, image=image).grid(row=0, column=0, padx=4, pady=(10, 4))
@@ -109,7 +112,6 @@ class ShowError(tk.Toplevel):
             report_msg: if True display a suggestion to report error
             image: image displayed at the left of the message, either a PhotoImage or a string
         """
-        print(message)
         tk.Toplevel.__init__(self, parent)
         self.transient(parent)
         self.resizable(False, False)
@@ -157,6 +159,9 @@ class ShowError(tk.Toplevel):
         display.configure(state="disabled")
         display.grid(row=0, column=1, pady=(10, 4), padx=4, sticky="ewns")
         display.bind("<Button-1>", lambda event: display.focus_set())
+        display.update_idletasks()
+        if display.bbox('end-1c') is None:
+            display.configure(height=h + 1)
         if image:
             ttk.Label(frame, image=image).grid(row=0, column=0, padx=4, pady=(10, 4))
         frame.pack(fill='x')
