@@ -704,7 +704,7 @@ class App(tk.Tk):
     def check_syntax(self, tab=None):
         if tab is None:
             tab = self.editor.select()
-        if self.editor.files[tab] and self.filetype.get() == 'Python':
+        if tab and self.editor.files[tab] and self.filetype.get() == 'Python':
             results = check_file(self.editor.files[tab])
             self.editor.show_syntax_issues(results)
             self.update_menu_errors()

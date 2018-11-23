@@ -190,6 +190,12 @@ class EditorNotebook(Notebook):
         else:
             return ("", "")
 
+    def select(self, tab_id=None):
+        Notebook.select(self, tab_id)
+        tab = self.current_tab
+        if tab >= 0:
+            self._tabs[tab].focus_set()
+
     def file_switch(self, event=None):
 
         def ok(event):
