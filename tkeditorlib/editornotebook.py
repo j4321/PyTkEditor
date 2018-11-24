@@ -191,10 +191,11 @@ class EditorNotebook(Notebook):
             return ("", "")
 
     def select(self, tab_id=None):
-        Notebook.select(self, tab_id)
+        res = Notebook.select(self, tab_id)
         tab = self.current_tab
         if tab >= 0:
             self._tabs[tab].focus_set()
+        return res
 
     def file_switch(self, event=None):
 
@@ -217,6 +218,7 @@ class EditorNotebook(Notebook):
         top.grab_set()
 
         files = ["{1} - {0}".format(*os.path.split(file)) for file in self.files.values()]
+        files.sort()
         c = AutoCompleteEntryListbox(top, completevalues=files, width=60)
         c.pack(fill='both', expand=True)
         c.entry.bind('<Escape>', lambda e: top.destroy())
@@ -388,6 +390,7 @@ class EditorNotebook(Notebook):
                 self._start_watching(file)
             res = True
             self._files_check_deletion[self.files[tab]] = True
+            self._tabs[tab].focus_set()
         return res
 
     def saveas(self, tab=None, name=None):
