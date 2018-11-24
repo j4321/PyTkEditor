@@ -6,10 +6,9 @@ Created on Sat Aug 18 15:04:09 2018
 @author: juliette
 """
 from tkinter import PhotoImage
-from tkinter.ttk import Treeview, Frame, Label
+from tkinter.ttk import Treeview, Frame
 from tkinter.font import Font
 from tkeditorlib.autoscrollbar import AutoHideScrollbar as Scrollbar
-from tkeditorlib.autocomplete import AutoCompleteCombobox2
 from tkeditorlib.constants import IM_FILE, IM_FOLDER
 import os
 
@@ -25,8 +24,6 @@ class FileTree(Treeview):
         self.font = Font(self, font="TkDefaultFont 9")
         self.callback = callback
 
-        # self.tag_configure('folder', image=self._im_folder)
-        # self.tag_configure('file', image=self._im_file)
         self.tag_bind('file', '<Double-1>', self._on_db_click_file)
         self.tag_bind('folder', '<Double-1>', self._on_db_click_folder)
         self.tag_bind('prev', '<Double-1>', self._on_db_click_prev)
