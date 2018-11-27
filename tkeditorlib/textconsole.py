@@ -31,7 +31,6 @@ class TextConsole(tk.Text):
         kw.setdefault('wrap', 'word')
         kw.setdefault('prompt1', '>>> ')
         kw.setdefault('prompt2', '... ')
-        kw.setdefault('error_foreground', 'tomato')
         banner = kw.pop('banner', 'Python %s\n' % sys.version)
 
         self.history = history
@@ -42,7 +41,6 @@ class TextConsole(tk.Text):
 
         self._prompt1 = kw.pop('prompt1')
         self._prompt2 = kw.pop('prompt2')
-        error_foreground = kw.pop('error_foreground')
 
         tk.Text.__init__(self, master, **kw)
 
@@ -62,8 +60,6 @@ class TextConsole(tk.Text):
 
         # --- initialization
         self.update_style()
-
-        self.tag_configure('error', foreground=error_foreground)
 
         self.insert('end', banner, 'banner')
         self.prompt()
@@ -470,7 +466,7 @@ class TextConsole(tk.Text):
                     self._shell_clear()
                     return
                 else:
-                    self.insert('end', err, 'error')
+                    self.insert('end', err, 'Token.Error')
 
             if not res and self.compare('insert linestart', '>', 'insert'):
                 self.insert('insert', '\n')
