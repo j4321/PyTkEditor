@@ -239,7 +239,9 @@ class TextConsole(tk.Text):
         self._tooltip.withdraw()
         if self.compare('insert', '<', 'input') and event.keysym not in ['Left', 'Right']:
             self._hist_item = self.history.get_length()
-            return 'break'
+            self.mark_set('insert', 'input lineend')
+            if not event.char.isalnum():
+                return 'break'
 
     def on_key_release(self, event):
         if self.compare('insert', '<', 'input') and event.keysym not in ['Left', 'Right']:
@@ -304,6 +306,7 @@ class TextConsole(tk.Text):
 
     def on_tab(self, event):
         if self.compare('insert', '<', 'input'):
+            self.mark_set('insert', 'input lineend')
             return "break"
         elif self._comp.winfo_ismapped():
             self._comp_sel()
@@ -490,6 +493,7 @@ class TextConsole(tk.Text):
 
     def on_shift_return(self, event):
         if self.compare('insert', '<', 'input'):
+            self.mark_set('insert', 'input lineend')
             return 'break'
         else:
             self.mark_set('insert', 'end')
@@ -500,6 +504,7 @@ class TextConsole(tk.Text):
 
     def on_return(self, event=None):
         if self.compare('insert', '<', 'input'):
+            self.mark_set('insert', 'input lineend')
             return 'break'
         if self._comp.winfo_ismapped():
             self._comp_sel()
@@ -516,6 +521,7 @@ class TextConsole(tk.Text):
 
     def on_backspace(self, event):
         if self.compare('insert', '<=', 'input'):
+            self.mark_set('insert', 'input lineend')
             return 'break'
         sel = self.tag_ranges('sel')
         if sel:
