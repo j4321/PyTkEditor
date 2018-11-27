@@ -153,9 +153,7 @@ class TextConsole(tk.Text):
                        inactiveselectbackground=CONSOLE_HIGHLIGHT_BG,
                        insertbackground=CONSOLE_FG)
         self.tag_configure('prompt', **CONSOLE_SYNTAX_HIGHLIGHTING['Token.Generic.Prompt'])
-        self.tag_configure('error', background=CONSOLE_BG)
-        self.tag_configure('output', foreground=CONSOLE_FG,
-                           background=CONSOLE_BG)
+        self.tag_configure('output', foreground=CONSOLE_FG)
         # --- syntax highlighting
         tags = list(self.tag_names())
         tags.remove('sel')
