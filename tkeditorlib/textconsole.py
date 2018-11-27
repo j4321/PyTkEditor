@@ -155,13 +155,12 @@ class TextConsole(tk.Text):
         self.tag_configure('prompt', **CONSOLE_SYNTAX_HIGHLIGHTING['Token.Generic.Prompt'])
         self.tag_configure('output', foreground=CONSOLE_FG)
         # --- syntax highlighting
-        tags = list(self.tag_names())
-        tags.remove('sel')
         tag_props = {key: '' for key in self.tag_configure('sel')}
         for tag, opts in CONSOLE_SYNTAX_HIGHLIGHTING.items():
             props = tag_props.copy()
             props.update(opts)
             self.tag_configure(tag, **props)
+        self.tag_raise('prompt')
 
     def index_to_tuple(self, index):
         return tuple(map(int, self.index(index).split(".")))
