@@ -218,8 +218,7 @@ class EditorNotebook(Notebook):
         top.grab_set()
 
         files = ["{1} - {0}".format(*os.path.split(file)) for file in self.files.values()]
-        files.sort()
-        c = AutoCompleteEntryListbox(top, completevalues=files, width=60)
+        c = AutoCompleteEntryListbox(top, completevalues=sorted(files), width=60)
         c.pack(fill='both', expand=True)
         c.entry.bind('<Escape>', lambda e: top.destroy())
         c.listbox.bind('<Escape>', lambda e: top.destroy())
