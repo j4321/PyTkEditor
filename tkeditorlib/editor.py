@@ -490,10 +490,10 @@ class Editor(ttk.Frame):
                 xr = self.text.winfo_rootx()
                 yr = self.text.winfo_rooty()
                 ht = self._tooltip.winfo_reqheight()
-                screen = get_screen(xr, yr)
+                screen = self.winfo_screenheight()
                 y = yr + yb + h
                 x = xr + xb
-                if y + ht > screen[3]:
+                if y + ht > screen:
                     y = yr + yb - ht
                 self._tooltip.geometry('+%i+%i' % (x, y))
                 self._tooltip.deiconify()
@@ -519,10 +519,10 @@ class Editor(ttk.Frame):
             xr = self.text.winfo_rootx()
             yr = self.text.winfo_rooty()
             hcomp = self._comp.winfo_reqheight()
-            screen = get_screen(xr, yr)
+            screen = self.winfo_screenheight()
             y = yr + yb + h
             x = xr + xb
-            if y + hcomp > screen[3]:
+            if y + hcomp > screen:
                 y = yr + yb - hcomp
             self._comp.geometry('+%i+%i' % (x, y))
             self._comp.deiconify()
