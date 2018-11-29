@@ -6,7 +6,6 @@ Created on Sun Aug 19 11:34:11 2018
 @author: juliette
 """
 import os
-from screeninfo import get_monitors
 from pygments.styles import get_style_by_name
 from jedi import settings
 import configparser
@@ -15,6 +14,9 @@ from pygments.token import Comment
 import logging
 from logging.handlers import TimedRotatingFileHandler
 import warnings
+from Xlib import display
+from Xlib.ext.xinerama import query_screens
+
 
 settings.case_insensitive_completion = False
 os.environ['PYFLAKES_BUILTINS'] = '_'
@@ -320,7 +322,9 @@ def load_style(stylename):
 
 # --- screen size
 def get_screen(x, y):
-    monitors = [(m.x, m.y, m.x + m.width, m.y + m.height) for m in get_monitors()]
+    d = display.Display()
+    screens = query_screens(d).screens
+    monitors = [(m.x, m.y, m.x + m.width, m.y + m.height) for m in screens]
     i = 0
     while (i < len(monitors) and
            not (monitors[i][0] <= x <= monitors[i][2]

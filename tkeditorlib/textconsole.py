@@ -367,10 +367,10 @@ class TextConsole(tk.Text):
             xr = self.winfo_rootx()
             yr = self.winfo_rooty()
             ht = self._tooltip.winfo_reqheight()
-            screen = self.winfo_screenheight()
+            screen = get_screen(xr, yr)
             y = yr + yb + h
             x = xr + xb
-            if y + ht > screen:
+            if y + ht > screen[3]:
                 y = yr + yb - ht
 
             self._tooltip.geometry('+%i+%i' % (x, y))
