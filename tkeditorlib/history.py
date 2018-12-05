@@ -40,7 +40,7 @@ class History(tk.Text):
             self._session_start = len(self.history)
         except (FileNotFoundError, pickle.UnpicklingError, EOFError):
             self._session_start = 0
-        self.insert('1.0', '\n'.join(self.history))
+        self.insert('1.0', '\n'.join(self.history) + '\n')
         self.parse()
         self.configure(state='disabled')
 
@@ -104,7 +104,7 @@ class History(tk.Text):
     def add_history(self, line):
         self.history.append(line)
         self.configure(state='normal')
-        self.insert('end', line)
+        self.insert('end', line + '\n')
         self.parse()
         self.configure(state='disabled')
 
