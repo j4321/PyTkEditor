@@ -107,6 +107,7 @@ class History(tk.Text):
         self.insert('end', line + '\n')
         self.parse()
         self.configure(state='disabled')
+        self.see('end')
 
     def replace_history_item(self, pos, line):
         self.history[pos] = line

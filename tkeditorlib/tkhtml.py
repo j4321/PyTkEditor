@@ -169,7 +169,6 @@ class TkinterHtml(tk.Widget, tk.XView, tk.YView):
                 nodes = self.search(url)
             except tk.TclError:
                 nodes = ''
-            print(url, nodes)
             if nodes:
                 self.yview_name(nodes[0])
             else:
