@@ -2,7 +2,7 @@
 # -*- coding:Utf-8 -*-
 """
 TkEditor - Python IDE
-Copyright 2018 Juliette Monsel <j_4321@protonmail.com>
+Copyright 2018-2019 Juliette Monsel <j_4321@protonmail.com>
 
 TkEditor is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -17,13 +17,13 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+
 Custom tkinter messageboxes
 """
-
-
 from webbrowser import open as url_open
 import tkinter as tk
 from tkinter import ttk
+
 from .autoscrollbar import AutoHideScrollbar as Scrollbar
 from .constants import ICONS, REPORT_URL, CONFIG
 

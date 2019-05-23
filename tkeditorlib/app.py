@@ -1,3 +1,26 @@
+#! /usr/bin/python3
+# -*- coding: utf-8 -*-
+"""
+TkEditor - Python IDE
+Copyright 2018-2019 Juliette Monsel <j_4321 at protonmail dot com>
+
+TkEditor is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+TkEditor is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+
+Main app
+"""
+
 from tkeditorlib.editornotebook import EditorNotebook
 from tkeditorlib.syntax_check import check_file
 from tkeditorlib.codestructure import CodeStructure
@@ -11,6 +34,7 @@ from tkeditorlib.autoscrollbar import AutoHideScrollbar
 from tkeditorlib.menu import LongMenu
 from tkeditorlib.help import Help
 from tkeditorlib.messagebox import showerror
+from tkeditorlib.about import About
 import tkinter as tk
 from tkinter import ttk
 from tkfilebrowser import askopenfilenames, asksaveasfilename
@@ -148,7 +172,7 @@ class App(tk.Tk):
                                    command=self.editor.closeall, compound='left')
         self.menu_file.add_command(label='Quit', command=self.quit,
                                    image=self._im_quit, compound='left')
-        # edit
+        # ------- edit
         self.menu_edit.add_command(label='Undo', command=self.editor.undo,
                                    image=self._im_undo,
                                    accelerator='Ctrl+Z', compound='left')
@@ -187,6 +211,8 @@ class App(tk.Tk):
         self.menu.add_cascade(label='Edit', underline=0, menu=self.menu_edit)
         self.menu.add_cascade(label='Document', underline=0, menu=self.menu_doc)
         self.menu.add_cascade(label='Error list', underline=6, menu=self.menu_errors)
+        self.menu.add_command(label='About', underline=0,
+                              command=lambda: About(self))
 
         self.configure(menu=self.menu)
 

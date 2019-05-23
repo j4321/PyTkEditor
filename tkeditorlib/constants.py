@@ -1,9 +1,24 @@
 #! /usr/bin/python3
 # -*- coding: utf-8 -*-
 """
-Created on Sun Aug 19 11:34:11 2018
+TkEditor - Python IDE
+Copyright 2018-2019 Juliette Monsel <j_4321 at protonmail dot com>
 
-@author: juliette
+TkEditor is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+TkEditor is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+
+Constants and functions
 """
 import os
 from pygments.styles import get_style_by_name
