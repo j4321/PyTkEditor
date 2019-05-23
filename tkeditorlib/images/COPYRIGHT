@@ -1,0 +1,36 @@
+Files: 
+    c.png
+    cell.png
+    close_dark.png
+    close_light.png
+    f.png
+    hf.png
+    sep.png
+Copyright:
+    2018 Juliette Monsel <j_4321@protonmail.com>
+License: GPL-3+
+
+Files: 
+    error.png
+    file.png
+    find.png
+    folder.png
+    icon.png
+    new.png
+    open.png
+    quit.png
+    recents.png
+    redo.png
+    reopen.png
+    replace.png
+    run.png
+    saveall.png
+    saveas.png
+    save.png
+    settings.png
+    undo.png
+    warning.png
+Copyright:
+    2007-2013 elementary LLC <https://github.com/elementary>
+    2018 Juliette Monsel <j_4321@protonmail.com>
+License: GPL-3+
