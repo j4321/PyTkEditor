@@ -80,6 +80,7 @@ class TextConsole(tk.Text):
         self.bind('<Control-c>', self.on_ctrl_c)
         self.bind('<<Paste>>', self.on_paste)
         self.bind('<<Cut>>', self.on_cut)
+        self.bind('<<LineStart>>', self.on_goto_linestart)
         self.bind('<Destroy>', self.quit)
         self.bind('<FocusOut>', self._on_focusout)
         self.bind("<ButtonPress>", self._on_press)
@@ -178,6 +179,10 @@ class TextConsole(tk.Text):
                 self.tag_add(str(t), "range_start", "range_end")
             self.mark_set("range_start", "range_end")
 
+    def on_goto_linestart(self, event):
+        self.mark_set('insert', 'insert linestart+%ic' % (len(self._prompt1)))
+        return "break"
+
     def on_ctrl_c(self, event):
         sel = self.tag_ranges('sel')
         if sel:
@@ -200,6 +205,8 @@ class TextConsole(tk.Text):
         try:
             if self.compare('sel.first', '<', 'input'):
                 self.tag_remove('sel', 'sel.first', 'input')
+            # if self.compare('sel.last', '<', 'input'):
+                # return "break"
         except tk.TclError:
             pass
 
