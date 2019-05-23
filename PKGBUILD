@@ -1,20 +1,22 @@
 # Maintainer: Juliette Monsel <j_4321@protonmail.com>
 pkgname=tkeditor
 pkgver=1.0.1
-pkgrel=1
+pkgrel=2
 pkgdesc="Python IDE"
 arch=('any')
 license=('GPL3')
 makedepends=('python-setuptools')
 depends=('tk'
          'desktop-file-utils'
-         'python-screeninfo'
+         'python-xlib'
+         'python-docutils'
          'python-tkfilebrowser'
          'python-pyflakes'
          'python-pygments'
+         'python-ewmh'
          'python-pycodestyle')
 source=("$pkgname-$pkgver.tar.gz")
-sha512sums=('d4c509e90618c5683728f55c961beb062032946a2a2954f5a5c683e69048a24172db0405b1694724b3590df71a2b1648cb91d9acd6c1340c77e63f421c1936ce')
+sha512sums=('bbead729d73d2e4cf40e84162b8b0bc0686314bad855c9a8ee75ef3b4b311bf4ff50a55de03ac23def8b4ba32cd5f374fb4f8ba1ec1a876e2b23f9a455416a3a')
 
 build() {
     cd "$srcdir/$pkgname-$pkgver"
