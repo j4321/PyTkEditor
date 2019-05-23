@@ -1,5 +1,5 @@
 # Maintainer: Juliette Monsel <j_4321 at protonmail dot com>
-pkgname=tkeditor
+pkgname=pytkeditor
 pkgver=1.0.0a0
 pkgrel=1
 pkgdesc="Python IDE"
@@ -18,7 +18,7 @@ depends=('tk'
          'python-jedi'
          'python-pycodestyle')
 source=("$pkgname-$pkgver.tar.gz")
-sha512sums=('5940765a1e5aa9f14592d473ced762ecdabeb58ab25e4036f2c9f365846a9ba6c6fda711ecfffa641761f74030090ff47a6574b7eef50d5edb0e17af6d538a63')
+sha512sums=('c33a791569ddc6d3b3dc8c81316d6fd2df8d195bb2c659431241cf2f9efee10699282f908f2e201c299fe6e9cf938a45196d62d626ba25feedf1a67b05d22339')
 
 build() {
     cd "$srcdir/$pkgname-$pkgver"

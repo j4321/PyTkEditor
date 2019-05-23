@@ -1,18 +1,18 @@
 #! /usr/bin/python3
 # -*- coding: utf-8 -*-
 """
-TkEditor - Python IDE
+PyTkEditor - Python IDE
 Copyright 2018-2019 Juliette Monsel <j_4321 at protonmail dot com>
 code based on the tkinterhtml module by Aivar Annamaa copyright 2015-2016
 https://pypi.python.org/pypi/tkinterhtml
 
 
-TkEditor is free software: you can redistribute it and/or modify
+PyTkEditor is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
 
-TkEditor is distributed in the hope that it will be useful,
+PyTkEditor is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
@@ -32,7 +32,7 @@ import tkinter as tk
 from tkinter import ttk
 import logging
 from PIL.ImageTk import PhotoImage
-from tkeditorlib.autoscrollbar import AutoHideScrollbar
+from pytkeditorlib.autoscrollbar import AutoHideScrollbar
 
 _tkhtml_loaded = False
 

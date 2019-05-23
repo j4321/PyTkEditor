@@ -1,15 +1,15 @@
 #! /usr/bin/python3
 # -*- coding: utf-8 -*-
 """
-TkEditor - Python IDE
+PyTkEditor - Python IDE
 Copyright 2018-2019 Juliette Monsel <j_4321 at protonmail dot com>
 
-TkEditor is free software: you can redistribute it and/or modify
+PyTkEditor is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
 
-TkEditor is distributed in the hope that it will be useful,
+PyTkEditor is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
@@ -21,20 +21,20 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 Main app
 """
 
-from tkeditorlib.editornotebook import EditorNotebook
-from tkeditorlib.syntax_check import check_file
-from tkeditorlib.codestructure import CodeStructure
-from tkeditorlib.filebrowser import Filebrowser
-from tkeditorlib.constants import ICON, CONFIG, save_config, IM_CLOSE
-from tkeditorlib import constants as cst
-from tkeditorlib.textconsole import TextConsole
-from tkeditorlib.history import HistoryFrame
-from tkeditorlib.config import Config
-from tkeditorlib.autoscrollbar import AutoHideScrollbar
-from tkeditorlib.menu import LongMenu
-from tkeditorlib.help import Help
-from tkeditorlib.messagebox import showerror
-from tkeditorlib.about import About
+from pytkeditorlib.editornotebook import EditorNotebook
+from pytkeditorlib.syntax_check import check_file
+from pytkeditorlib.codestructure import CodeStructure
+from pytkeditorlib.filebrowser import Filebrowser
+from pytkeditorlib.constants import ICON, CONFIG, save_config, IM_CLOSE
+from pytkeditorlib import constants as cst
+from pytkeditorlib.textconsole import TextConsole
+from pytkeditorlib.history import HistoryFrame
+from pytkeditorlib.config import Config
+from pytkeditorlib.autoscrollbar import AutoHideScrollbar
+from pytkeditorlib.menu import LongMenu
+from pytkeditorlib.help import Help
+from pytkeditorlib.messagebox import showerror
+from pytkeditorlib.about import About
 import tkinter as tk
 from tkinter import ttk
 from tkfilebrowser import askopenfilenames, asksaveasfilename
@@ -47,8 +47,8 @@ import logging
 
 class App(tk.Tk):
     def __init__(self, *files):
-        tk.Tk.__init__(self, className='TkEditor')
-        self.title('TkEditor')
+        tk.Tk.__init__(self, className='PyTkEditor')
+        self.title('PyTkEditor')
         self._icon = tk.PhotoImage(file=ICON, master=self)
         self._im_run = tk.PhotoImage(file=cst.IM_RUN, master=self)
         self._im_new = tk.PhotoImage(file=cst.IM_NEW, master=self)

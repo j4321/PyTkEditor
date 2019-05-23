@@ -1,15 +1,15 @@
 #! /usr/bin/python3
 # -*- coding: utf-8 -*-
 """
-TkEditor - Python IDE
+PyTkEditor - Python IDE
 Copyright 2018-2019 Juliette Monsel <j_4321 at protonmail dot com>
 
-TkEditor is free software: you can redistribute it and/or modify
+PyTkEditor is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
 
-TkEditor is distributed in the hope that it will be useful,
+PyTkEditor is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
@@ -25,8 +25,8 @@ import tkinter as tk
 from tkinter import ttk
 from tkinter import font
 from pygments.styles import get_all_styles
-from tkeditorlib.constants import CONFIG, save_config
-from tkeditorlib.autocomplete import AutoCompleteCombobox
+from pytkeditorlib.constants import CONFIG, save_config
+from pytkeditorlib.autocomplete import AutoCompleteCombobox
 
 
 class Config(tk.Toplevel):
@@ -35,7 +35,7 @@ class Config(tk.Toplevel):
         self.transient(master)
         self.grab_set()
         self.configure(padx=4, pady=4)
-        self.title('TkEditor - Config')
+        self.title('PyTkEditor - Config')
 
         ttk.Label(self, text='General',
                   font=('TkDefaultFont', 10, 'bold')).grid(row=0, columnspan=3,

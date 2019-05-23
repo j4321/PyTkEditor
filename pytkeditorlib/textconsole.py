@@ -1,15 +1,15 @@
 #! /usr/bin/python3
 # -*- coding: utf-8 -*-
 """
-TkEditor - Python IDE
+PyTkEditor - Python IDE
 Copyright 2018-2019 Juliette Monsel <j_4321 at protonmail dot com>
 
-TkEditor is free software: you can redistribute it and/or modify
+PyTkEditor is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
 
-TkEditor is distributed in the hope that it will be useful,
+PyTkEditor is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
@@ -26,11 +26,11 @@ import sys
 import re
 from os import kill, remove
 from os.path import join, dirname
-from tkeditorlib.complistbox import CompListbox
-from tkeditorlib.tooltip import Tooltip
-from tkeditorlib.constants import get_screen, load_style, CONFIG, SERVER_CERT, \
+from pytkeditorlib.complistbox import CompListbox
+from pytkeditorlib.tooltip import Tooltip
+from pytkeditorlib.constants import get_screen, load_style, CONFIG, SERVER_CERT, \
     CLIENT_CERT
-from tkeditorlib.messagebox import askyesno
+from pytkeditorlib.messagebox import askyesno
 from pygments import lex
 from pygments.lexers import Python3Lexer
 import jedi

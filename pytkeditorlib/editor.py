@@ -1,15 +1,15 @@
 #! /usr/bin/python3
 # -*- coding: utf-8 -*-
 """
-TkEditor - Python IDE
+PyTkEditor - Python IDE
 Copyright 2018-2019 Juliette Monsel <j_4321 at protonmail dot com>
 
-TkEditor is free software: you can redistribute it and/or modify
+PyTkEditor is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
 
-TkEditor is distributed in the hope that it will be useful,
+PyTkEditor is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
@@ -24,15 +24,15 @@ import jedi
 from pygments import lex
 import tkinter as tk
 from tkinter import ttk
-from tkeditorlib import messagebox
+from pytkeditorlib import messagebox
 from tkinter.font import Font
 import re
-from tkeditorlib.autoscrollbar import AutoHideScrollbar
-from tkeditorlib.constants import IM_WARN, IM_ERR, get_screen,\
+from pytkeditorlib.autoscrollbar import AutoHideScrollbar
+from pytkeditorlib.constants import IM_WARN, IM_ERR, get_screen,\
     load_style, PYTHON_LEX, CONFIG, valide_entree_nb
-from tkeditorlib.complistbox import CompListbox
-from tkeditorlib.tooltip import TooltipTextWrapper, Tooltip
-from tkeditorlib.filebar import FileBar
+from pytkeditorlib.complistbox import CompListbox
+from pytkeditorlib.tooltip import TooltipTextWrapper, Tooltip
+from pytkeditorlib.filebar import FileBar
 
 
 class Editor(ttk.Frame):

@@ -1,15 +1,15 @@
 #! /usr/bin/python3
 # -*- coding: utf-8 -*-
 """
-TkEditor - Python IDE
+PyTkEditor - Python IDE
 Copyright 2018-2019 Juliette Monsel <j_4321 at protonmail dot com>
 
-TkEditor is free software: you can redistribute it and/or modify
+PyTkEditor is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
 
-TkEditor is distributed in the hope that it will be useful,
+PyTkEditor is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
@@ -22,8 +22,8 @@ GUI widget to display the help
 """
 import tkinter as tk
 from tkinter import ttk
-from tkeditorlib.tkhtml import HtmlFrame
-from tkeditorlib.constants import TEMPLATE_PATH, CSS_PATH, CONFIG
+from pytkeditorlib.tkhtml import HtmlFrame
+from pytkeditorlib.constants import TEMPLATE_PATH, CSS_PATH, CONFIG
 from textwrap import dedent
 from docutils.core import publish_string
 from docutils.parsers.rst import roles

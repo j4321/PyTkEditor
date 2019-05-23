@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-TkEditor - Python IDE
+PyTkEditor - Python IDE
 Copyright 2018-2019 Juliette Monsel <j_4321 at protonmail dot com>
 
-TkEditor is free software: you can redistribute it and/or modify
+PyTkEditor is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
 
-TkEditor is distributed in the hope that it will be useful,
+PyTkEditor is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
@@ -46,7 +46,7 @@ class About(Toplevel):
 
         Label(self,
               text="{app_name} {version}".format(app_name=APP_NAME, version=__version__)).grid(row=1, columnspan=2)
-        Label(self, text=_("TkEditor - Python IDE")).grid(row=2, columnspan=2, padx=10)
+        Label(self, text=_("PyTkEditor - Python IDE")).grid(row=2, columnspan=2, padx=10)
         Label(self, text="Copyright (C) Juliette Monsel 2018-2019").grid(row=3, columnspan=2)
         Label(self, text="j_4321@protonmail.com").grid(row=4, columnspan=2)
         b = Button(self, text=_("License"), command=self._license)

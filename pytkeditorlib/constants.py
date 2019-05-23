@@ -1,15 +1,15 @@
 #! /usr/bin/python3
 # -*- coding: utf-8 -*-
 """
-TkEditor - Python IDE
+PyTkEditor - Python IDE
 Copyright 2018-2019 Juliette Monsel <j_4321 at protonmail dot com>
 
-TkEditor is free software: you can redistribute it and/or modify
+PyTkEditor is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
 
-TkEditor is distributed in the hope that it will be useful,
+PyTkEditor is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
@@ -49,7 +49,7 @@ from Xlib.ext.xinerama import query_screens
 settings.case_insensitive_completion = False
 os.environ['PYFLAKES_BUILTINS'] = '_'
 
-APP_NAME = 'TkEditor'
+APP_NAME = 'PyTkEditor'
 REPORT_URL = "https://gitlab.com/j_4321/{}/issues".format(APP_NAME)
 
 
@@ -80,25 +80,25 @@ else:
     if not os.path.exists(LOCAL_PATH):
         os.mkdir(LOCAL_PATH)
     # PATH_LOCALE = "/usr/share/locale"
-    PATH_HTML = "/usr/share/tkeditor/html"
-    PATH_SSL = "/usr/share/tkeditor/ssl"
-    PATH_IMG = "/usr/share/tkeditor/images"
+    PATH_HTML = "/usr/share/pytkeditor/html"
+    PATH_SSL = "/usr/share/pytkeditor/ssl"
+    PATH_IMG = "/usr/share/pytkeditor/images"
 
 
 if os.access(PATH, os.W_OK):
     LOCAL_PATH = os.path.join(PATH, 'config')
 else:
-    LOCAL_PATH = os.path.join(os.path.expanduser('~'), '.tkeditor')
+    LOCAL_PATH = os.path.join(os.path.expanduser('~'), '.pytkeditor')
 
 if not os.path.exists(LOCAL_PATH):
     os.mkdir(LOCAL_PATH)
 
 CSS_PATH = os.path.join(PATH_HTML, '{theme}.css')
 TEMPLATE_PATH = os.path.join(PATH_HTML, 'template.txt')
-HISTFILE = os.path.join(LOCAL_PATH, 'tkeditor.history')
-PATH_CONFIG = os.path.join(LOCAL_PATH, 'tkeditor.ini')
-PATH_LOG = os.path.join(LOCAL_PATH, 'tkeditor.log')
-PIDFILE = os.path.join(LOCAL_PATH, "tkeditor.pid")
+HISTFILE = os.path.join(LOCAL_PATH, 'pytkeditor.history')
+PATH_CONFIG = os.path.join(LOCAL_PATH, 'pytkeditor.ini')
+PATH_LOG = os.path.join(LOCAL_PATH, 'pytkeditor.log')
+PIDFILE = os.path.join(LOCAL_PATH, "pytkeditor.pid")
 OPENFILE_PATH = os.path.join(LOCAL_PATH, ".file")
 
 # --- images

@@ -1,15 +1,15 @@
 #! /usr/bin/python3
 # -*- coding: utf-8 -*-
 """
-TkEditor - Python IDE
+PyTkEditor - Python IDE
 Copyright 2018-2019 Juliette Monsel <j_4321 at protonmail dot com>
 
-TkEditor is free software: you can redistribute it and/or modify
+PyTkEditor is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
 
-TkEditor is distributed in the hope that it will be useful,
+PyTkEditor is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
@@ -20,13 +20,13 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 Notebook containing the code editors for each opened file
 """
-from tkeditorlib.notebook import Notebook
-from tkeditorlib.editor import Editor
-from tkeditorlib.autocomplete import AutoCompleteEntryListbox
-from tkeditorlib.tooltip import TooltipNotebookWrapper
+from pytkeditorlib.notebook import Notebook
+from pytkeditorlib.editor import Editor
+from pytkeditorlib.autocomplete import AutoCompleteEntryListbox
+from pytkeditorlib.tooltip import TooltipNotebookWrapper
 import os
 from tkinter import Menu, Toplevel
-from tkeditorlib.messagebox import askyesnocancel, askyesno
+from pytkeditorlib.messagebox import askyesnocancel, askyesno
 from tkfilebrowser import asksaveasfilename
 from subprocess import Popen
 from threading import Thread, Event
@@ -101,7 +101,7 @@ class EditorNotebook(Notebook):
                 self.edit_modified(True, tab=tab, generate=True)
                 self.update_idletasks()
                 rep = askyesno('Warning',
-                               '{} has been modified outside TkEditor. Do you want to reload it?'.format(file),
+                               '{} has been modified outside PyTkEditor. Do you want to reload it?'.format(file),
                                icon='warning')
                 if rep:
                     self.select(tab)

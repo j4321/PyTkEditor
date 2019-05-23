@@ -1,15 +1,15 @@
 #! /usr/bin/python3
 # -*- coding: utf-8 -*-
 """
-TkEditor - Python IDE
+PyTkEditor - Python IDE
 Copyright 2018-2019 Juliette Monsel <j_4321 at protonmail dot com>
 
-TkEditor is free software: you can redistribute it and/or modify
+PyTkEditor is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
 
-TkEditor is distributed in the hope that it will be useful,
+PyTkEditor is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
@@ -22,12 +22,12 @@ Code completion listbox
 """
 import tkinter as tk
 from tkinter import ttk
-from tkeditorlib.autoscrollbar import AutoHideScrollbar
+from pytkeditorlib.autoscrollbar import AutoHideScrollbar
 
 
 class CompListbox(tk.Toplevel):
     def __init__(self, master):
-        tk.Toplevel.__init__(self, master, class_='TkEditor')
+        tk.Toplevel.__init__(self, master, class_='PyTkEditor')
         self.overrideredirect(True)
         self.attributes('-type', '_NET_WM_WINDOW_TYPE_POPUP_MENU')
 

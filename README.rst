@@ -1,4 +1,4 @@
-TkEditor
+PyTkEditor
 ========
 Copyright 2018-2019 Juliette Monsel <j_4321 at protonmail dot com>
 
@@ -33,16 +33,16 @@ I have new ideas.
         
 **Launch:**
 
-If TkEditor is installed:
+If PyTkEditor is installed:
 
 ::
 
-    $ tkeditor
+    $ pytkeditor
 
-or from the main menu *Development>TkEditor*.
+or from the main menu *Development>PyTkEditor*.
     
 Without installing:
 
 ::
 
-    $ python3 tkeditor
+    $ python3 pytkeditor
