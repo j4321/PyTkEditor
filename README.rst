@@ -27,22 +27,22 @@ I have new ideas.
     
 **Install:**
 
-    ::
-    
-        $ sudo python3 setup.py install
+::
+
+    $ sudo python3 setup.py install
         
 **Launch:**
 
-    If installed:
-    
-        ::
-        
-            $ tkeditor
+If TkEditor is installed:
 
-        or from the main menu *Development>TkEditor*.
-        
-    Without installing:
+    ::
     
-        ::
-        
-            $ python3 tkeditor
+        $ tkeditor
+
+    or from the main menu *Development>TkEditor*.
+    
+Without installing:
+
+    ::
+    
+        $ python3 tkeditor
