@@ -79,6 +79,7 @@ class TextConsole(tk.Text):
         self.bind('<BackSpace>', self.on_backspace)
         self.bind('<Control-c>', self.on_ctrl_c)
         self.bind('<<Paste>>', self.on_paste)
+        self.bind('<<Cut>>', self.on_cut)
         self.bind('<Destroy>', self.quit)
         self.bind('<FocusOut>', self._on_focusout)
         self.bind("<ButtonPress>", self._on_press)
@@ -195,6 +196,13 @@ class TextConsole(tk.Text):
             kill(self.shell_pid, signal.SIGINT)
         return 'break'
 
+    def on_cut(self, event):
+        try:
+            if self.compare('sel.first', '<', 'input'):
+                self.tag_remove('sel', 'sel.first', 'input')
+        except tk.TclError:
+            pass
+
     def on_paste(self, event):
         if self.compare('insert', '<', 'input'):
             return "break"
@@ -231,6 +239,10 @@ class TextConsole(tk.Text):
 
     def on_key_press(self, event):
         self._tooltip.withdraw()
+        try:
+            self.tag_remove('sel', 'sel.first', 'input')
+        except tk.TclError:
+            pass
         if self.compare('insert', '<', 'input') and event.keysym not in ['Left', 'Right']:
             self._hist_item = self.history.get_length()
             self.mark_set('insert', 'input lineend')
