@@ -15,7 +15,6 @@ Files:
     file.png
     find.png
     folder.png
-    icon.png
     new.png
     open.png
     quit.png
@@ -34,3 +33,13 @@ Copyright:
     2007-2013 elementary LLC <https://github.com/elementary>
     2018 Juliette Monsel <j_4321@protonmail.com>
 License: GPL-3+
+
+Files: icon.png
+Copyright:
+    2018 Juliette Monsel <j_4321@protonmail.com>
+    based on an icon (Text-x-generic, in the public domain) from the 
+    Tango projetct <http://tango.freedesktop.org> and the Python logo 
+    by The people from the Tango! project <http://tango.freedesktop.org>,
+    licensed under CC BY-SA 3.0.
+License:
+    CC BY-SA 3.0
