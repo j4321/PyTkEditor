@@ -356,8 +356,10 @@ class TextConsole(tk.Text):
         return script
 
     def _args_hint(self, event=None):
+        index = self.index('insert')
         script = self._jedi_script()
         res = script.goto_definitions()
+        self.mark_set('insert', index)
         if res:
             try:
                 args = res[-1].docstring().splitlines()[0]
