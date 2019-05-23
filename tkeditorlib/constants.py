@@ -50,9 +50,27 @@ PYTHON_LEX = MyLexer()
 
 # --- paths
 PATH = os.path.dirname(__file__)
-CSS_PATH = os.path.join(PATH, 'html', '{theme}.css')
-TEMPLATE_PATH = os.path.join(PATH, 'html', 'template.txt')
-IMG_PATH = os.path.join(PATH, 'images')
+
+if os.access(PATH, os.W_OK) and os.path.exists(os.path.join(PATH, "images")):
+    # the app is not installed
+    # local directory containing config files
+    LOCAL_PATH = os.path.join(PATH, 'config')
+    if not os.path.exists(LOCAL_PATH):
+        os.mkdir(LOCAL_PATH)
+    # PATH_LOCALE = os.path.join(PATH, "locale")
+    PATH_HTML = os.path.join(PATH, 'html')
+    PATH_SSL = os.path.join(PATH, 'ssl')
+    PATH_IMG = os.path.join(PATH, 'images')
+else:
+    # local directory containing config files
+    LOCAL_PATH = os.path.join(os.path.expanduser("~"), ".feedagregator")
+    if not os.path.exists(LOCAL_PATH):
+        os.mkdir(LOCAL_PATH)
+    # PATH_LOCALE = "/usr/share/locale"
+    PATH_HTML = "/usr/share/tkeditor/html"
+    PATH_SSL = "/usr/share/tkeditor/ssl"
+    PATH_IMG = "/usr/share/tkeditor/images"
+
 
 if os.access(PATH, os.W_OK):
     LOCAL_PATH = os.path.join(PATH, 'config')
@@ -62,38 +80,40 @@ else:
 if not os.path.exists(LOCAL_PATH):
     os.mkdir(LOCAL_PATH)
 
+CSS_PATH = os.path.join(PATH_HTML, '{theme}.css')
+TEMPLATE_PATH = os.path.join(PATH_HTML, 'template.txt')
 HISTFILE = os.path.join(LOCAL_PATH, 'tkeditor.history')
-CONFIG_PATH = os.path.join(LOCAL_PATH, 'tkeditor.ini')
-LOG_PATH = os.path.join(LOCAL_PATH, 'tkeditor.log')
+PATH_CONFIG = os.path.join(LOCAL_PATH, 'tkeditor.ini')
+PATH_LOG = os.path.join(LOCAL_PATH, 'tkeditor.log')
 PIDFILE = os.path.join(LOCAL_PATH, "tkeditor.pid")
 OPENFILE_PATH = os.path.join(LOCAL_PATH, ".file")
 
 # --- images
-IM_CLASS = os.path.join(IMG_PATH, 'c.png')
-IM_FCT = os.path.join(IMG_PATH, 'f.png')
-IM_HFCT = os.path.join(IMG_PATH, 'hf.png')
-IM_SEP = os.path.join(IMG_PATH, 'sep.png')
-IM_CELL = os.path.join(IMG_PATH, 'cell.png')
-IM_WARN = os.path.join(IMG_PATH, 'warning.png')
-IM_ERR = os.path.join(IMG_PATH, 'error.png')
-IM_RUN = os.path.join(IMG_PATH, 'run.png')
-IM_NEW = os.path.join(IMG_PATH, 'new.png')
-IM_OPEN = os.path.join(IMG_PATH, 'open.png')
-IM_REOPEN = os.path.join(IMG_PATH, 'reopen.png')
-IM_SAVE = os.path.join(IMG_PATH, 'save.png')
-IM_SAVEAS = os.path.join(IMG_PATH, 'saveas.png')
-IM_SAVEALL = os.path.join(IMG_PATH, 'saveall.png')
-IM_RECENTS = os.path.join(IMG_PATH, 'recents.png')
-IM_UNDO = os.path.join(IMG_PATH, 'undo.png')
-IM_REDO = os.path.join(IMG_PATH, 'redo.png')
-IM_QUIT = os.path.join(IMG_PATH, 'quit.png')
-IM_FIND = os.path.join(IMG_PATH, 'find.png')
-IM_FILE = os.path.join(IMG_PATH, 'file.png')
-IM_FOLDER = os.path.join(IMG_PATH, 'folder.png')
-IM_REPLACE = os.path.join(IMG_PATH, 'replace.png')
-IM_SETTINGS = os.path.join(IMG_PATH, 'settings.png')
-IM_CLOSE = os.path.join(IMG_PATH, 'close_{theme}.png')
-ICON = os.path.join(IMG_PATH, 'icon.png')
+IM_CLASS = os.path.join(PATH_IMG, 'c.png')
+IM_FCT = os.path.join(PATH_IMG, 'f.png')
+IM_HFCT = os.path.join(PATH_IMG, 'hf.png')
+IM_SEP = os.path.join(PATH_IMG, 'sep.png')
+IM_CELL = os.path.join(PATH_IMG, 'cell.png')
+IM_WARN = os.path.join(PATH_IMG, 'warning.png')
+IM_ERR = os.path.join(PATH_IMG, 'error.png')
+IM_RUN = os.path.join(PATH_IMG, 'run.png')
+IM_NEW = os.path.join(PATH_IMG, 'new.png')
+IM_OPEN = os.path.join(PATH_IMG, 'open.png')
+IM_REOPEN = os.path.join(PATH_IMG, 'reopen.png')
+IM_SAVE = os.path.join(PATH_IMG, 'save.png')
+IM_SAVEAS = os.path.join(PATH_IMG, 'saveas.png')
+IM_SAVEALL = os.path.join(PATH_IMG, 'saveall.png')
+IM_RECENTS = os.path.join(PATH_IMG, 'recents.png')
+IM_UNDO = os.path.join(PATH_IMG, 'undo.png')
+IM_REDO = os.path.join(PATH_IMG, 'redo.png')
+IM_QUIT = os.path.join(PATH_IMG, 'quit.png')
+IM_FIND = os.path.join(PATH_IMG, 'find.png')
+IM_FILE = os.path.join(PATH_IMG, 'file.png')
+IM_FOLDER = os.path.join(PATH_IMG, 'folder.png')
+IM_REPLACE = os.path.join(PATH_IMG, 'replace.png')
+IM_SETTINGS = os.path.join(PATH_IMG, 'settings.png')
+IM_CLOSE = os.path.join(PATH_IMG, 'close_{theme}.png')
+ICON = os.path.join(PATH_IMG, 'icon.png')
 
 IM_ERROR_DATA = """
 iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAABHNCSVQICAgIfAhkiAAABiRJREFU
@@ -240,7 +260,7 @@ ICONS = {"information": IM_INFO_DATA, "error": IM_ERROR_DATA,
 
 
 # --- log
-handler = TimedRotatingFileHandler(LOG_PATH, when='midnight',
+handler = TimedRotatingFileHandler(PATH_LOG, when='midnight',
                                    interval=1, backupCount=7)
 logging.basicConfig(level=logging.INFO,
                     format='%(asctime)-15s %(levelname)s: %(message)s',
@@ -257,13 +277,13 @@ warnings.showwarning = customwarn
 
 
 # --- ssl
-SERVER_CERT = os.path.join(PATH, 'ssl', 'server.crt')
-CLIENT_CERT = os.path.join(PATH, 'ssl', 'client.crt')
+SERVER_CERT = os.path.join(PATH_SSL, 'server.crt')
+CLIENT_CERT = os.path.join(PATH_SSL, 'client.crt')
 
 # --- config
 CONFIG = configparser.ConfigParser()
 
-if not CONFIG.read(CONFIG_PATH):
+if not CONFIG.read(PATH_CONFIG):
     CONFIG.add_section('General')
     CONFIG.set('General', 'theme', "light")
     CONFIG.set('General', 'fontfamily', "DejaVu Sans Mono")
@@ -309,7 +329,7 @@ if not CONFIG.read(CONFIG_PATH):
 
 
 def save_config():
-    with open(CONFIG_PATH, 'w') as f:
+    with open(PATH_CONFIG, 'w') as f:
         CONFIG.write(f)
 
 
@@ -341,9 +361,9 @@ def get_screen(x, y):
     screens = query_screens(d).screens
     monitors = [(m.x, m.y, m.x + m.width, m.y + m.height) for m in screens]
     i = 0
-    while (i < len(monitors) and
-           not (monitors[i][0] <= x <= monitors[i][2]
-                and monitors[i][1] <= y <= monitors[i][3])):
+    while (i < len(monitors)
+           and not (monitors[i][0] <= x <= monitors[i][2]
+                    and monitors[i][1] <= y <= monitors[i][3])):
         i += 1
     if i == len(monitors):
         raise ValueError("(%i, %i) is out of screen" % (x, y))
