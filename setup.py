@@ -3,10 +3,13 @@
 
 from setuptools import setup
 
+with open("tkeditorlib/__init__.py") as file:
+    exec(file.read())
+
 files = ["images/*", "ssl/*", "html/*"]
 
 setup(name="tkeditor",
-      version="1.0.1",
+      version=__version__,
       description="Python IDE",
       author="Juliette Monsel",
       author_email="j_4321@protonmail.fr",
@@ -17,5 +20,6 @@ setup(name="tkeditor",
                   ("/usr/share/applications", ["tkeditor.desktop"])],
       scripts=["tkeditor"],
       long_description="""Python IDE in Tkinter.""",
-      install_requires=["screeninfo", "pygments", "pyflakes", "pycodestyle",
-                        "tkfilebrowser", "ewmh"])
+      install_requires=["jedi", "pygments", "pyflakes", "pycodestyle",
+                        "tkfilebrowser", "ewmh", "python-xlib",
+                        "Pillow", "docutils"])
