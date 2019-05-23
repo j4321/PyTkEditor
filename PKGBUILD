@@ -1,7 +1,7 @@
-# Maintainer: Juliette Monsel <j_4321@protonmail.com>
+# Maintainer: Juliette Monsel <j_4321 at protonmail dot com>
 pkgname=tkeditor
-pkgver=1.0.1
-pkgrel=2
+pkgver=1.0.0a0
+pkgrel=1
 pkgdesc="Python IDE"
 arch=('any')
 license=('GPL3')
@@ -14,9 +14,11 @@ depends=('tk'
          'python-pyflakes'
          'python-pygments'
          'python-ewmh'
+         'python-pillow'
+         'python-jedi'
          'python-pycodestyle')
 source=("$pkgname-$pkgver.tar.gz")
-sha512sums=('bbead729d73d2e4cf40e84162b8b0bc0686314bad855c9a8ee75ef3b4b311bf4ff50a55de03ac23def8b4ba32cd5f374fb4f8ba1ec1a876e2b23f9a455416a3a')
+sha512sums=('5940765a1e5aa9f14592d473ced762ecdabeb58ab25e4036f2c9f365846a9ba6c6fda711ecfffa641761f74030090ff47a6574b7eef50d5edb0e17af6d538a63')
 
 build() {
     cd "$srcdir/$pkgname-$pkgver"
