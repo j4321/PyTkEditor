@@ -35,14 +35,14 @@ I have new ideas.
 
 If TkEditor is installed:
 
-    ::
-    
-        $ tkeditor
+::
 
-    or from the main menu *Development>TkEditor*.
+    $ tkeditor
+
+or from the main menu *Development>TkEditor*.
     
 Without installing:
 
-    ::
-    
-        $ python3 tkeditor
+::
+
+    $ python3 tkeditor
