@@ -165,8 +165,8 @@ class Editor(ttk.Frame):
         self.text.bind("<ButtonPress>", self._on_press)
         self.text.bind("<KeyRelease-Up>", self._find_matching_par)
         self.text.bind("<KeyRelease-Down>", self._find_matching_par)
-        self.text.bind("<KeyRelease-Left>", self._find_matching_par)
-        self.text.bind("<KeyRelease-Right>", self._find_matching_par)
+        self.text.bind("<KeyRelease-Left>", self._on_key_release_Left_Right)
+        self.text.bind("<KeyRelease-Right>", self._on_key_release_Left_Right)
         self.text.bind("<ButtonRelease-1>", self._find_matching_par)
         self.text.bind("<Down>", self.on_down)
         self.text.bind("<Up>", self.on_up)
@@ -217,6 +217,10 @@ class Editor(ttk.Frame):
     def _on_keypress(self, event):
         self._clear_highlights()
         self._tooltip.withdraw()
+
+    def _on_key_release_Left_Right(self, event):
+        self._comp.withdraw()
+        self._find_matching_par()
 
     def _on_b4(self, event):
         self.yview('scroll', -3, 'units')
@@ -350,7 +354,8 @@ class Editor(ttk.Frame):
         if key in ('Return',) + tuple(self._autoclose):
             return
         elif self._comp.winfo_ismapped():
-            if event.char.isalnum():
+            print(key, '%r' % event.char)
+            if len(key) == 1 and key.isalnum():
                 self._comp_display()
             elif key not in ['Tab', 'Down', 'Up']:
                 self._comp.withdraw()
@@ -525,6 +530,7 @@ class Editor(ttk.Frame):
         self._highlights.clear()
 
     def _find_matching_par(self, event=None):
+        """Highlight matching brackets."""
         char = self.text.get('insert-1c')
         if char in ['(', '{', '[']:
             return self._find_closing_par(char)
@@ -534,6 +540,7 @@ class Editor(ttk.Frame):
             return False
 
     def _find_closing_par(self, char):
+        """Highlight the closing bracket of CHAR if it is on the same line."""
         line = self.text.get('insert', 'insert lineend')
         if not line:
             return False
@@ -558,6 +565,7 @@ class Editor(ttk.Frame):
             return True
 
     def _find_opening_par(self, char):
+        """Highlight the opening bracket of CHAR if it is on the same line."""
         line = self.text.get('insert linestart', 'insert-1c')
         if not line:
             return False
@@ -608,13 +616,16 @@ class Editor(ttk.Frame):
     def _comp_display(self):
         index = self.text.index('insert wordend')
         if index[-2:] != '.0':
-            line = self.text.get('insert wordstart', 'insert wordend')
-            i = len(line) - 1
-            while i > -1 and line[i] in self._autoclose.values():
-                i -= 1
-            self.text.mark_set('insert', 'insert wordstart +%ic' % (i + 1))
+            line = self.text.get('insert-1c wordstart', 'insert-1c wordend')
+            self.text.mark_set('insert', 'insert-1c wordend')
+            # i = len(line) - 1
+            # while i > -1 and line[i] in self._autoclose.values():
+                # i -= 1
+            # self.text.mark_set('insert', 'insert wordstart +%ic' % (i))
+            # print('%r' % self.text.get('insert linestart', 'insert'))
         row, col = str(self.text.index('insert')).split('.')
         script = jedi.Script(self.text.get('1.0', 'end'), int(row), int(col), self.file)
+        # script = jedi.Script(self.text.get('1.0', 'insert'), int(row), int(col), self.file)
 
         comp = script.completions()
         self._comp.withdraw()
