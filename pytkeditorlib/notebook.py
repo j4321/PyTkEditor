@@ -49,10 +49,16 @@ class Tab(ttk.Frame):
         self.frame.place(bordermode='inside', anchor='nw', x=0, y=0,
                          relwidth=1, relheight=1)
         self.label.bind('<Configure>', self._resize)
-        if self._state is 'disabled':
+        if self._state == 'disabled':
             self.state(['disabled'])
-        elif self._state is not 'normal':
+        elif self._state != 'normal':
             raise ValueError("state option should be 'normal' or 'disabled'")
+
+        self.bind('<ButtonRelease-2>', self._b2_press)
+
+    def _b2_press(self, event):
+        if self.identify(event.x, event.y):
+            self.closecommand()
 
     def _resize(self, event):
         self.configure(width=self.frame.winfo_reqwidth() + 6,
