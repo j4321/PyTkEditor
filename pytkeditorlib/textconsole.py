@@ -202,6 +202,7 @@ class TextConsole(tk.Text):
         sel = self.tag_ranges('sel')
         if sel:
             txt = self.get('sel.first', 'sel.last').splitlines()
+            print(txt)
             lines = []
             for i, line in enumerate(txt):
                 if line.startswith(self._prompt1):
@@ -228,9 +229,12 @@ class TextConsole(tk.Text):
     def on_paste(self, event):
         if self.compare('insert', '<', 'input'):
             return "break"
-        sel = self.tag_ranges('sel')
-        if sel:
+        try:
+            if self.compare('sel.first', '<', 'input'):
+                self.tag_remove('sel', 'sel.first', 'input')
             self.delete('sel.first', 'sel.last')
+        except tk.TclError:
+            pass
         txt = self.clipboard_get()
         self.insert("insert", txt)
         self.insert_cmd(self.get("input", "end"))
@@ -261,10 +265,12 @@ class TextConsole(tk.Text):
 
     def on_key_press(self, event):
         self._tooltip.withdraw()
-        try:
-            self.tag_remove('sel', 'sel.first', 'input')
-        except tk.TclError:
-            pass
+        print(event.keysym, event)
+        if 'Control' not in event.keysym:
+            try:
+                self.tag_remove('sel', 'sel.first', 'input')
+            except tk.TclError:
+                pass
         if self.compare('insert', '<', 'input') and event.keysym not in ['Left', 'Right']:
             self._hist_item = self.history.get_length()
             self.mark_set('insert', 'input lineend')
