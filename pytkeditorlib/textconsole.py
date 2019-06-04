@@ -202,7 +202,6 @@ class TextConsole(tk.Text):
         sel = self.tag_ranges('sel')
         if sel:
             txt = self.get('sel.first', 'sel.last').splitlines()
-            print(txt)
             lines = []
             for i, line in enumerate(txt):
                 if line.startswith(self._prompt1):
@@ -265,7 +264,6 @@ class TextConsole(tk.Text):
 
     def on_key_press(self, event):
         self._tooltip.withdraw()
-        print(event.keysym, event)
         if 'Control' not in event.keysym:
             try:
                 self.tag_remove('sel', 'sel.first', 'input')

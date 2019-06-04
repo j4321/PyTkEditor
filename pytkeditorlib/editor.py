@@ -354,7 +354,6 @@ class Editor(ttk.Frame):
         if key in ('Return',) + tuple(self._autoclose):
             return
         elif self._comp.winfo_ismapped():
-            print(key, '%r' % event.char)
             if len(key) == 1 and key.isalnum():
                 self._comp_display()
             elif key not in ['Tab', 'Down', 'Up']:
@@ -616,13 +615,7 @@ class Editor(ttk.Frame):
     def _comp_display(self):
         index = self.text.index('insert wordend')
         if index[-2:] != '.0':
-            line = self.text.get('insert-1c wordstart', 'insert-1c wordend')
             self.text.mark_set('insert', 'insert-1c wordend')
-            # i = len(line) - 1
-            # while i > -1 and line[i] in self._autoclose.values():
-                # i -= 1
-            # self.text.mark_set('insert', 'insert wordstart +%ic' % (i))
-            # print('%r' % self.text.get('insert linestart', 'insert'))
         row, col = str(self.text.index('insert')).split('.')
         script = jedi.Script(self.text.get('1.0', 'end'), int(row), int(col), self.file)
         # script = jedi.Script(self.text.get('1.0', 'insert'), int(row), int(col), self.file)
