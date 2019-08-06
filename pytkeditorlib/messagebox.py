@@ -87,7 +87,10 @@ class OneButtonBox(tk.Toplevel):
         b = ttk.Button(self, text=button, command=self.validate)
         frame.pack()
         b.pack(padx=10, pady=10)
-        self.grab_set()
+        try:
+            self.grab_set()
+        except tk.TclError:
+            pass
         b.focus_set()
 
     def validate(self):
@@ -200,7 +203,10 @@ class ShowError(tk.Toplevel):
         b.pack(padx=10, pady=(4, 10))
         self.update_idletasks()
         self.set_hight(display, h)
-        self.grab_set()
+        try:
+            self.grab_set()
+        except tk.TclError:
+            pass
         b.focus_set()
 
     def set_hight(self, display, h):
@@ -264,7 +270,10 @@ class TwoButtonBox(tk.Toplevel):
         ttk.Button(self, text=button2,
                    command=self.command2).grid(row=1, column=1, padx=10, pady=10,
                                                sticky="w")
-        self.grab_set()
+        try:
+            self.grab_set()
+        except tk.TclError:
+            pass
         b1.focus_set()
 
     def command1(self):
@@ -325,7 +334,10 @@ class AskYesNoCancel(tk.Toplevel):
                                                                    padx=10, pady=10)
         ttk.Button(self, text=button3, command=self.destroy).grid(row=1, column=2,
                                                                   padx=10, pady=10)
-        self.grab_set()
+        try:
+            self.grab_set()
+        except tk.TclError:
+            pass
         b1.focus_set()
 
     def command1(self):
