@@ -807,20 +807,11 @@ class Editor(ttk.Frame):
         else:  # forwards
             options['forwards'] = True
 
+        if full_word:
+            pattern = r'\y%s\y' % pattern
+            options['regexp'] = True
+
         res = self.text.search(pattern, 'insert', **options)
-
-        if res and full_word:
-            index = 'start'
-            end_word = self.text.index(res + ' wordend')
-            end_res = self.text.index(res + '+%ic' % self._search_count.get())
-
-            while index and index != res and end_word != end_res:
-                index = self.text.search(pattern, end_res, **options)
-                end_word = self.text.index(index + ' wordend')
-                end_res = self.text.index(index + '+%ic' % self._search_count.get())
-
-            if index != 'start':
-                res = index
 
         self.text.tag_remove('sel', '1.0', 'end')
         if res:
