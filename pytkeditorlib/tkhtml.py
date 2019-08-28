@@ -23,15 +23,15 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 Wrapper for the Tkhtml widget from http://tkhtml.tcl.tk/tkhtml.html
 """
-
-
 import traceback
 from urllib.request import urlopen
 from subprocess import Popen
 import tkinter as tk
 from tkinter import ttk
 import logging
+
 from PIL.ImageTk import PhotoImage
+
 from pytkeditorlib.autoscrollbar import AutoHideScrollbar
 
 _tkhtml_loaded = False

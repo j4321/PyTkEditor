@@ -24,11 +24,13 @@ from tkinter import PhotoImage
 from tkinter.ttk import Treeview, Frame, Label
 from tkinter.font import Font
 from tokenize import tokenize, TokenError
+from io import BytesIO
+import re
+
 from pytkeditorlib.autoscrollbar import AutoHideScrollbar as Scrollbar
 from pytkeditorlib.autocomplete import AutoCompleteCombobox2
 from pytkeditorlib.constants import IM_CLASS, IM_FCT, IM_HFCT, IM_SEP, IM_CELL
-from io import BytesIO
-import re
+
 
 
 class CodeTree(Treeview):

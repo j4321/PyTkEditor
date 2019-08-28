@@ -34,14 +34,15 @@ The images in ICONS were taken from "icons.tcl":
 Constants and functions
 """
 import os
-from pygments.styles import get_style_by_name
-from jedi import settings
 import configparser
-from pygments.lexers import Python3Lexer
-from pygments.token import Comment
 import logging
 from logging.handlers import TimedRotatingFileHandler
+
 import warnings
+from jedi import settings
+from pygments.styles import get_style_by_name
+from pygments.lexers import Python3Lexer
+from pygments.token import Comment
 from Xlib import display
 from Xlib.ext.xinerama import query_screens
 

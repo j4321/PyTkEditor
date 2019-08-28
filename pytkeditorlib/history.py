@@ -23,11 +23,13 @@ Console history with text display
 import tkinter as tk
 from tkinter import ttk
 from tkinter import messagebox
-from pytkeditorlib.constants import load_style, CONFIG, HISTFILE
-from pytkeditorlib.autoscrollbar import AutoHideScrollbar
+import pickle
+
 from pygments import lex
 from pygments.lexers import Python3Lexer
-import pickle
+
+from pytkeditorlib.constants import load_style, CONFIG, HISTFILE
+from pytkeditorlib.autoscrollbar import AutoHideScrollbar
 
 
 class History(tk.Text):

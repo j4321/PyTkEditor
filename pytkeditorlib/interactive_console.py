@@ -28,10 +28,11 @@ import socket
 import ssl
 import sys
 import signal
-from constants import CLIENT_CERT, SERVER_CERT
 import tkinter
 import time
 from tempfile import mkstemp
+
+from constants import CLIENT_CERT, SERVER_CERT
 
 
 class Stdout(StringIO):

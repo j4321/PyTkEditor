@@ -38,4 +38,3 @@ class LongMenu(Menu):
         if not end % self.max_height:
             kw['columnbreak'] = True
         Menu.add(self, itemType, cnf, **kw)
-            

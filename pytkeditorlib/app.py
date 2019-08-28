@@ -20,6 +20,15 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 Main app
 """
+import tkinter as tk
+from tkinter import ttk
+import traceback
+import os
+import signal
+import logging
+
+from ewmh import ewmh, EWMH
+from tkfilebrowser import askopenfilenames, asksaveasfilename
 
 from pytkeditorlib.editornotebook import EditorNotebook
 from pytkeditorlib.syntax_check import check_file
@@ -35,14 +44,6 @@ from pytkeditorlib.menu import LongMenu
 from pytkeditorlib.help import Help
 from pytkeditorlib.messagebox import showerror
 from pytkeditorlib.about import About
-import tkinter as tk
-from tkinter import ttk
-from tkfilebrowser import askopenfilenames, asksaveasfilename
-import traceback
-import os
-import signal
-from ewmh import ewmh, EWMH
-import logging
 
 
 class App(tk.Tk):

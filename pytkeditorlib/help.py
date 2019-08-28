@@ -22,14 +22,16 @@ GUI widget to display the help
 """
 import tkinter as tk
 from tkinter import ttk
-from pytkeditorlib.tkhtml import HtmlFrame
-from pytkeditorlib.constants import TEMPLATE_PATH, CSS_PATH, CONFIG
 from textwrap import dedent
+
 from docutils.core import publish_string
 from docutils.parsers.rst import roles
 from docutils.nodes import TextElement, Inline
 from docutils.parsers.rst import Directive, directives
 from docutils.writers.html4css1 import Writer, HTMLTranslator
+
+from pytkeditorlib.tkhtml import HtmlFrame
+from pytkeditorlib.constants import TEMPLATE_PATH, CSS_PATH, CONFIG
 
 
 sproles = ['data', 'exc', 'func', 'class', 'const', 'attr', 'meth', 'mod', 'obj',

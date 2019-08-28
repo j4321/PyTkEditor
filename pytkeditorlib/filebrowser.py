@@ -23,9 +23,10 @@ GUI widget to browse local files
 from tkinter import PhotoImage
 from tkinter.ttk import Treeview, Frame
 from tkinter.font import Font
+import os
+
 from pytkeditorlib.autoscrollbar import AutoHideScrollbar as Scrollbar
 from pytkeditorlib.constants import IM_FILE, IM_FOLDER
-import os
 
 
 class FileTree(Treeview):

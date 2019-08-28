@@ -26,18 +26,20 @@ import sys
 import re
 from os import kill, remove
 from os.path import join, dirname
+import socket
+import ssl
+from subprocess import Popen
+import signal
+
+from pygments import lex
+from pygments.lexers import Python3Lexer
+import jedi
+
 from pytkeditorlib.complistbox import CompListbox
 from pytkeditorlib.tooltip import Tooltip
 from pytkeditorlib.constants import get_screen, load_style, CONFIG, SERVER_CERT, \
     CLIENT_CERT
 from pytkeditorlib.messagebox import askyesno
-from pygments import lex
-from pygments.lexers import Python3Lexer
-import jedi
-import socket
-import ssl
-from subprocess import Popen
-import signal
 
 
 class TextConsole(tk.Text):

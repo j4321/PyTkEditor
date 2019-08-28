@@ -20,18 +20,20 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 Notebook containing the code editors for each opened file
 """
+import logging
+import os
+from tkinter import Menu, Toplevel
+from subprocess import Popen
+from threading import Thread, Event
+from time import sleep
+
+from tkfilebrowser import asksaveasfilename
+
 from pytkeditorlib.notebook import Notebook
 from pytkeditorlib.editor import Editor
 from pytkeditorlib.autocomplete import AutoCompleteEntryListbox
 from pytkeditorlib.tooltip import TooltipNotebookWrapper
-import os
-from tkinter import Menu, Toplevel
 from pytkeditorlib.messagebox import askyesnocancel, askyesno
-from tkfilebrowser import asksaveasfilename
-from subprocess import Popen
-from threading import Thread, Event
-from time import sleep
-import logging
 
 
 class EditorNotebook(Notebook):

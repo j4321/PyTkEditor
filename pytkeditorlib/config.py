@@ -24,7 +24,9 @@ Config dialog
 import tkinter as tk
 from tkinter import ttk
 from tkinter import font
+
 from pygments.styles import get_all_styles
+
 from pytkeditorlib.constants import CONFIG, save_config
 from pytkeditorlib.autocomplete import AutoCompleteCombobox
 

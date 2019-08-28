@@ -20,7 +20,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 Editor side bar to display errors and navigate in the file
 """
-from tkinter import Canvas, Frame
+from tkinter import Canvas
+
 from PIL import Image, ImageTk
 
 
@@ -34,12 +35,12 @@ def active_color(color, factor=3):
     g += (255 - g) / factor
     b += (255 - b) / factor
     return ("#%2.2x%2.2x%2.2x" % (round(r), round(g), round(b))).upper()
-        
+
 
 class FileBar(Canvas):
     def __init__(self, master, widget, **kwargs):
         Canvas.__init__(self, master, **kwargs)
-        
+
         self._marks = {'warning': [], 'error': [], 'sep': []}
 
         self.widget = widget
@@ -79,7 +80,7 @@ class FileBar(Canvas):
                 y = int(rely * self.winfo_height())
                 self.coords(iid, 1, y - 1, self.winfo_width(), y + 1)
         self.tag_raise(self.highlight)
-                
+
     def on_click(self, event):
         try:
             frac = event.y / event.widget.winfo_height()
@@ -114,4 +115,3 @@ class FileBar(Canvas):
     def clear_cells(self):
         self.delete('sep')
         self._marks['sep'].clear()
-

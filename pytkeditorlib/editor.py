@@ -21,12 +21,13 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 Code editor text widget
 """
 import jedi
+import re
 from pygments import lex
 import tkinter as tk
 from tkinter import ttk
-from pytkeditorlib import messagebox
 from tkinter.font import Font
-import re
+
+from pytkeditorlib import messagebox
 from pytkeditorlib.autoscrollbar import AutoHideScrollbar
 from pytkeditorlib.constants import IM_WARN, IM_ERR, get_screen,\
     load_style, PYTHON_LEX, CONFIG, valide_entree_nb

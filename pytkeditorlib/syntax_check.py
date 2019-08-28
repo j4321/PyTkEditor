@@ -20,10 +20,12 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 Syntax / PEP8 compliance checks
 """
+from subprocess import Popen, PIPE
+
 from pyflakes.api import checkPath
 from pyflakes.reporter import Reporter as flakeReporter
 from pyflakes.checker import builtin_vars
-from subprocess import Popen, PIPE
+
 
 builtin_vars.append('_')
 
