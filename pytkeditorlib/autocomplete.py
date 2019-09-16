@@ -3,8 +3,6 @@
 """
 PyTkEditor - Python IDE
 Copyright 2018-2019 Juliette Monsel <j_4321 at protonmail dot com>
-based on code by Fredrik Lundh copyright 1998
-<http://effbot.org/zone/tkinter-autoscrollbar.htm>
 
 PyTkEditor is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by

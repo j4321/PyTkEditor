@@ -73,10 +73,10 @@ class FileTree(Treeview):
         self.insert('', 0, '..', text='..', tags='prev')
         self.insert('', 1, p, text=p, image=self._im_folder, open=True)
         for (root, folders, files) in os.walk(p):
-            for f in folders:
+            for f in sorted(folders):
                 self.insert(root, 'end', os.path.join(root, f), text=f,
                             tags='folder', image=self._im_folder)
-            for f in files:
+            for f in sorted(files):
                 self.insert(root, 'end', os.path.join(root, f), text=f,
                             tags='file', image=self._im_file)
 
