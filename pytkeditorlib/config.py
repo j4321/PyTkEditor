@@ -39,60 +39,96 @@ class Config(tk.Toplevel):
         self.configure(padx=4, pady=4)
         self.title('PyTkEditor - Config')
 
-        ttk.Label(self, text='General',
+        # --- General
+        frame_general = ttk.Frame(self)
+        ttk.Label(frame_general, text='General',
                   font=('TkDefaultFont', 10, 'bold')).grid(row=0, columnspan=3,
                                                            sticky='w', padx=4, pady=4)
-        # --- theme
-        menu_theme = tk.Menu(self, tearoff=False)
-        self.theme = tk.StringVar(self, CONFIG.get('General', 'theme'))
+        # --- --- theme
+        menu_theme = tk.Menu(frame_general, tearoff=False)
+        self.theme = tk.StringVar(frame_general, CONFIG.get('General', 'theme'))
         menu_theme.add_radiobutton(label='light', variable=self.theme,
                                    value='light')
         menu_theme.add_radiobutton(label='dark', variable=self.theme,
                                    value='dark')
-        ttk.Label(self, text='Theme:').grid(row=1, column=0, sticky='e',
-                                            padx=4, pady=4)
-        ttk.Menubutton(self, menu=menu_theme, width=5,
+        ttk.Label(frame_general, text='Theme:').grid(row=1, column=0, sticky='e',
+                                                     padx=4, pady=4)
+        ttk.Menubutton(frame_general, menu=menu_theme, width=5,
                        textvariable=self.theme).grid(row=1, column=1, padx=4,
                                                      pady=4, sticky='w')
-        # --- font
+        # --- --- font
         families = list(font.families())
         families.sort()
         length = max([len(f) for f in families])
-        self.family = AutoCompleteCombobox(self, values=families, width=length - 1)
+        self.family = AutoCompleteCombobox(frame_general, values=families, width=length - 1)
         self.family.insert(0, CONFIG.get('General', 'fontfamily'))
-        self.size = AutoCompleteCombobox(self, values=[str(i) for i in range(6, 20)],
+        self.size = AutoCompleteCombobox(frame_general, values=[str(i) for i in range(6, 20)],
                                          allow_other_values=True, width=3)
         self.size.insert(0, CONFIG.get('General', 'fontsize'))
 
-        ttk.Label(self, text='Font:').grid(row=2, column=0, sticky='e', padx=4, pady=4)
+        ttk.Label(frame_general, text='Font:').grid(row=2, column=0, sticky='e', padx=4, pady=4)
         self.family.grid(row=2, column=1, sticky='w', padx=4, pady=4)
         self.size.grid(row=2, column=2, sticky='w', padx=4, pady=4)
 
-        ttk.Separator(self, orient='horizontal').grid(row=3, columnspan=3,
-                                                      sticky='ew', pady=8, padx=4)
         # --- syntax highlighting
+        frame_s_h = ttk.Frame(self)
         styles = list(get_all_styles())
         styles.extend(['perso', 'persolight'])
         styles.sort()
-        self.editor_style = AutoCompleteCombobox(self, values=styles)
+        self.editor_style = AutoCompleteCombobox(frame_s_h, values=styles)
         self.editor_style.insert(0, CONFIG.get('Editor', 'style'))
-        self.console_style = AutoCompleteCombobox(self, values=styles)
+        self.console_style = AutoCompleteCombobox(frame_s_h, values=styles)
         self.console_style.insert(0, CONFIG.get('Console', 'style'))
 
-        ttk.Label(self, text='Syntax Highlighting',
-                  font=('TkDefaultFont', 10, 'bold')).grid(row=4, columnspan=3,
+        ttk.Label(frame_s_h, text='Syntax Highlighting',
+                  font=('TkDefaultFont', 10, 'bold')).grid(row=0, columnspan=2,
                                                            sticky='w', padx=4, pady=4)
-        ttk.Label(self, text='Editor').grid(row=5, column=0, sticky='e', padx=4, pady=4)
-        self.editor_style.grid(row=5, column=1, sticky='w', padx=4, pady=4)
-        ttk.Label(self, text='Console').grid(row=6, column=0, sticky='e', padx=4, pady=4)
-        self.console_style.grid(row=6, column=1, sticky='w', padx=4, pady=4)
+        ttk.Label(frame_s_h, text='Editor').grid(row=1, column=0, sticky='e', padx=4, pady=4)
+        self.editor_style.grid(row=1, column=1, sticky='w', padx=4, pady=4)
+        ttk.Label(frame_s_h, text='Console').grid(row=2, column=0, sticky='e', padx=4, pady=4)
+        self.console_style.grid(row=2, column=1, sticky='w', padx=4, pady=4)
 
-        frame = ttk.Frame(self)
-        ttk.Button(frame, text='Ok', command=self.validate).pack(side='left', padx=4)
-        ttk.Button(frame, text='Cancel', command=self.destroy).pack(side='left', padx=4)
-        frame.grid(row=7, columnspan=3, pady=8)
+        # --- code checking
+        frame_check = ttk.Frame(self)
+        frame_check.columnconfigure(1, weight=1)
+        self.code_check = ttk.Checkbutton(frame_check,
+                                          text='Check code (on saving)')
+        if CONFIG.getboolean("Editor", "code_check", fallback=True):
+            self.code_check.state(('selected', '!alternate'))
+        else:
+            self.code_check.state(('!selected', '!alternate'))
+        self.style_check = ttk.Checkbutton(frame_check,
+                                           text='Check style - PEP8 guidelines (on saving)')
+        if CONFIG.getboolean("Editor", "style_check", fallback=True):
+            self.style_check.state(('selected', '!alternate'))
+        else:
+            self.style_check.state(('!selected', '!alternate'))
+        self.pep8_ignore = ttk.Entry(frame_check)
+        self.pep8_ignore.insert(0, CONFIG.get('Editor', 'style_check_ignore', fallback=''))
+
+        ttk.Label(frame_check, text='Code checking',
+                  font=('TkDefaultFont', 10, 'bold')).grid(row=0, columnspan=2,
+                                                           sticky='w', padx=4, pady=4)
+        self.code_check.grid(row=1, columnspan=2, sticky='w', padx=4, pady=4)
+        self.style_check.grid(row=2, columnspan=2, sticky='w', padx=4, pady=4)
+        ttk.Label(frame_check, text='Ignore: ').grid(row=3, column=0, sticky='w', padx=(4, 1), pady=4)
+        self.pep8_ignore.grid(row=3, column=1, sticky='ew', padx=(1, 4), pady=4)
+
+        # --- ok / cancel buttons
+        frame_btn = ttk.Frame(self)
+        ttk.Button(frame_btn, text='Ok', command=self.validate).pack(side='left', padx=4)
+        ttk.Button(frame_btn, text='Cancel', command=self.destroy).pack(side='left', padx=4)
+
+        # --- placement
+        frame_general.pack(side='top', anchor='w')
+        ttk.Separator(self, orient='horizontal').pack(side='top', fill='x', pady=8, padx=4)
+        frame_s_h.pack(side='top', anchor='w')
+        ttk.Separator(self, orient='horizontal').pack(side='top', fill='x', pady=8, padx=4)
+        frame_check.pack(side='top', fill='x')
+        frame_btn.pack(side='top', pady=8)
 
     def validate(self):
+        # --- general
         CONFIG.set('General', 'theme', self.theme.get())
         family = self.family.get()
         if family:
@@ -104,11 +140,23 @@ class Config(tk.Toplevel):
             pass
         else:
             CONFIG.set('General', 'fontsize', str(size))
+        # --- syntax highlighting
         estyle = self.editor_style.get()
         if estyle:
             CONFIG.set('Editor', 'style', estyle)
         cstyle = self.console_style.get()
         if cstyle:
             CONFIG.set('Console', 'style', cstyle)
+        # --- code checking
+        if 'selected' in self.code_check.state():
+            CONFIG.set('Editor', 'code_check', 'True')
+        else:
+            CONFIG.set('Editor', 'code_check', 'False')
+        if 'selected' in self.style_check.state():
+            CONFIG.set('Editor', 'style_check', 'True')
+        else:
+            CONFIG.set('Editor', 'style_check', 'False')
+        ignore = self.pep8_ignore.get().strip().replace(', ', ',')
+        CONFIG.set('Editor', 'style_check_ignore', ignore)
         save_config()
         self.destroy()

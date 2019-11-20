@@ -26,6 +26,8 @@ from pyflakes.api import checkPath
 from pyflakes.reporter import Reporter as flakeReporter
 from pyflakes.checker import builtin_vars
 
+from .constants import CONFIG
+
 
 builtin_vars.append('_')
 
@@ -87,22 +89,29 @@ def pyflakes_check(filename):
     return err_log.log, warning_log.log
 
 
-def pycodestyle_check(filename):
-    p = Popen(['pycodestyle', filename], stdout=PIPE)
+def pycodestyle_check(filename, ignore):
+    p = Popen(['pycodestyle', '--ignore', ignore, filename], stdout=PIPE)
     return p.stdout.read().decode().splitlines()
 
 
-def check_file(filename, style=True):
-    err, warn = pyflakes_check(filename)
+def check_file(filename):
     results = {}
+    if CONFIG.getboolean('Editor', 'code_check', fallback=True):
+        err, warn = pyflakes_check(filename)
+    else:
+        err, warn = [], []
+
     if err:
         for line in err:
             parse_message_flake(line, 'error', results)
     else:
         for line in warn:
             parse_message_flake(line, 'warning', results)
-        if style:
-            warn2 = pycodestyle_check(filename)
+        if CONFIG.getboolean('Editor', 'style_check', fallback=True):
+            warn2 = pycodestyle_check(filename,
+                                      CONFIG.get('Editor',
+                                                 'style_check_ignore',
+                                                 fallback=''))
             for line in warn2:
                 parse_message_style(line, results)
     return results
