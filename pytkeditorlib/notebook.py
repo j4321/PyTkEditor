@@ -103,7 +103,7 @@ class Tab(ttk.Frame):
                            height=self.frame.winfo_reqheight() + 6)
         if 'state' in kwargs:
             state = kwargs.pop('state')
-            if state is 'normal':
+            if state == 'normal':
                 self.state(['!disabled'])
             elif state == 'disabled':
                 self.state(['disabled'])
@@ -115,11 +115,11 @@ class Tab(ttk.Frame):
         self.label.configure(**kwargs)
 
     def tab_cget(self, option):
-        if option is 'closecommand':
+        if option == 'closecommand':
             return self._closecommand
-        elif option is 'closebutton':
+        elif option == 'closebutton':
             return self._closebutton
-        elif option is 'state':
+        elif option == 'state':
             return self._state
         else:
             return self.label.cget(option)
@@ -312,7 +312,7 @@ class Notebook(ttk.Frame):
         # show clicked tab content
         self._show(tab)
 
-        if not self._tabdrag or self.tab(tab, 'state') is 'disabled':
+        if not self._tabdrag or self.tab(tab, 'state') == 'disabled':
             return
 
         # prepare dragging
@@ -401,7 +401,7 @@ class Notebook(ttk.Frame):
         self._on_configure()
 
     def _show(self, tab_id, new=False, update=False):
-        if self.tab(tab_id, 'state') is 'disabled':
+        if self.tab(tab_id, 'state') == 'disabled':
             if tab_id in self._active_tabs:
                 self._active_tabs.remove(tab_id)
             return
@@ -415,7 +415,7 @@ class Notebook(ttk.Frame):
             self._tab_labels[tab_id].grid(in_=self._tab_frame)
             self._visible_tabs.insert(self._tab_labels[tab_id].grid_info()['column'], tab_id)
             self._active_tabs = [t for t in self._visible_tabs
-                                 if self._tab_options[t]['state'] is 'normal']
+                                 if self._tab_options[t]['state'] == 'normal']
             self._hidden_tabs.remove(tab_id)
 
         # update current tab
@@ -458,13 +458,13 @@ class Notebook(ttk.Frame):
         self._tab_var.set(tab_nb)
 
     def cget(self, key):
-        if key is 'closebutton':
+        if key == 'closebutton':
             return self._closebutton
-        elif key is 'closecommand':
+        elif key == 'closecommand':
             return self._closecommand
-        elif key is 'tabmenu':
+        elif key == 'tabmenu':
             return self._tabmenu
-        elif key is 'tabdrag':
+        elif key == 'tabdrag':
             return self._tabdrag
         else:
             return ttk.Frame.cget(self, key)
@@ -714,7 +714,7 @@ class Notebook(ttk.Frame):
             if 'state' in kw:
                 self._tab_menu.entryconfigure(self._tab_menu_entries[tab],
                                               state=kw['state'])
-                if kw['state'] is 'disabled':
+                if kw['state'] == 'disabled':
                     if tab in self._active_tabs:
                         self._active_tabs.remove(tab)
                     if tab == self.current_tab:
@@ -728,7 +728,7 @@ class Notebook(ttk.Frame):
                             self.current_tab = -1
                 else:
                     self._active_tabs = [t for t in self._visible_tabs
-                                         if self._tab_options[t]['state'] is 'normal']
+                                         if self._tab_options[t]['state'] == 'normal']
                     if self.current_tab == -1:
                         self._show(tab)
 
