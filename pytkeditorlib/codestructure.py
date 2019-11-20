@@ -23,14 +23,13 @@ GUI widget to display the code structure
 from tkinter import PhotoImage
 from tkinter.ttk import Treeview, Frame, Label
 from tkinter.font import Font
-from tokenize import tokenize, TokenError
+import tokenize
 from io import BytesIO
 import re
 
 from pytkeditorlib.autoscrollbar import AutoHideScrollbar as Scrollbar
 from pytkeditorlib.autocomplete import AutoCompleteCombobox2
 from pytkeditorlib.constants import IM_CLASS, IM_FCT, IM_HFCT, IM_SEP, IM_CELL
-
 
 
 class CodeTree(Treeview):
@@ -71,7 +70,7 @@ class CodeTree(Treeview):
 
     def populate(self, text):
         self.delete(*self.get_children())
-        tokens = tokenize(BytesIO(text.encode()).readline)
+        tokens = tokenize.tokenize(BytesIO(text.encode()).readline)
         names = set()
         self.cells.clear()
         max_length = 20
@@ -80,10 +79,10 @@ class CodeTree(Treeview):
                 token = tokens.send(None)
             except StopIteration:
                 break
-            except (TokenError, IndentationError):
+            except (tokenize.TokenError, IndentationError):
                 continue
             add = False
-            if token.type == 1 and token.string in ['class', 'def']:
+            if token.type == tokenize.NAME and token.string in ['class', 'def']:
                 obj_type = token.string
                 index = token.start[1] // 4
                 token = tokens.send(None)
@@ -92,7 +91,7 @@ class CodeTree(Treeview):
                 if name[0] == '_' and obj_type == 'def':
                     obj_type = '_def'
                 add = True
-            elif token.type == 55:
+            elif token.type == tokenize.COMMENT:
                 if token.string[:5] == '# ---' or 'TODO' in token.string:
                     obj_type = '#'
                     index = token.start[1] // 4
