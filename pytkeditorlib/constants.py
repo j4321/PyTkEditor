@@ -308,7 +308,6 @@ if not CONFIG.read(PATH_CONFIG):
     CONFIG.set('Editor', 'style', "colorful")
     CONFIG.set('Editor', 'code_check', "True")
     CONFIG.set('Editor', 'style_check', "True")
-    CONFIG.set('Editor', 'style_check_ignore', "")
     CONFIG.add_section('Console')
     CONFIG.set('Console', 'style', "monokai")
     CONFIG.add_section('Dark Theme')

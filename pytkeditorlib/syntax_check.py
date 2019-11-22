@@ -89,8 +89,8 @@ def pyflakes_check(filename):
     return err_log.log, warning_log.log
 
 
-def pycodestyle_check(filename, ignore):
-    p = Popen(['pycodestyle', '--ignore', ignore, filename], stdout=PIPE)
+def pycodestyle_check(filename):
+    p = Popen(['pycodestyle', filename], stdout=PIPE)
     return p.stdout.read().decode().splitlines()
 
 
@@ -108,10 +108,7 @@ def check_file(filename):
         for line in warn:
             parse_message_flake(line, 'warning', results)
         if CONFIG.getboolean('Editor', 'style_check', fallback=True):
-            warn2 = pycodestyle_check(filename,
-                                      CONFIG.get('Editor',
-                                                 'style_check_ignore',
-                                                 fallback=''))
+            warn2 = pycodestyle_check(filename)
             for line in warn2:
                 parse_message_style(line, results)
     return results

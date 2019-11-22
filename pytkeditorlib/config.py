@@ -92,27 +92,23 @@ class Config(tk.Toplevel):
         frame_check = ttk.Frame(self)
         frame_check.columnconfigure(1, weight=1)
         self.code_check = ttk.Checkbutton(frame_check,
-                                          text='Check code (on saving)')
+                                          text='Check code')
         if CONFIG.getboolean("Editor", "code_check", fallback=True):
             self.code_check.state(('selected', '!alternate'))
         else:
             self.code_check.state(('!selected', '!alternate'))
         self.style_check = ttk.Checkbutton(frame_check,
-                                           text='Check style - PEP8 guidelines (on saving)')
+                                           text='Check style - PEP8 guidelines')
         if CONFIG.getboolean("Editor", "style_check", fallback=True):
             self.style_check.state(('selected', '!alternate'))
         else:
             self.style_check.state(('!selected', '!alternate'))
-        self.pep8_ignore = ttk.Entry(frame_check)
-        self.pep8_ignore.insert(0, CONFIG.get('Editor', 'style_check_ignore', fallback=''))
 
-        ttk.Label(frame_check, text='Code checking',
+        ttk.Label(frame_check, text='Code checking (on file saving)',
                   font=('TkDefaultFont', 10, 'bold')).grid(row=0, columnspan=2,
                                                            sticky='w', padx=4, pady=4)
         self.code_check.grid(row=1, columnspan=2, sticky='w', padx=4, pady=4)
         self.style_check.grid(row=2, columnspan=2, sticky='w', padx=4, pady=4)
-        ttk.Label(frame_check, text='Ignore: ').grid(row=3, column=0, sticky='w', padx=(4, 1), pady=4)
-        self.pep8_ignore.grid(row=3, column=1, sticky='ew', padx=(1, 4), pady=4)
 
         # --- ok / cancel buttons
         frame_btn = ttk.Frame(self)
@@ -156,7 +152,5 @@ class Config(tk.Toplevel):
             CONFIG.set('Editor', 'style_check', 'True')
         else:
             CONFIG.set('Editor', 'style_check', 'False')
-        ignore = self.pep8_ignore.get().strip().replace(', ', ',')
-        CONFIG.set('Editor', 'style_check_ignore', ignore)
         save_config()
         self.destroy()
