@@ -43,4 +43,7 @@ setup(name="pytkeditor",
       scripts=["pytkeditor"],
       install_requires=["jedi", "pygments", "pyflakes", "pycodestyle",
                         "tkfilebrowser", "ewmh", "python-xlib",
-                        "Pillow", "docutils"])
+                        "Pillow", "docutils"]
+      extras_require = {
+        'Execute in Jupyter QtConsole':  ["qtconsole"]
+    })

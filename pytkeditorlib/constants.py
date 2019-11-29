@@ -102,6 +102,19 @@ PATH_LOG = os.path.join(LOCAL_PATH, 'pytkeditor.log')
 PIDFILE = os.path.join(LOCAL_PATH, "pytkeditor.pid")
 OPENFILE_PATH = os.path.join(LOCAL_PATH, ".file")
 
+
+# --- jupyter qtconsole
+JUPYTER_KERNEL_PATH = os.path.join(LOCAL_PATH, "kernel.json")
+
+try:
+    import qtconsole  # to test whether the qtconsole is installed
+except ImportError:
+    JUPYTER = False
+else:
+    from jupyter_client.connect import ConnectionFileMixin
+    from jupyter_client import BlockingKernelClient
+    JUPYTER = True
+
 # --- images
 IM_CLASS = os.path.join(PATH_IMG, 'c.png')
 IM_FCT = os.path.join(PATH_IMG, 'f.png')

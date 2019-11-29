@@ -26,6 +26,7 @@ import traceback
 import os
 import signal
 import logging
+from subprocess import Popen
 
 from ewmh import ewmh, EWMH
 from tkfilebrowser import askopenfilenames, asksaveasfilename
@@ -50,6 +51,7 @@ class App(tk.Tk):
     def __init__(self, *files):
         tk.Tk.__init__(self, className='PyTkEditor')
         self.title('PyTkEditor')
+        # --- images
         self._icon = tk.PhotoImage(file=ICON, master=self)
         self._im_run = tk.PhotoImage(file=cst.IM_RUN, master=self)
         self._im_new = tk.PhotoImage(file=cst.IM_NEW, master=self)
@@ -87,13 +89,17 @@ class App(tk.Tk):
         recent_files = CONFIG.get('General', 'recent_files', fallback='').split(', ')
         self.recent_files = [f for f in recent_files if f and os.path.exists(f)]
 
-        # -- style
+        # --- style
         for seq in self.bind_class('TButton'):
             self.bind_class('Notebook.Tab.Close', seq, self.bind_class('TButton', seq), True)
         style = ttk.Style(self)
         style.element_create('close', 'image', self._im_close,
                              sticky='')
         self._setup_style()
+
+        # --- jupyter kernel
+        self._init_kernel()
+        self._qtconsole_process = None
 
         # --- GUI elements
         pane = ttk.PanedWindow(self, orient='horizontal')
@@ -199,6 +205,15 @@ class App(tk.Tk):
         self.menu_doc.add_command(image=self._im_run, command=self.run,
                                   compound='left', label='Run',
                                   accelerator='F5')
+        self.menu_doc.add_command(image=self._im_run,
+                                  command=lambda: self.console.execute(self.editor.get_selection()),
+                                  compound='left', label='Run selected code in console',
+                                  accelerator='F9')
+        if cst.JUPYTER:
+            self.menu_doc.add_command(image=self._im_run,
+                                      command=self.execute_in_jupyter,
+                                      compound='left', label='Run selected code in Jupyter QtConsole',
+                                      accelerator='F10')
         # ------- doc --- filetypes
         self.filetype = tk.StringVar(self, 'Python')
         self.menu_filetype.add_radiobutton(label='Python', value='Python',
@@ -241,6 +256,8 @@ class App(tk.Tk):
         self.editor.bind('<<CtrlReturn>>', lambda e: self.console.execute(self.editor.get_cell()))
         self.bind('<F5>', self.run)
         self.bind('<F9>', lambda e: self.console.execute(self.editor.get_selection()))
+        if cst.JUPYTER:
+            self.bind('<F10>', self.execute_in_jupyter)
 
         # --- maximize window
         self.update_idletasks()
@@ -570,6 +587,15 @@ class App(tk.Tk):
         else:
             self.menu_file.entryconfigure('Save', state='disabled')
 
+    def _init_kernel(self):
+        """Initialize Jupyter kernel"""
+        if not cst.JUPYTER:
+            return
+        cfm = cst.ConnectionFileMixin(connection_file=cst.JUPYTER_KERNEL_PATH)
+        cfm.write_connection_file()
+        self.jupyter_kernel = cst.BlockingKernelClient(connection_file=cst.JUPYTER_KERNEL_PATH)
+        self.jupyter_kernel.load_connection_file()
+
     def report_callback_exception(self, *args):
         """Log exceptions."""
         err = "".join(traceback.format_exception(*args))
@@ -727,6 +753,16 @@ class App(tk.Tk):
     def run(self, event=None):
         if self.save():
             self.editor.run()
+
+    def execute_in_jupyter(self, event=None):
+        if not cst.JUPYTER:
+            return
+        code = self.editor.get_selection()
+        if self._qtconsole_process is None or self._qtconsole_process.poll() is not None:
+            self._init_kernel()
+            self._qtconsole_process = Popen(['jupyter-qtconsole', '-f', cst.JUPYTER_KERNEL_PATH])
+        self.jupyter_kernel.execute(code)
+        return "break"
 
     def check_syntax(self, tab=None):
         if tab is None:
