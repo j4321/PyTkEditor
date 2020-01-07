@@ -32,6 +32,31 @@ from pytkeditorlib.autocomplete import AutoCompleteCombobox2
 from pytkeditorlib.constants import IM_CLASS, IM_FCT, IM_HFCT, IM_SEP, IM_CELL
 
 
+class Tree:
+    def __init__(self, node, branches=[], level=0):
+        self.node = node
+        self.branches = branches
+        self.level = level
+
+    def insert(self, node, level):
+
+        def rec(t):
+            if t.level < level:
+                if not t.branches:
+                    t.branches.append(Tree(node, [], level))
+                    return t.node
+                else:
+                    res = rec(t.branches[-1])
+                    if res == "reached":
+                        t.branches.append(Tree(node, [], level))
+                        return t.node
+                    else:
+                        return res
+            elif t.level == level:
+                return "reached"
+        return rec(self)
+
+
 class CodeTree(Treeview):
     def __init__(self, master):
         Treeview.__init__(self, master, show='tree', selectmode='none',
@@ -74,6 +99,8 @@ class CodeTree(Treeview):
         names = set()
         self.cells.clear()
         max_length = 20
+        tree = Tree('', [], -1)
+        tree_index = 0
         while True:
             try:
                 token = tokens.send(None)
@@ -84,7 +111,7 @@ class CodeTree(Treeview):
             add = False
             if token.type == tokenize.NAME and token.string in ['class', 'def']:
                 obj_type = token.string
-                index = token.start[1] // 4
+                indent = token.start[1]
                 token = tokens.send(None)
                 name = token.string
                 names.add(name)
@@ -94,32 +121,26 @@ class CodeTree(Treeview):
             elif token.type == tokenize.COMMENT:
                 if token.string[:5] == '# ---' or 'TODO' in token.string:
                     obj_type = '#'
-                    index = token.start[1] // 4
+                    indent = token.start[1]
                     name = token.string[1:]
                     add = True
                 elif re.match(r'#( )*In\[.*\]', token.string):
                     res = re.match(r'#( )*In', token.string)
                     obj_type = 'cell'
-                    index = token.start[1] // 4
+                    indent = token.start[1]
                     name = token.string[len(res.group()):].strip()
                     add = True
                     self.cells.append(token.start[0])
 
             if add:
-                parent = ''
-                i = 0
-                children = self.get_children(parent)
+                tree_index += 1
+                parent = tree.insert('I-%i' % tree_index, indent)
 
-                while i < index and children:
-                    # avoid errors due to over indentation
-                    parent = children[-1]
-                    children = self.get_children(parent)
-                    i += 1
+                max_length = max(max_length, self.font.measure(name) + 20 + (indent//4 + 1) * 20)
+                iid = self.insert(parent, 'end', 'I-%i' % tree_index, text=name,
+                                  tags=(obj_type, name),
+                                  values=('%i.%i' % token.start, '%i.%i' % token.end))
 
-                max_length = max(max_length, self.font.measure(name) + 20 + (i + 1) * 20)
-                self.insert(parent, 'end', text=name,
-                            tag=(obj_type, name),
-                            values=('%i.%i' % token.start, '%i.%i' % token.end))
         self.column('#0', width=max_length, minwidth=max_length)
         for item in self.get_children(''):
             self.item(item, open=True)
