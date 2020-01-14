@@ -35,7 +35,7 @@ from pytkeditorlib.editornotebook import EditorNotebook
 from pytkeditorlib.syntax_check import check_file
 from pytkeditorlib.codestructure import CodeStructure
 from pytkeditorlib.filebrowser import Filebrowser
-from pytkeditorlib.constants import ICON, CONFIG, save_config, IM_CLOSE
+from pytkeditorlib.constants import IMAGES, CONFIG, save_config, IM_CLOSE
 from pytkeditorlib import constants as cst
 from pytkeditorlib.textconsole import TextConsole
 from pytkeditorlib.history import HistoryFrame
@@ -52,26 +52,11 @@ class App(tk.Tk):
         tk.Tk.__init__(self, className='PyTkEditor')
         self.title('PyTkEditor')
         # --- images
-        self._icon = tk.PhotoImage(file=ICON, master=self)
-        self._im_run = tk.PhotoImage(file=cst.IM_RUN, master=self)
-        self._im_new = tk.PhotoImage(file=cst.IM_NEW, master=self)
-        self._im_open = tk.PhotoImage(file=cst.IM_OPEN, master=self)
-        self._im_reopen = tk.PhotoImage(file=cst.IM_REOPEN, master=self)
-        self._im_save = tk.PhotoImage(file=cst.IM_SAVE, master=self)
-        self._im_saveall = tk.PhotoImage(file=cst.IM_SAVEALL, master=self)
-        self._im_saveas = tk.PhotoImage(file=cst.IM_SAVEAS, master=self)
-        self._im_undo = tk.PhotoImage(file=cst.IM_UNDO, master=self)
-        self._im_redo = tk.PhotoImage(file=cst.IM_REDO, master=self)
-        self._im_recents = tk.PhotoImage(file=cst.IM_RECENTS, master=self)
+        self._images = {name: tk.PhotoImage(f'img_{name}', file=IMAGES[name], master=self)
+                        for name, path in IMAGES.items()}
+        self._images['menu_dummy'] = tk.PhotoImage('img_menu_dummy', width=18, height=18, master=self)
         self._im_close = tk.PhotoImage(master=self)
-        self._im_quit = tk.PhotoImage(file=cst.IM_QUIT, master=self)
-        self._im_find = tk.PhotoImage(file=cst.IM_FIND, master=self)
-        self._im_replace = tk.PhotoImage(file=cst.IM_REPLACE, master=self)
-        self._im_settings = tk.PhotoImage(file=cst.IM_SETTINGS, master=self)
-        self._im_menu_dummy = tk.PhotoImage(width=18, height=18, master=self)
-        self.iconphoto(True, self._icon)
-        self._syntax_icons = {'warning': tk.PhotoImage(master=self, file=cst.IM_WARN),
-                              'error': tk.PhotoImage(master=self, file=cst.IM_ERR)}
+        self.iconphoto(True, self._images['icon'])
 
         self.option_add('*Menu.borderWidth', 1)
         self.option_add('*Menu.activeBorderWidth', 0)
@@ -143,74 +128,110 @@ class App(tk.Tk):
 
         # --- menu
         # ------- file
-        self.menu_file.add_command(label='New', command=self.new, image=self._im_new,
+        self.menu_file.add_command(label='New', command=self.new,
+                                   image=self._images['new'],
                                    accelerator='Ctrl+N', compound='left')
         self.menu_file.add_separator()
         self.menu_file.add_command(label='Open', command=self.open,
-                                   image=self._im_open,
+                                   image=self._images['open'],
                                    accelerator='Ctrl+O', compound='left')
         self.menu_file.add_command(label='Restore last closed',
                                    command=self.restore_last_closed,
-                                   image=self._im_reopen, compound='left',
+                                   image=self._images['reopen'], compound='left',
                                    accelerator='Ctrl+Shift+T')
         self.menu_file.add_command(label='File switcher', accelerator='Ctrl+P',
                                    command=self.editor.file_switch,
-                                   image=self._im_menu_dummy, compound='left')
+                                   image=self._images['menu_dummy'], compound='left')
         # ------- file --- recent
         for f in self.recent_files:
             self.menu_recent_files.add_command(label=f,
                                                command=lambda file=f: self.open_file(file))
 
-        self.menu_file.add_cascade(label='Recent files', image=self._im_recents,
+        self.menu_file.add_cascade(label='Recent files', image=self._images['recents'],
                                    menu=self.menu_recent_files, compound='left')
 
         self.menu_file.add_separator()
         self.menu_file.add_command(label='Save', command=self.save,
-                                   state='disabled', image=self._im_save,
+                                   state='disabled', image=self._images['save'],
                                    accelerator='Ctrl+S', compound='left')
         self.menu_file.add_command(label='Save as', command=self.saveas,
-                                   image=self._im_saveas,
+                                   image=self._images['saveas'],
                                    accelerator='Ctrl+Alt+S', compound='left')
         self.menu_file.add_command(label='Save all', command=self.saveall,
-                                   image=self._im_saveall,
+                                   image=self._images['saveall'],
                                    accelerator='Ctrl+Shift+S', compound='left')
         self.menu_file.add_separator()
         self.menu_file.add_command(label='Close all files', image=self._im_close,
                                    command=self.editor.closeall, compound='left')
         self.menu_file.add_command(label='Quit', command=self.quit,
-                                   image=self._im_quit, compound='left')
+                                   image=self._images['quit'], compound='left')
         # ------- edit
         self.menu_edit.add_command(label='Undo', command=self.editor.undo,
-                                   image=self._im_undo,
+                                   image=self._images['undo'],
                                    accelerator='Ctrl+Z', compound='left')
         self.menu_edit.add_command(label='Redo', command=self.editor.redo,
-                                   image=self._im_redo,
+                                   image=self._images['redo'],
                                    accelerator='Ctrl+Y', compound='left')
         self.menu_edit.add_separator()
+        self.menu_edit.add_command(label='Cut', command=self.editor.cut,
+                                   image=self._images['cut'],
+                                   accelerator='Ctrl+X', compound='left')
+        self.menu_edit.add_command(label='Copy', command=self.editor.cut,
+                                   image=self._images['copy'],
+                                   accelerator='Ctrl+C', compound='left')
+        self.menu_edit.add_command(label='Paste', command=self.editor.paste,
+                                   image=self._images['paste'],
+                                   accelerator='Ctrl+V', compound='left')
+        self.menu_edit.add_command(label='Select all', command=self.editor.select_all,
+                                   image=self._images['menu_dummy'],
+                                   accelerator='Ctrl+A', compound='left')
+        self.menu_edit.add_separator()
+        self.menu_edit.add_command(label='Duplicate lines',
+                                   command=self.editor.duplicate_lines,
+                                   image=self._images['menu_dummy'],
+                                   accelerator='Ctrl+D', compound='left')
+        self.menu_edit.add_command(label='Delete lines',
+                                   command=self.editor.delete_lines,
+                                   image=self._images['menu_dummy'],
+                                   accelerator='Ctrl+K', compound='left')
+        self.menu_edit.add_separator()
+        self.menu_edit.add_command(label='Toggle comment',
+                                   command=self.editor.toggle_comment,
+                                   image=self._images['menu_dummy'],
+                                   accelerator='Ctrl+E', compound='left')
+        self.menu_edit.add_command(label='Indent',
+                                   command=self.editor.indent,
+                                   image=self._images['indent'],
+                                   accelerator='Tab', compound='left')
+        self.menu_edit.add_command(label='Dedent',
+                                   command=self.editor.unindent,
+                                   image=self._images['dedent'],
+                                   accelerator='Shift+Tab', compound='left')
+        self.menu_edit.add_separator()
         self.menu_edit.add_command(label='Settings', command=self.config,
-                                   compound='left', image=self._im_settings)
+                                   compound='left', image=self._images['settings'])
         # ------- doc
         self.menu_doc.add_cascade(label='Filetype', menu=self.menu_filetype,
-                                  image=self._im_menu_dummy, compound='left')
+                                  image=self._images['menu_dummy'], compound='left')
         self.menu_doc.add_separator()
         self.menu_doc.add_command(label='Find', command=self.editor.find,
                                   accelerator='Ctrl+F', compound='left',
-                                  image=self._im_find)
+                                  image=self._images['find'])
         self.menu_doc.add_command(label='Replace', command=self.editor.replace,
                                   accelerator='Ctrl+R', compound='left',
-                                  image=self._im_replace)
+                                  image=self._images['replace'])
         self.menu_doc.add_command(label='Goto line', accelerator='Ctrl+L', compound='left',
-                                  command=self.editor.goto_line, image=self._im_menu_dummy)
+                                  command=self.editor.goto_line, image=self._images['menu_dummy'])
         self.menu_doc.add_separator()
-        self.menu_doc.add_command(image=self._im_run, command=self.run,
+        self.menu_doc.add_command(image=self._images['run'], command=self.run,
                                   compound='left', label='Run',
                                   accelerator='F5')
-        self.menu_doc.add_command(image=self._im_run,
+        self.menu_doc.add_command(image=self._images['run'],
                                   command=lambda: self.console.execute(self.editor.get_selection()),
                                   compound='left', label='Run selected code in console',
                                   accelerator='F9')
         if cst.JUPYTER:
-            self.menu_doc.add_command(image=self._im_run,
+            self.menu_doc.add_command(image=self._images['run'],
                                       command=self.execute_in_jupyter,
                                       compound='left', label='Run selected code in Jupyter QtConsole',
                                       accelerator='F10')
@@ -783,5 +804,5 @@ class App(tk.Tk):
         else:
             for (category, msg, cmd) in errors:
                 self.menu_errors.add_command(label=msg,
-                                             image=self._syntax_icons[category],
+                                             image=self._images[category],
                                              compound='left', command=cmd)

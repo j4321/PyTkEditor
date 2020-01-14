@@ -26,7 +26,7 @@ from tkinter.font import Font
 import os
 
 from pytkeditorlib.autoscrollbar import AutoHideScrollbar as Scrollbar
-from pytkeditorlib.constants import IM_FILE, IM_FOLDER
+from pytkeditorlib.constants import IMAGES
 
 
 class FileTree(Treeview):
@@ -34,12 +34,14 @@ class FileTree(Treeview):
         Treeview.__init__(self, master, show='tree', selectmode='none',
                           style='flat.Treeview', padding=4)
 
-        self._im_file = PhotoImage(master=self, file=IM_FILE)
-        self._im_folder = PhotoImage(master=self, file=IM_FOLDER)
+        self._im_file = PhotoImage(master=self, file=IMAGES['file'])
+        self._im_folder = PhotoImage(master=self, file=IMAGES['folder'])
 
         self.font = Font(self, font="TkDefaultFont 9")
         self.callback = callback
 
+        self.tag_configure('file', image=self._im_file)
+        self.tag_configure('folder', image=self._im_folder)
         self.tag_bind('file', '<Double-1>', self._on_db_click_file)
         self.tag_bind('folder', '<Double-1>', self._on_db_click_folder)
         self.tag_bind('prev', '<Double-1>', self._on_db_click_prev)
@@ -75,10 +77,10 @@ class FileTree(Treeview):
         for (root, folders, files) in os.walk(p):
             for f in sorted(folders):
                 self.insert(root, 'end', os.path.join(root, f), text=f,
-                            tags='folder', image=self._im_folder)
+                            tags='folder')
             for f in sorted(files):
                 self.insert(root, 'end', os.path.join(root, f), text=f,
-                            tags='file', image=self._im_file)
+                            tags='file')
 
 
 class Filebrowser(Frame):

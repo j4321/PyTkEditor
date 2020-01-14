@@ -201,6 +201,42 @@ class EditorNotebook(Notebook):
         if self.current_tab >= 0:
             self._tabs[self.current_tab].redo()
 
+    def cut(self):
+        if self.current_tab >= 0:
+            self._tabs[self.current_tab].event_generate("<Control-x>")
+
+    def copy(self):
+        if self.current_tab >= 0:
+            self._tabs[self.current_tab].event_generate("<Control-c>")
+
+    def paste(self):
+        if self.current_tab >= 0:
+            self._tabs[self.current_tab].event_generate("<Control-v>")
+
+    def select_all(self):
+        if self.current_tab >= 0:
+            self._tabs[self.current_tab].select_all()
+
+    def toggle_comment(self):
+        if self.current_tab >= 0:
+            self._tabs[self.current_tab].toggle_comment()
+
+    def indent(self):
+        if self.current_tab >= 0:
+            self._tabs[self.current_tab].on_tab()
+
+    def unindent(self):
+        if self.current_tab >= 0:
+            self._tabs[self.current_tab].unindent()
+
+    def delete_lines(self):
+        if self.current_tab >= 0:
+            self._tabs[self.current_tab].delete_lines()
+
+    def duplicate_lines(self):
+        if self.current_tab >= 0:
+            self._tabs[self.current_tab].duplicate_lines()
+
     def get_docstring(self, obj):
         if self.current_tab >= 0:
             return self._tabs[self.current_tab].get_docstring(obj)

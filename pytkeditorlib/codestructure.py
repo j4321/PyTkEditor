@@ -29,7 +29,8 @@ import re
 
 from pytkeditorlib.autoscrollbar import AutoHideScrollbar as Scrollbar
 from pytkeditorlib.autocomplete import AutoCompleteCombobox2
-from pytkeditorlib.constants import IM_CLASS, IM_FCT, IM_HFCT, IM_SEP, IM_CELL
+# from pytkeditorlib.constants import IM_CLASS, IM_FCT, IM_HFCT, IM_SEP, IM_CELL
+from pytkeditorlib.constants import IMAGES
 
 
 class Tree:
@@ -61,11 +62,11 @@ class CodeTree(Treeview):
     def __init__(self, master):
         Treeview.__init__(self, master, show='tree', selectmode='none',
                           style='flat.Treeview', padding=4)
-        self._img_class = PhotoImage(file=IM_CLASS, master=self)
-        self._img_fct = PhotoImage(file=IM_FCT, master=self)
-        self._img_hfct = PhotoImage(file=IM_HFCT, master=self)
-        self._img_sep = PhotoImage(file=IM_SEP, master=self)
-        self._img_cell = PhotoImage(file=IM_CELL, master=self)
+        self._img_class = PhotoImage(file=IMAGES['c'], master=self)
+        self._img_fct = PhotoImage(file=IMAGES['f'], master=self)
+        self._img_hfct = PhotoImage(file=IMAGES['hf'], master=self)
+        self._img_sep = PhotoImage(file=IMAGES['sep'], master=self)
+        self._img_cell = PhotoImage(file=IMAGES['cell'], master=self)
 
         self.font = Font(self, font="TkDefaultFont 9")
 

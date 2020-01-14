@@ -29,8 +29,8 @@ from tkinter.font import Font
 
 from pytkeditorlib import messagebox
 from pytkeditorlib.autoscrollbar import AutoHideScrollbar
-from pytkeditorlib.constants import IM_WARN, IM_ERR, get_screen,\
-    load_style, PYTHON_LEX, CONFIG, valide_entree_nb
+from pytkeditorlib.constants import get_screen, load_style, PYTHON_LEX, CONFIG, \
+    valide_entree_nb, IMAGES
 from pytkeditorlib.complistbox import CompListbox
 from pytkeditorlib.tooltip import TooltipTextWrapper, Tooltip
 from pytkeditorlib.filebar import FileBar
@@ -47,8 +47,8 @@ class Editor(ttk.Frame):
 
         self._valid_nb = self.register(valide_entree_nb)
 
-        self._syntax_icons = {'warning': tk.PhotoImage(master=self, file=IM_WARN),
-                              'error': tk.PhotoImage(master=self, file=IM_ERR)}
+        self._syntax_icons = {'warning': tk.PhotoImage(master=self, file=IMAGES['warning']),
+                              'error': tk.PhotoImage(master=self, file=IMAGES['error'])}
 
         self._syntax_highlighting_tags = []
 
@@ -367,7 +367,7 @@ class Editor(ttk.Frame):
         elif key == 'x':
             self.update_nb_line()
 
-    def select_all(self, event):
+    def select_all(self, event=None):
         self.text.tag_add('sel', '1.0', 'end')
         return "break"
 
@@ -437,7 +437,7 @@ class Editor(ttk.Frame):
         self.see('insert')
         return "break"
 
-    def toggle_comment(self, event):
+    def toggle_comment(self, event=None):
         self.text.edit_separator()
         sel = self.text.tag_ranges('sel')
         if sel:
@@ -459,7 +459,7 @@ class Editor(ttk.Frame):
         self.text.insert(index, txt)
         self.parse(txt, index)
 
-    def duplicate_lines(self, event):
+    def duplicate_lines(self, event=None):
         self.text.edit_separator()
         sel = self.text.tag_ranges('sel')
         if sel:
@@ -474,7 +474,7 @@ class Editor(ttk.Frame):
         self.update_nb_line()
         return "break"
 
-    def delete_lines(self, event):
+    def delete_lines(self, event=None):
         self.text.edit_separator()
         sel = self.text.tag_ranges('sel')
         if sel:
@@ -501,7 +501,7 @@ class Editor(ttk.Frame):
         else:
             return '    '
 
-    def on_tab(self, event):
+    def on_tab(self, event=None):
         self._clear_highlights()
         if self._comp.winfo_ismapped():
             self._comp_sel()
@@ -712,21 +712,20 @@ class Editor(ttk.Frame):
         self.update_nb_line()
         return "break"
 
-    def unindent(self, event):
+    def unindent(self, event=None):
         self.text.edit_separator()
-        txt = event.widget
-        sel = txt.tag_ranges('sel')
+        sel = self.text.tag_ranges('sel')
         if sel:
-            start = str(txt.index('sel.first'))
-            end = str(txt.index('sel.last'))
+            start = str(self.text.index('sel.first'))
+            end = str(self.text.index('sel.last'))
         else:
-            start = str(txt.index('insert'))
-            end = str(txt.index('insert'))
+            start = str(self.text.index('insert'))
+            end = str(self.text.index('insert'))
         start_line = int(start.split('.')[0])
         end_line = int(end.split('.')[0]) + 1
         for line in range(start_line, end_line):
-            if txt.get('%i.0' % line, '%i.4' % line) == '    ':
-                txt.delete('%i.0' % line, '%i.4' % line)
+            if self.text.get('%i.0' % line, '%i.4' % line) == '    ':
+                self.text.delete('%i.0' % line, '%i.4' % line)
         return "break"
 
     def yview(self, *args):

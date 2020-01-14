@@ -25,7 +25,7 @@ from tkinter.ttk import Button, Label
 
 from PIL.ImageTk import PhotoImage
 
-from .constants import ICON, APP_NAME
+from .constants import APP_NAME, IMAGES
 from . import __version__
 
 
@@ -39,7 +39,7 @@ class About(Toplevel):
         """Create the Toplevel 'About arxivfeed'."""
         Toplevel.__init__(self, master, padx=10)
         self.title(_("About {app_name}".format(app_name=APP_NAME)))
-        self.image = PhotoImage(file=ICON, master=self)
+        self.image = PhotoImage(file=IMAGES['icon'], master=self)
         Label(self, image=self.image).grid(row=0, columnspan=2, pady=10)
 
         Label(self,
