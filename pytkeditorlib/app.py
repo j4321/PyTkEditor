@@ -744,6 +744,7 @@ class App(tk.Tk):
             self._edit_modified(0, tab=tab)
             self.check_syntax()
             self.codestruct.populate(self.editor.filename, self.editor.get(strip=False))
+        self.editor.focus_tab()
         return saved
 
     def saveall(self, event=None):

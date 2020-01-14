@@ -389,24 +389,27 @@ class EditorNotebook(Notebook):
         for tab in self._visible_tabs[:ind]:
             self.close(tab)
 
+    def focus_tab(self):
+        if self.current_tab >= 0:
+            self._tabs[self.current_tab].text.focus_set()
+
     def save(self, tab=None):
         if tab is None:
             tab = self.current_tab
         if not self.files[tab]:
             res = self.saveas(tab)
         else:
-            with open(self.files[tab], 'w') as f:
-                f.write(self.get(tab))
             file = self.files[tab]
-            self._files_mtime[file] = os.stat(self.files[tab]).st_mtime
+            with open(file, 'w') as f:
+                f.write(self.get(tab))
+            self._files_mtime[file] = os.stat(file).st_mtime
             try:
                 self._is_modified[file].clear()
                 self._is_deleted[file].clear()
             except KeyError:
                 self._start_watching(file)
             res = True
-            self._files_check_deletion[self.files[tab]] = True
-            self._tabs[tab].focus_set()
+            self._files_check_deletion[file] = True
         return res
 
     def saveas(self, tab=None, name=None):
