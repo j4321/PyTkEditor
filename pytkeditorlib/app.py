@@ -570,6 +570,7 @@ class App(tk.Tk):
         self.codestruct.set_callback(self.editor.goto_item)
         self.codestruct.populate(self.editor.filename, self.editor.get(strip=False))
         self.update_menu_errors()
+        self.editor.focus_tab()
 
     def _filetype_change(self, event):
         filetype = self.filetype.get()
