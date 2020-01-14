@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 PyTkEditor - Python IDE
-Copyright 2018-2019 Juliette Monsel <j_4321 at protonmail dot com>
+Copyright 2018-2020 Juliette Monsel <j_4321 at protonmail dot com>
 
 PyTkEditor is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -45,7 +45,7 @@ class About(Toplevel):
         Label(self,
               text="{app_name} {version}".format(app_name=APP_NAME, version=__version__)).grid(row=1, columnspan=2)
         Label(self, text=_("PyTkEditor - Python IDE")).grid(row=2, columnspan=2, padx=10)
-        Label(self, text="Copyright (C) Juliette Monsel 2018-2019").grid(row=3, columnspan=2)
+        Label(self, text="Copyright (C) Juliette Monsel 2018-2020").grid(row=3, columnspan=2)
         Label(self, text="j_4321@protonmail.com").grid(row=4, columnspan=2)
         b = Button(self, text=_("License"), command=self._license)
         b.grid(row=5, column=0, pady=20, padx=4, sticky='e')

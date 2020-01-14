@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 PyTkEditor - Python IDE
-Copyright 2018-2019 Juliette Monsel <j_4321 at protonmail dot com>
+Copyright 2018-2020 Juliette Monsel <j_4321 at protonmail dot com>
 
 PyTkEditor is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -137,9 +137,9 @@ class CodeTree(Treeview):
                 parent = tree.insert('I-%i' % tree_index, indent)
 
                 max_length = max(max_length, self.font.measure(name) + 20 + (indent//4 + 1) * 20)
-                iid = self.insert(parent, 'end', 'I-%i' % tree_index, text=name,
-                                  tags=(obj_type, name),
-                                  values=('%i.%i' % token.start, '%i.%i' % token.end))
+                self.insert(parent, 'end', 'I-%i' % tree_index, text=name,
+                            tags=(obj_type, name),
+                            values=('%i.%i' % token.start, '%i.%i' % token.end))
 
         self.column('#0', width=max_length, minwidth=max_length)
         for item in self.get_children(''):

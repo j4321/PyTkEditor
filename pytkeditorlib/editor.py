@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 PyTkEditor - Python IDE
-Copyright 2018-2019 Juliette Monsel <j_4321 at protonmail dot com>
+Copyright 2018-2020 Juliette Monsel <j_4321 at protonmail dot com>
 
 PyTkEditor is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
