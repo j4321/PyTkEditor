@@ -223,7 +223,7 @@ class EditorNotebook(Notebook):
 
     def indent(self):
         if self.current_tab >= 0:
-            self._tabs[self.current_tab].on_tab()
+            self._tabs[self.current_tab].on_tab(force_indent=True)
 
     def unindent(self):
         if self.current_tab >= 0:

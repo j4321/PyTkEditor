@@ -501,7 +501,7 @@ class Editor(ttk.Frame):
         else:
             return '    '
 
-    def on_tab(self, event=None):
+    def on_tab(self, event=None, force_indent=False):
         self._clear_highlights()
         if self._comp.winfo_ismapped():
             self._comp_sel()
@@ -518,7 +518,9 @@ class Editor(ttk.Frame):
                 self.text.insert('%i.0' % line, '    ')
         else:
             txt = self.text.get('insert-1c')
-            if not txt.isalnum() and txt != '.':
+            if force_indent:
+                self.text.insert('insert linestart', self._get_indent())
+            elif not txt.isalnum() and txt != '.':
                 self.text.insert('insert', self._get_indent())
             else:
                 self._comp_display()
