@@ -356,7 +356,7 @@ class TextConsole(tk.Text):
                 self.insert('%i.0' % line, '    ')
         else:
             txt = self.get('insert-1c')
-            if not txt.isalnum() and txt != '.':
+            if not txt.isalnum() and txt not in ['.', '_']:
                 self.insert('insert', '    ')
             else:
                 self._comp_display()

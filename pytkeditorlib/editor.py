@@ -520,7 +520,7 @@ class Editor(ttk.Frame):
             txt = self.text.get('insert-1c')
             if force_indent:
                 self.text.insert('insert linestart', self._get_indent())
-            elif not txt.isalnum() and txt != '.':
+            elif not txt.isalnum() and txt not in ['.', '_']:
                 self.text.insert('insert', self._get_indent())
             else:
                 self._comp_display()
