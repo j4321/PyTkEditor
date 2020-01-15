@@ -309,6 +309,7 @@ class App(tk.Tk):
 
         self.protocol('WM_DELETE_WINDOW', self.quit)
         signal.signal(signal.SIGUSR1, self._on_signal)
+        print(self.winfo_class())
 
     @staticmethod
     def _select_all(event):
@@ -439,6 +440,7 @@ class App(tk.Tk):
         self.option_add('*Canvas.highlightThickness', 0)
         self.option_add('*Canvas.borderWidth', 0)
         self.option_add('*Toplevel.background', theme['bg'])
+        self.option_add(f'*{self.winfo_class()}.background', theme['bg'])
         # --- special themes
         style.configure('tooltip.TLabel', background=theme['tooltip_bg'],
                         foreground=theme['fg'])

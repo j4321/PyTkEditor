@@ -37,7 +37,7 @@ class About(Toplevel):
     """About Toplevel."""
     def __init__(self, master):
         """Create the Toplevel 'About arxivfeed'."""
-        Toplevel.__init__(self, master, padx=10)
+        Toplevel.__init__(self, master, class_=master.winfo_class(), padx=10)
         self.title(_("About {app_name}".format(app_name=APP_NAME)))
         self.image = PhotoImage(file=IMAGES['icon'], master=self)
         Label(self, image=self.image).grid(row=0, columnspan=2, pady=10)
@@ -57,6 +57,7 @@ class About(Toplevel):
         self.resizable(0, 0)
         b.focus_set()
         self.grab_set()
+        print(self.winfo_class())
 
     def exit(self):
         if self.master:
