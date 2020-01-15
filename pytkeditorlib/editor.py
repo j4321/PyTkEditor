@@ -496,6 +496,11 @@ class Editor(ttk.Frame):
         self.update_nb_line()
         return "break"
 
+    def get_selection(self):
+        sel = self.text.tag_ranges('sel')
+        if sel:
+            return self.text.get('sel.first', 'sel.last')
+
     def _get_indent(self):
         line_nb, col = [int(i) for i in str(self.text.index('insert')).split('.')]
         if line_nb == 1:
@@ -937,8 +942,12 @@ class Editor(ttk.Frame):
         self.update_nb_line()
         self.parse_all()
 
-    def insert(self, index, text):
+    def insert(self, index, text, replace_sel=False):
         self.text.edit_separator()
+        if replace_sel:
+            sel = self.text.tag_ranges('sel')
+            if sel:
+                self.text.delete('sel.first', 'sel.last')
         self.text.insert(index, text)
         self.update_nb_line()
         self.parse_all()

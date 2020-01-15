@@ -22,7 +22,7 @@ Notebook containing the code editors for each opened file
 """
 import logging
 import os
-from tkinter import Menu, Toplevel
+from tkinter import Menu, Toplevel, TclError
 from subprocess import Popen
 from threading import Thread, Event
 from time import sleep
@@ -31,6 +31,7 @@ from tkfilebrowser import asksaveasfilename
 
 from pytkeditorlib.notebook import Notebook
 from pytkeditorlib.editor import Editor
+from pytkeditorlib.colorpicker import ColorPicker
 from pytkeditorlib.autocomplete import AutoCompleteEntryListbox
 from pytkeditorlib.tooltip import TooltipNotebookWrapper
 from pytkeditorlib.messagebox import askyesnocancel, askyesno
@@ -236,6 +237,21 @@ class EditorNotebook(Notebook):
     def duplicate_lines(self):
         if self.current_tab >= 0:
             self._tabs[self.current_tab].duplicate_lines()
+
+    def choose_color(self):
+        tab = self.current_tab
+        if tab >= 0:
+
+            def insert(event):
+                color = picker.get_color()[2]
+                if color:
+                    self._tabs[self.current_tab].insert("insert", color, True)
+
+            try:
+                picker = ColorPicker(color=self._tabs[self.current_tab].get_selection(), parent=self)
+            except TclError:
+                picker = ColorPicker(parent=self)
+            picker.bind("<<ColorSelected>>", insert)
 
     def get_docstring(self, obj):
         if self.current_tab >= 0:

@@ -56,7 +56,6 @@ class SearchDialog(tk.Toplevel):
         cb_case.state(['!alternate'])
         cb_word.state(['!alternate'])
         cb_regexp.state(['!alternate'])
-
         opt_frame.grid(row=1, columnspan=3, pady=(0, 4))
         # --- display results
         result_frame = ttk.Frame(self)

@@ -32,6 +32,7 @@ from datetime import datetime
 
 from ewmh import ewmh, EWMH
 from tkfilebrowser import askopenfilenames, asksaveasfilename
+from tkcolorpicker import askcolor
 
 from pytkeditorlib.editornotebook import EditorNotebook
 from pytkeditorlib.syntax_check import check_file
@@ -180,7 +181,7 @@ class App(tk.Tk):
         self.menu_edit.add_command(label='Cut', command=self.editor.cut,
                                    image=self._images['cut'],
                                    accelerator='Ctrl+X', compound='left')
-        self.menu_edit.add_command(label='Copy', command=self.editor.cut,
+        self.menu_edit.add_command(label='Copy', command=self.editor.copy,
                                    image=self._images['copy'],
                                    accelerator='Ctrl+C', compound='left')
         self.menu_edit.add_command(label='Paste', command=self.editor.paste,
@@ -211,6 +212,11 @@ class App(tk.Tk):
                                    command=self.editor.unindent,
                                    image=self._images['dedent'],
                                    accelerator='Shift+Tab', compound='left')
+        self.menu_edit.add_separator()
+        self.menu_edit.add_command(label='Color chooser',
+                                   command=self.editor.choose_color,
+                                   image=self._images['color'],
+                                   compound='left')
         self.menu_edit.add_separator()
         self.menu_edit.add_command(label='Settings', command=self.config,
                                    compound='left', image=self._images['settings'])
