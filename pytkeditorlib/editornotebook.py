@@ -351,6 +351,9 @@ class EditorNotebook(Notebook):
             tab = self.current_tab
         return self._tabs[tab].get(strip)
 
+    def get_all_files(self):
+        return {tab: (self.files[tab], self._tabs[tab].get(strip=False)) for tab in self._visible_tabs}
+
     def get_selection(self):
         if self._current_tab < 0:
             return ''
