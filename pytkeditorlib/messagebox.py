@@ -20,12 +20,16 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 Custom tkinter messageboxes
 """
+import os
 from webbrowser import open as url_open
 import tkinter as tk
 from tkinter import ttk
 
 from .autoscrollbar import AutoHideScrollbar as Scrollbar
-from .constants import ICONS, REPORT_URL, CONFIG
+from .constants import REPORT_URL, CONFIG
+
+
+ICONS = ['warning', 'information', 'question', 'error']
 
 
 def _(txt):
@@ -50,13 +54,12 @@ class OneButtonBox(tk.Toplevel):
         self.title(title)
         self.result = ""
         self.button = button
-        if isinstance(image, str):
-            data = ICONS.get(image)
-            if data:
-                self.img = tk.PhotoImage(master=self, data=data)
-            else:
-                self.img = tk.PhotoImage(master=self, file=image)
+        if image in ICONS:
+            image = f"::tk::icons::{image}"
+        elif isinstance(image, str) and os.path.exists(image):
+            self.img = tk.PhotoImage(master=self, file=image)
             image = self.img
+
         frame = ttk.Frame(self)
         frame.rowconfigure(0, weight=1)
         frame.columnconfigure(1, weight=1)
@@ -133,12 +136,10 @@ class ShowError(tk.Toplevel):
             style.configure("url.TLabel", foreground="blue")
             style.configure("txt.TFrame", background='white')
 
-        if isinstance(image, str):
-            data = ICONS.get(image)
-            if data:
-                self.img = tk.PhotoImage(master=self, data=data)
-            else:
-                self.img = tk.PhotoImage(master=self, file=image)
+        if image in ICONS:
+            image = f"::tk::icons::{image}"
+        elif isinstance(image, str) and os.path.exists(image):
+            self.img = tk.PhotoImage(master=self, file=image)
             image = self.img
         frame = ttk.Frame(self)
         frame.rowconfigure(0, weight=1)
@@ -251,12 +252,10 @@ class TwoButtonBox(tk.Toplevel):
         self.button1 = button1
         self.button2 = button2
 
-        if isinstance(image, str):
-            data = ICONS.get(image)
-            if data:
-                self.img = tk.PhotoImage(master=self, data=data)
-            else:
-                self.img = tk.PhotoImage(master=self, file=image)
+        if image in ICONS:
+            image = f"::tk::icons::{image}"
+        elif isinstance(image, str) and os.path.exists(image):
+            self.img = tk.PhotoImage(master=self, file=image)
             image = self.img
         frame = ttk.Frame(self)
         frame.grid(row=0, columnspan=2, sticky="ewsn")
@@ -314,12 +313,10 @@ class AskYesNoCancel(tk.Toplevel):
         self.columnconfigure(2, weight=1)
         self.result = None
 
-        if isinstance(image, str):
-            data = ICONS.get(image)
-            if data:
-                self.img = tk.PhotoImage(master=self, data=data)
-            else:
-                self.img = tk.PhotoImage(master=self, file=image)
+        if image in ICONS:
+            image = f"::tk::icons::{image}"
+        elif isinstance(image, str) and os.path.exists(image):
+            self.img = tk.PhotoImage(master=self, file=image)
             image = self.img
         frame = ttk.Frame(self)
         frame.grid(row=0, columnspan=3, sticky="ewsn")
