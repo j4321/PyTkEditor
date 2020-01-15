@@ -334,6 +334,8 @@ class EditorNotebook(Notebook):
             self._start_watching(file)
 
         editor = Editor(self, 'Python' if title.endswith('.py') else 'Text')
+        if len(self._visible_tabs) == 0:
+            self.event_generate('<<NotebookFirstTab>>')
         tab = self.add(editor, text=title)
         if file in self.last_closed:
             self.last_closed.remove(file)
@@ -350,12 +352,13 @@ class EditorNotebook(Notebook):
         return self._tabs[tab].get(strip)
 
     def get_selection(self):
-        if self._current_tab >= 0:
-            sel = self._tabs[self._current_tab].text.tag_ranges('sel')
-            if sel:
-                return self._tabs[self._current_tab].text.get('sel.first', 'sel.last')
-            else:
-                return ''
+        if self._current_tab < 0:
+            return ''
+        sel = self._tabs[self._current_tab].text.tag_ranges('sel')
+        if sel:
+            return self._tabs[self._current_tab].text.get('sel.first', 'sel.last')
+        else:
+            return ''
 
     def get_cell(self):
         if self._current_tab >= 0:
@@ -432,6 +435,8 @@ class EditorNotebook(Notebook):
     def save(self, tab=None):
         if tab is None:
             tab = self.current_tab
+        if tab < 0:
+            return False
         if not self.files[tab]:
             res = self.saveas(tab)
         else:
@@ -473,11 +478,11 @@ class EditorNotebook(Notebook):
             return False
 
     def run(self):
-        tab = self.current_tab
-        file = self.files[tab]
-        if file:
-            filename = os.path.join(os.path.dirname(__file__), 'console.py')
-            Popen(['xfce4-terminal', '-e', 'python {} {}'.format(filename, file)])
+        if self.current_tab >= 0:
+            file = self.files[self.current_tab]
+            if file:
+                filename = os.path.join(os.path.dirname(__file__), 'console.py')
+                Popen(['xfce4-terminal', '-e', 'python {} {}'.format(filename, file)])
 
     def goto_start(self):
         if self._current_tab >= 0:

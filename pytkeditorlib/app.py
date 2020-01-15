@@ -227,7 +227,7 @@ class App(tk.Tk):
                                   compound='left', label='Run',
                                   accelerator='F5')
         self.menu_doc.add_command(image=self._images['run'],
-                                  command=lambda: self.console.execute(self.editor.get_selection()),
+                                  command=self.run_selection,
                                   compound='left', label='Run selected code in console',
                                   accelerator='F9')
         if cst.JUPYTER:
@@ -257,7 +257,8 @@ class App(tk.Tk):
         self.bind_class('TEntry', '<Control-a>', self._select_all)
         self.bind_class('TCombobox', '<Control-a>', self._select_all)
         self.codestruct.bind('<<Populate>>', self._on_populate)
-        self.editor.bind('<<NotebookEmpty>>', self.codestruct.clear)
+        self.editor.bind('<<NotebookEmpty>>', self._on_empty_notebook)
+        self.editor.bind('<<NotebookFirstTab>>', self._on_first_tab_creation)
         self.editor.bind('<<NotebookTabChanged>>', self._on_tab_changed)
         self.editor.bind('<<FiletypeChanged>>', self._filetype_change)
         self.editor.bind('<<Modified>>', lambda e: self._edit_modified())
@@ -276,7 +277,7 @@ class App(tk.Tk):
         self.bind('<Control-Alt-s>', self.saveas)
         self.editor.bind('<<CtrlReturn>>', lambda e: self.console.execute(self.editor.get_cell()))
         self.bind('<F5>', self.run)
-        self.bind('<F9>', lambda e: self.console.execute(self.editor.get_selection()))
+        self.bind('<F9>', self.run_selection)
         if cst.JUPYTER:
             self.bind('<F10>', self.execute_in_jupyter)
 
@@ -300,6 +301,9 @@ class App(tk.Tk):
         # --- open files passed in argument
         for f in files:
             self.open_file(os.path.abspath(f))
+
+        if ofiles == [''] and not files:
+            self._on_empty_notebook()
 
         self.protocol('WM_DELETE_WINDOW', self.quit)
         signal.signal(signal.SIGUSR1, self._on_signal)
@@ -618,6 +622,24 @@ class App(tk.Tk):
         self.jupyter_kernel = cst.BlockingKernelClient(connection_file=cst.JUPYTER_KERNEL_PATH)
         self.jupyter_kernel.load_connection_file()
 
+    def _on_empty_notebook(self, event=None):
+        """Disable irrelevant menus when no file is opened"""
+        self.codestruct.clear()
+        self.menu.entryconfigure(2, state='disabled')
+        self.menu.entryconfigure(3, state='disabled')
+        for i in [0, 1, 3, 4, 5, 6, 8, 9, 11, 12, 13]:
+            self.menu_edit.entryconfigure(i, state='disabled')
+        for i in [8, 9, 11]:
+            self.menu_file.entryconfigure(i, state='disabled')
+
+    def _on_first_tab_creation(self, event):
+        """Enable menus when fisrt file is opened"""
+        self.menu.entryconfigure(2, state='normal')
+        for i in [0, 1, 3, 4, 5, 6, 8, 9, 11, 12, 13]:
+            self.menu_edit.entryconfigure(i, state='normal')
+        for i in [8, 9, 11]:
+            self.menu_file.entryconfigure(i, state='normal')
+
     def report_callback_exception(self, *args):
         """Log exceptions."""
         err = "".join(traceback.format_exception(*args))
@@ -739,6 +761,8 @@ class App(tk.Tk):
 
     def saveas(self, event=None):
         tab = self.editor.select()
+        if tab < 0:
+            return False
         file = self.editor.files.get(tab, '')
         if file:
             initialdir, initialfile = os.path.split(file)
@@ -777,10 +801,17 @@ class App(tk.Tk):
         if self.save():
             self.editor.run()
 
+    def run_selection(self, event=None):
+        code = self.editor.get_selection()
+        if code:
+            self.console.execute(code)
+
     def execute_in_jupyter(self, event=None):
         if not cst.JUPYTER:
             return
         code = self.editor.get_selection()
+        if not code:
+            return
         if self._qtconsole_process is None or self._qtconsole_process.poll() is not None:
             self._init_kernel()
             self._qtconsole_process = Popen(['jupyter-qtconsole', '-f', cst.JUPYTER_KERNEL_PATH])
