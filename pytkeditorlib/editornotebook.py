@@ -34,7 +34,7 @@ from pytkeditorlib.editor import Editor
 from pytkeditorlib.colorpicker import ColorPicker
 from pytkeditorlib.autocomplete import AutoCompleteEntryListbox
 from pytkeditorlib.tooltip import TooltipNotebookWrapper
-from pytkeditorlib.messagebox import askyesnocancel, askyesno
+from pytkeditorlib.messagebox import askyesnocancel, askyesno, showerror
 
 
 class EditorNotebook(Notebook):
@@ -460,8 +460,11 @@ class EditorNotebook(Notebook):
             res = self.saveas(tab)
         else:
             file = self.files[tab]
-            with open(file, 'w') as f:
-                f.write(self.get(tab))
+            try:
+                with open(file, 'w') as f:
+                    f.write(self.get(tab))
+            except PermissionError as e:
+                showerror("Error", f"PermissionError: {e.strerror}: {file}")
             self._files_mtime[file] = os.stat(file).st_mtime
             try:
                 self._is_modified[file].clear()
