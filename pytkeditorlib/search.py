@@ -28,7 +28,7 @@ from .autoscrollbar import AutoHideScrollbar
 from .constants import RE_NEWLINE
 
 
-class FindDialog(tk.Toplevel):
+class SearchDialog(tk.Toplevel):
     def __init__(self, master):
         tk.Toplevel.__init__(self, master, class_=master.winfo_class(), padx=4, pady=4)
         self.title('Find')

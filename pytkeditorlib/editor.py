@@ -263,8 +263,8 @@ class Editor(ttk.Frame):
         self._syntax_highlighting_tags = list(EDITOR_SYNTAX_HIGHLIGHTING.keys())
 
         theme = f"{CONFIG.get('General', 'theme').capitalize()} Theme"
-        selectbg = CONFIG.get(theme, 'selectbg')
-        selectfg = CONFIG.get(theme, 'selectfg')
+        selectbg = CONFIG.get(theme, 'textselectbg')
+        selectfg = CONFIG.get(theme, 'textselectfg')
         self.text.configure(fg=EDITOR_FG, bg=EDITOR_BG, font=FONT,
                             selectbackground=selectbg,
                             selectforeground=selectfg,

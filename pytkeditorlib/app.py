@@ -41,7 +41,7 @@ from pytkeditorlib.constants import IMAGES, CONFIG, save_config, IM_CLOSE
 from pytkeditorlib import constants as cst
 from pytkeditorlib.textconsole import TextConsole
 from pytkeditorlib.history import HistoryFrame
-from pytkeditorlib.search import FindDialog
+from pytkeditorlib.search import SearchDialog
 from pytkeditorlib.config import Config
 from pytkeditorlib.autoscrollbar import AutoHideScrollbar
 from pytkeditorlib.menu import LongMenu
@@ -216,17 +216,17 @@ class App(tk.Tk):
                                    compound='left', image=self._images['settings'])
         # ------- search
         self.menu_search.add_command(label='Find', command=self.editor.find,
-                                  accelerator='Ctrl+F', compound='left',
-                                  image=self._images['find'])
+                                     accelerator='Ctrl+F', compound='left',
+                                     image=self._images['find'])
         self.menu_search.add_command(label='Find in session', image=self._images['find'],
                                      compound='left', command=self.search)
         self.menu_search.add_separator()
         self.menu_search.add_command(label='Replace', command=self.editor.replace,
-                                  accelerator='Ctrl+R', compound='left',
-                                  image=self._images['replace'])
+                                     accelerator='Ctrl+R', compound='left',
+                                     image=self._images['replace'])
         self.menu_search.add_separator()
         self.menu_search.add_command(label='Goto line', accelerator='Ctrl+L', compound='left',
-                                  command=self.editor.goto_line, image=self._images['menu_dummy'])
+                                     command=self.editor.goto_line, image=self._images['menu_dummy'])
 
         # ------- doc
         self.menu_doc.add_cascade(label='Filetype', menu=self.menu_filetype,
@@ -823,7 +823,7 @@ class App(tk.Tk):
             return False
 
     def search(self):
-        FindDialog(self)
+        SearchDialog(self)
 
     def save(self, event=None, tab=None, update=False):
         if tab is None:
