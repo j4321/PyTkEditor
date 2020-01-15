@@ -85,7 +85,7 @@ class Tooltip(tk.Toplevel):
 
 
 class TooltipTextWrapper:
-    """Tooltip wrapper for a Treeview."""
+    """Tooltip wrapper for a Text widget."""
     def __init__(self, text, delay=1000, **kwargs):
         """
         Create a Tooltip wrapper for the Treeview tree.

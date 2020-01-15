@@ -57,7 +57,6 @@ class About(Toplevel):
         self.resizable(0, 0)
         b.focus_set()
         self.grab_set()
-        print(self.winfo_class())
 
     def exit(self):
         if self.master:

@@ -41,6 +41,7 @@ from pytkeditorlib.constants import IMAGES, CONFIG, save_config, IM_CLOSE
 from pytkeditorlib import constants as cst
 from pytkeditorlib.textconsole import TextConsole
 from pytkeditorlib.history import HistoryFrame
+from pytkeditorlib.search import FindDialog
 from pytkeditorlib.config import Config
 from pytkeditorlib.autoscrollbar import AutoHideScrollbar
 from pytkeditorlib.menu import LongMenu
@@ -69,9 +70,10 @@ class App(tk.Tk):
         self.menu_file = tk.Menu(self.menu)
         self.menu_recent_files = tk.Menu(self.menu_file)
         self.menu_edit = tk.Menu(self.menu)
+        self.menu_search = tk.Menu(self.menu)
         self.menu_doc = tk.Menu(self.menu)
         self.menu_filetype = tk.Menu(self.menu_doc)
-        self.menu_errors = LongMenu(self.menu, 40)
+        self.menu_errors = LongMenu(self.menu_doc, 40)
 
         recent_files = CONFIG.get('General', 'recent_files', fallback='').split(', ')
         self.recent_files = [f for f in recent_files if f and os.path.exists(f)]
@@ -212,18 +214,26 @@ class App(tk.Tk):
         self.menu_edit.add_separator()
         self.menu_edit.add_command(label='Settings', command=self.config,
                                    compound='left', image=self._images['settings'])
+        # ------- search
+        self.menu_search.add_command(label='Find', command=self.editor.find,
+                                  accelerator='Ctrl+F', compound='left',
+                                  image=self._images['find'])
+        self.menu_search.add_command(label='Find in session', image=self._images['find'],
+                                     compound='left', command=self.search)
+        self.menu_search.add_separator()
+        self.menu_search.add_command(label='Replace', command=self.editor.replace,
+                                  accelerator='Ctrl+R', compound='left',
+                                  image=self._images['replace'])
+        self.menu_search.add_separator()
+        self.menu_search.add_command(label='Goto line', accelerator='Ctrl+L', compound='left',
+                                  command=self.editor.goto_line, image=self._images['menu_dummy'])
+
         # ------- doc
         self.menu_doc.add_cascade(label='Filetype', menu=self.menu_filetype,
                                   image=self._images['menu_dummy'], compound='left')
         self.menu_doc.add_separator()
-        self.menu_doc.add_command(label='Find', command=self.editor.find,
-                                  accelerator='Ctrl+F', compound='left',
-                                  image=self._images['find'])
-        self.menu_doc.add_command(label='Replace', command=self.editor.replace,
-                                  accelerator='Ctrl+R', compound='left',
-                                  image=self._images['replace'])
-        self.menu_doc.add_command(label='Goto line', accelerator='Ctrl+L', compound='left',
-                                  command=self.editor.goto_line, image=self._images['menu_dummy'])
+        self.menu_doc.add_cascade(label='Error list', menu=self.menu_errors,
+                                  image=self._images['menu_dummy'], compound='left')
         self.menu_doc.add_separator()
         self.menu_doc.add_command(image=self._images['run'], command=self.run,
                                   compound='left', label='Run',
@@ -248,8 +258,8 @@ class App(tk.Tk):
 
         self.menu.add_cascade(label='File', underline=0, menu=self.menu_file)
         self.menu.add_cascade(label='Edit', underline=0, menu=self.menu_edit)
+        self.menu.add_cascade(label='Search', underline=0, menu=self.menu_search)
         self.menu.add_cascade(label='Document', underline=0, menu=self.menu_doc)
-        self.menu.add_cascade(label='Error list', underline=6, menu=self.menu_errors)
         self.menu.add_command(label='About', underline=0,
                               command=lambda: About(self))
 
@@ -309,7 +319,6 @@ class App(tk.Tk):
 
         self.protocol('WM_DELETE_WINDOW', self.quit)
         signal.signal(signal.SIGUSR1, self._on_signal)
-        print(self.winfo_class())
 
     @staticmethod
     def _select_all(event):
@@ -477,6 +486,7 @@ class App(tk.Tk):
                        {'sticky': 'nswe',
                         'children': [('Treeview.treearea', {'sticky': 'nswe'})]})])
         style.configure('flat.Treeview', background=theme['fieldbg'])
+        style.configure('Treeview', background=theme['fieldbg'])
         self.configure(bg=theme['bg'], padx=6, pady=2)
         # --- menu
         self.menu.configure(bg=theme['bg'], fg=theme['fg'],
@@ -496,6 +506,12 @@ class App(tk.Tk):
                                  disabledforeground=theme['disabledfg'],
                                  selectcolor=theme['fg'])
         self.menu_errors.configure(bg=theme['fieldbg'],
+                                   activebackground=theme['selectbg'],
+                                   fg=theme['fg'],
+                                   activeforeground=theme['fg'],
+                                   disabledforeground=theme['disabledfg'],
+                                   selectcolor=theme['fg'])
+        self.menu_search.configure(bg=theme['fieldbg'],
                                    activebackground=theme['selectbg'],
                                    fg=theme['fg'],
                                    activeforeground=theme['fg'],
@@ -629,20 +645,27 @@ class App(tk.Tk):
     def _on_empty_notebook(self, event=None):
         """Disable irrelevant menus when no file is opened"""
         self.codestruct.clear()
-        self.menu.entryconfigure(2, state='disabled')
-        self.menu.entryconfigure(3, state='disabled')
-        for i in [0, 1, 3, 4, 5, 6, 8, 9, 11, 12, 13]:
-            self.menu_edit.entryconfigure(i, state='disabled')
-        for i in [8, 9, 11]:
-            self.menu_file.entryconfigure(i, state='disabled')
+        self.menu.entryconfigure('Document', state='disabled')
+        self.menu.entryconfigure('Search', state='disabled')
+        for entry in range(self.menu_edit.index('end') - 1):
+            try:
+                self.menu_edit.entryconfigure(entry, state='disabled')
+            except tk.TclError:
+                pass
+        for entry in ['Save as', 'Save all', 'Close all files']:
+            self.menu_file.entryconfigure(entry, state='disabled')
 
     def _on_first_tab_creation(self, event):
         """Enable menus when fisrt file is opened"""
-        self.menu.entryconfigure(2, state='normal')
-        for i in [0, 1, 3, 4, 5, 6, 8, 9, 11, 12, 13]:
-            self.menu_edit.entryconfigure(i, state='normal')
-        for i in [8, 9, 11]:
-            self.menu_file.entryconfigure(i, state='normal')
+        self.menu.entryconfigure('Document', state='normal')
+        self.menu.entryconfigure('Search', state='normal')
+        for entry in range(self.menu_edit.index('end') - 1):
+            try:
+                self.menu_edit.entryconfigure(entry, state='normal')
+            except tk.TclError:
+                pass
+        for entry in ['Save as', 'Save all', 'Close all files']:
+            self.menu_file.entryconfigure(entry, state='normal')
 
     def report_callback_exception(self, *args):
         """Log exceptions."""
@@ -791,6 +814,9 @@ class App(tk.Tk):
         else:
             return False
 
+    def search(self):
+        FindDialog(self)
+
     def save(self, event=None, tab=None, update=False):
         if tab is None:
             tab = self.editor.select()
@@ -837,11 +863,11 @@ class App(tk.Tk):
             self.update_menu_errors()
 
     def update_menu_errors(self):
-        self.menu.entryconfigure('Error list', state='normal')
+        self.menu_doc.entryconfigure('Error list', state='normal')
         self.menu_errors.delete(0, 'end')
         errors = self.editor.get_syntax_issues()
         if not errors:
-            self.menu.entryconfigure('Error list', state='disabled')
+            self.menu_doc.entryconfigure('Error list', state='disabled')
         else:
             for (category, msg, cmd) in errors:
                 self.menu_errors.add_command(label=msg,
