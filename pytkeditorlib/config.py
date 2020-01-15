@@ -27,7 +27,7 @@ from tkinter import font
 
 from pygments.styles import get_all_styles
 
-from pytkeditorlib.constants import CONFIG, save_config
+from pytkeditorlib.constants import CONFIG, save_config, PATH_TEMPLATE
 from pytkeditorlib.autocomplete import AutoCompleteCombobox
 
 
@@ -36,14 +36,14 @@ class Config(tk.Toplevel):
         tk.Toplevel.__init__(self, master)
         self.transient(master)
         self.grab_set()
-        self.configure(padx=4, pady=4)
+        self.configure(padx=8, pady=4)
         self.title('PyTkEditor - Config')
 
         # --- General
         frame_general = ttk.Frame(self)
         ttk.Label(frame_general, text='General',
                   font=('TkDefaultFont', 10, 'bold')).grid(row=0, columnspan=3,
-                                                           sticky='w', padx=4, pady=4)
+                                                           sticky='w', pady=4)
         # --- --- theme
         menu_theme = tk.Menu(frame_general, tearoff=False)
         self.theme = tk.StringVar(frame_general, CONFIG.get('General', 'theme'))
@@ -70,6 +70,10 @@ class Config(tk.Toplevel):
         self.family.grid(row=2, column=1, sticky='w', padx=4, pady=4)
         self.size.grid(row=2, column=2, sticky='w', padx=4, pady=4)
 
+        # --- --- new file template
+        ttk.Button(frame_general, text='Edit new file template',
+                   command=self.edit_template).grid(row=3, columnspan=3, sticky='w', padx=6, pady=4)
+
         # --- syntax highlighting
         frame_s_h = ttk.Frame(self)
         styles = list(get_all_styles())
@@ -82,10 +86,10 @@ class Config(tk.Toplevel):
 
         ttk.Label(frame_s_h, text='Syntax Highlighting',
                   font=('TkDefaultFont', 10, 'bold')).grid(row=0, columnspan=2,
-                                                           sticky='w', padx=4, pady=4)
-        ttk.Label(frame_s_h, text='Editor').grid(row=1, column=0, sticky='e', padx=4, pady=4)
+                                                           sticky='w', pady=4)
+        ttk.Label(frame_s_h, text='Editor:').grid(row=1, column=0, sticky='e', padx=4, pady=4)
         self.editor_style.grid(row=1, column=1, sticky='w', padx=4, pady=4)
-        ttk.Label(frame_s_h, text='Console').grid(row=2, column=0, sticky='e', padx=4, pady=4)
+        ttk.Label(frame_s_h, text='Console:').grid(row=2, column=0, sticky='e', padx=4, pady=4)
         self.console_style.grid(row=2, column=1, sticky='w', padx=4, pady=4)
 
         # --- code checking
@@ -106,7 +110,7 @@ class Config(tk.Toplevel):
 
         ttk.Label(frame_check, text='Code checking (on file saving)',
                   font=('TkDefaultFont', 10, 'bold')).grid(row=0, columnspan=2,
-                                                           sticky='w', padx=4, pady=4)
+                                                           sticky='w', pady=4)
         self.code_check.grid(row=1, columnspan=2, sticky='w', padx=4, pady=4)
         self.style_check.grid(row=2, columnspan=2, sticky='w', padx=4, pady=4)
 
@@ -117,11 +121,14 @@ class Config(tk.Toplevel):
 
         # --- placement
         frame_general.pack(side='top', anchor='w')
-        ttk.Separator(self, orient='horizontal').pack(side='top', fill='x', pady=8, padx=4)
+        ttk.Separator(self, orient='horizontal').pack(side='top', fill='x', pady=8)
         frame_s_h.pack(side='top', anchor='w')
-        ttk.Separator(self, orient='horizontal').pack(side='top', fill='x', pady=8, padx=4)
+        ttk.Separator(self, orient='horizontal').pack(side='top', fill='x', pady=8)
         frame_check.pack(side='top', fill='x')
         frame_btn.pack(side='top', pady=8)
+
+    def edit_template(self):
+        self.master.open(PATH_TEMPLATE)
 
     def validate(self):
         # --- general
