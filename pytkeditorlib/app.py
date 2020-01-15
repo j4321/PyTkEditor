@@ -475,12 +475,20 @@ class App(tk.Tk):
                         'children': [('Button.padding',
                                       {'sticky': 'nswe',
                                        'children': [('Button.close', {'sticky': 'nswe'})]})]})])
+        style.layout('toggle.TButton',
+                     [('Button.border',
+                       {'sticky': 'nswe',
+                        'border': '1',
+                        'children': [('Button.padding',
+                                      {'sticky': 'nswe',
+                                       'children': [('Button.label', {'sticky': 'nswe'})]})]})])
         style.configure('border.TFrame', borderwidth=1, relief='sunken')
         style.configure('separator.TFrame', background=theme['bordercolor'], padding=1)
         style.configure('Up.TButton', arrowsize=20)
         style.configure('Down.TButton', arrowsize=20)
         style.configure('close.TButton', borderwidth=1, relief='flat')
         style.map('close.TButton', relief=[('active', 'raised')])
+        style.map('toggle.TButton', relief=[('selected', 'sunken'), ('!selected', 'flat')])
         style.layout('flat.Treeview',
                      [('Treeview.padding',
                        {'sticky': 'nswe',

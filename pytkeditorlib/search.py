@@ -25,6 +25,7 @@ from tkinter import ttk
 import re
 
 from .autoscrollbar import AutoHideScrollbar
+from .constants import RE_NEWLINE
 
 
 class FindDialog(tk.Toplevel):
@@ -34,7 +35,6 @@ class FindDialog(tk.Toplevel):
         frame_find = ttk.Frame(self)
         frame_find.columnconfigure(1, weight=1)
 
-        self._re_newline = re.compile(r'\n')
         # --- search entry
         self.entry_search = ttk.Entry(frame_find)
         self.entry_search.bind('<Return>', self.find)
@@ -109,6 +109,6 @@ class FindDialog(tk.Toplevel):
                 lines = text.splitlines()
                 for match in results:
                     start = match.start()
-                    line_nb = len(self._re_newline.findall(text, 0, start)) + 1
+                    line_nb = len(RE_NEWLINE.findall(text, 0, start)) + 1
                     self.results.insert(file, 'end', text=f"{line_nb}: {lines[line_nb - 1]}",
                                         values=(tab, line_nb), tags='result')

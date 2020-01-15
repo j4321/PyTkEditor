@@ -30,7 +30,7 @@ from tkinter.font import Font
 from pytkeditorlib import messagebox
 from pytkeditorlib.autoscrollbar import AutoHideScrollbar
 from pytkeditorlib.constants import get_screen, load_style, PYTHON_LEX, CONFIG, \
-    valide_entree_nb, IMAGES
+    valide_entree_nb, IMAGES, RE_NEWLINE
 from pytkeditorlib.complistbox import CompListbox
 from pytkeditorlib.tooltip import TooltipTextWrapper, Tooltip
 from pytkeditorlib.filebar import FileBar
@@ -44,6 +44,7 @@ class Editor(ttk.Frame):
         self.rowconfigure(0, weight=1)
 
         self._filetype = filetype
+
 
         self._valid_nb = self.register(valide_entree_nb)
 
@@ -124,6 +125,10 @@ class Editor(ttk.Frame):
         self.full_word = ttk.Checkbutton(search_buttons, text='[-]')
         self.full_word.state(['!selected', '!alternate'])
         self.full_word.pack(side='left', padx=2, pady=4)
+        self._highlight_btn = ttk.Checkbutton(search_buttons, image='img_highlight',
+                                              padding=0, style='toggle.TButton',
+                                              command=self.highlight_all)
+        self._highlight_btn.pack(side='left', padx=2, pady=4)
         self.replace_buttons = ttk.Frame(self.frame_search)
         ttk.Button(self.replace_buttons, text='Replace', padding=0,
                    command=self.replace_sel).pack(side='left', padx=2, pady=4)
@@ -134,7 +139,7 @@ class Editor(ttk.Frame):
 
         frame_find = ttk.Frame(self.frame_search)
         ttk.Button(frame_find, padding=0,
-                   command=lambda: self.frame_search.grid_remove(),
+                   command=self.hide_search,
                    style='close.TButton').pack(side='left')
         ttk.Label(frame_find, text='Find:').pack(side='right')
         # ------- placement
@@ -257,9 +262,13 @@ class Editor(ttk.Frame):
 
         self._syntax_highlighting_tags = list(EDITOR_SYNTAX_HIGHLIGHTING.keys())
 
+        theme = f"{CONFIG.get('General', 'theme').capitalize()} Theme"
+        selectbg = CONFIG.get(theme, 'selectbg')
+        selectfg = CONFIG.get(theme, 'selectfg')
         self.text.configure(fg=EDITOR_FG, bg=EDITOR_BG, font=FONT,
-                            selectbackground=EDITOR_HIGHLIGHT_BG,
-                            inactiveselectbackground=EDITOR_HIGHLIGHT_BG,
+                            selectbackground=selectbg,
+                            selectforeground=selectfg,
+                            inactiveselectbackground=selectbg,
                             insertbackground=EDITOR_FG)
         fg = self.line_nb.option_get('foreground', '*Text')
         bg = self.line_nb.option_get('background', '*Text')
@@ -282,8 +291,11 @@ class Editor(ttk.Frame):
         EDITOR_SYNTAX_HIGHLIGHTING['Token.Comment.Cell'] = EDITOR_SYNTAX_HIGHLIGHTING['Token.Comment'].copy()
         EDITOR_SYNTAX_HIGHLIGHTING['Token.Comment.Cell']['underline'] = True
         for tag, opts in EDITOR_SYNTAX_HIGHLIGHTING.items():
+            opts['selectbackground'] = selectbg
+            opts['selectforeground'] = selectfg
             self.text.tag_configure(tag, **opts)
         self.text.tag_configure('highlight', background=EDITOR_HIGHLIGHT_BG)
+        self.text.tag_raise('sel')
 
     def set_cells(self, cells):
         self.cells = cells
@@ -739,7 +751,14 @@ class Editor(ttk.Frame):
         return res
 
     # --- find and replace
+    def hide_search(self):
+        self.text.tag_remove('highlight', '1.0', 'end')
+        self._highlight_btn.state(['!selected'])
+        self.frame_search.grid_remove()
+
     def find(self, event=None):
+        self.text.tag_remove('highlight', '1.0', 'end')
+        self._highlight_btn.state(['!selected'])
         self.label_replace.grid_remove()
         self.entry_replace.grid_remove()
         self.replace_buttons.grid_remove()
@@ -826,6 +845,29 @@ class Editor(ttk.Frame):
         else:
             if notify_no_match:
                 messagebox.showinfo("Search complete", "No match found", self)
+
+    def highlight_all(self):
+        if 'selected' in self._highlight_btn.state():
+            pattern = self.entry_search.get()
+            if not pattern:
+                self._highlight_btn.state(['!selected'])
+                return
+            full_word = 'selected' in self.full_word.state()
+            options = {'regexp': 'selected' in self.regexp.state(),
+                       'nocase': 'selected' not in self.case_sensitive.state(),
+                       'count': self._search_count, 'stopindex': 'end'}
+
+            if full_word:
+                pattern = r'\y%s\y' % pattern
+                options['regexp'] = True
+
+            res = self.text.search(pattern, '1.0', **options)
+            while res:
+                end = f"{res}+{self._search_count.get()}c"
+                self.text.tag_add('highlight', res, end)
+                res = self.text.search(pattern, end, **options)
+        else:
+            self.text.tag_remove('highlight', '1.0', 'end')
 
     # --- goto
     def goto_line(self, event=None):

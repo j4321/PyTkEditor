@@ -34,6 +34,7 @@ The images in ICONS were taken from "icons.tcl":
 Constants and functions
 """
 import os
+import re
 import configparser
 import logging
 from logging.handlers import TimedRotatingFileHandler
@@ -60,6 +61,8 @@ class MyLexer(Python3Lexer):
 
 
 PYTHON_LEX = MyLexer()
+
+RE_NEWLINE = re.compile(r'\n')
 
 # --- paths
 PATH = os.path.dirname(__file__)
@@ -164,8 +167,10 @@ if not CONFIG.read(PATH_CONFIG):
     CONFIG.set('Dark Theme', 'darkcolor', '#454545')
     CONFIG.set('Dark Theme', 'bordercolor', '#131313')
     CONFIG.set('Dark Theme', 'focusbordercolor', '#353535')
-    CONFIG.set('Dark Theme', 'selectbg', '#1f1f1f')
-    CONFIG.set('Dark Theme', 'selectfg', '#E6E6E6')
+    # CONFIG.set('Dark Theme', 'selectbg', '#1f1f1f')
+    # CONFIG.set('Dark Theme', 'selectfg', '#E6E6E6')
+    CONFIG.set('Dark Theme', 'selectbg', '#4a6984')
+    CONFIG.set('Dark Theme', 'selectfg', 'white')
     CONFIG.set('Dark Theme', 'unselectedfg', '#999999')
     CONFIG.set('Dark Theme', 'disabledfg', '#666666')
     CONFIG.set('Dark Theme', 'disabledbg', '#454545')
@@ -180,8 +185,10 @@ if not CONFIG.read(PATH_CONFIG):
     CONFIG.set('Light Theme', 'darkcolor', '#cfcdc8')
     CONFIG.set('Light Theme', 'bordercolor', '#888888')
     CONFIG.set('Light Theme', 'focusbordercolor', '#5E5E5E')
-    CONFIG.set('Light Theme', 'selectbg', '#c1c1c1')
-    CONFIG.set('Light Theme', 'selectfg', 'black')
+    # CONFIG.set('Light Theme', 'selectbg', '#c1c1c1')
+    CONFIG.set('Light Theme', 'selectbg', '#4a6984')
+    CONFIG.set('Light Theme', 'selectfg', 'white')
+    # CONFIG.set('Light Theme', 'selectfg', 'black')
     CONFIG.set('Light Theme', 'unselectedfg', '#666666')
     CONFIG.set('Light Theme', 'disabledfg', '#999999')
     CONFIG.set('Light Theme', 'disabledbg', '#dddddd')
