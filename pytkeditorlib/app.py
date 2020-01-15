@@ -27,6 +27,8 @@ import os
 import signal
 import logging
 from subprocess import Popen
+from getpass import getuser
+from datetime import datetime
 
 from ewmh import ewmh, EWMH
 from tkfilebrowser import askopenfilenames, asksaveasfilename
@@ -664,7 +666,13 @@ class App(tk.Tk):
             self.destroy()
 
     def new(self, event=None):
+        try:
+            with open(cst.PATH_TEMPLATE) as file:
+                txt = file.read()
+        except Exception:
+            txt = ""
         self.editor.new()
+        self.editor.insert('1.0', txt.format(date=datetime.now().strftime('%c'), author=getuser()))
         self.editor.edit_reset()
         self._edit_modified(0)
         self.codestruct.populate('new.py', '')

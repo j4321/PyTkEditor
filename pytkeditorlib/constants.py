@@ -68,27 +68,17 @@ if os.access(PATH, os.W_OK) and os.path.exists(os.path.join(PATH, "images")):
     # the app is not installed
     # local directory containing config files
     LOCAL_PATH = os.path.join(PATH, 'config')
-    if not os.path.exists(LOCAL_PATH):
-        os.mkdir(LOCAL_PATH)
     # PATH_LOCALE = os.path.join(PATH, "locale")
     PATH_HTML = os.path.join(PATH, 'html')
     PATH_SSL = os.path.join(PATH, 'ssl')
     PATH_IMG = os.path.join(PATH, 'images')
 else:
     # local directory containing config files
-    LOCAL_PATH = os.path.join(os.path.expanduser("~"), ".feedagregator")
-    if not os.path.exists(LOCAL_PATH):
-        os.mkdir(LOCAL_PATH)
+    LOCAL_PATH = os.path.join(os.path.expanduser("~"), ".pytkeditor")
     # PATH_LOCALE = "/usr/share/locale"
     PATH_HTML = "/usr/share/pytkeditor/html"
     PATH_SSL = "/usr/share/pytkeditor/ssl"
     PATH_IMG = "/usr/share/pytkeditor/images"
-
-
-if os.access(PATH, os.W_OK):
-    LOCAL_PATH = os.path.join(PATH, 'config')
-else:
-    LOCAL_PATH = os.path.join(os.path.expanduser('~'), '.pytkeditor')
 
 if not os.path.exists(LOCAL_PATH):
     os.mkdir(LOCAL_PATH)
@@ -100,7 +90,11 @@ PATH_CONFIG = os.path.join(LOCAL_PATH, 'pytkeditor.ini')
 PATH_LOG = os.path.join(LOCAL_PATH, 'pytkeditor.log')
 PIDFILE = os.path.join(LOCAL_PATH, "pytkeditor.pid")
 OPENFILE_PATH = os.path.join(LOCAL_PATH, ".file")
+PATH_TEMPLATE = os.path.join(LOCAL_PATH, 'new_file_template.py')
 
+if not os.path.exists(PATH_TEMPLATE):
+    with open(PATH_TEMPLATE, 'w') as file:
+        file.write('# -*- coding: utf-8 -*-\n"""\nCreated on {date} by {author}\n"""\n')
 
 # --- jupyter qtconsole
 JUPYTER_KERNEL_PATH = os.path.join(LOCAL_PATH, "kernel.json")
