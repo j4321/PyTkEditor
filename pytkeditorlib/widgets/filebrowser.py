@@ -129,6 +129,8 @@ class Filebrowser(BaseWidget):
         ttk.Button(top, text='Ok', command=ok).grid(row=2, column=0, padx=4, sticky='e')
         ttk.Button(top, text='Cancel',
                    command=top.destroy).grid(row=2, column=1, padx=4, sticky='w')
+        top.transient(self)
+        top.grab_set()
 
     def history_add(self, path):
         self.history_index += 1
