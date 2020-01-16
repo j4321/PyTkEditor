@@ -77,12 +77,12 @@ class SearchDialog(tk.Toplevel):
         ttk.Label(replace_frame, text="Replace by: ").pack(side="left")
         self.entry_replace = ttk.Entry(replace_frame)
         self.entry_replace.pack(side="left", fill="x", expand=True)
-        ttk.Button(replace_frame, text="Replace all", padding=1,
+        ttk.Button(replace_frame, text="Find & Replace all", padding=1,
                    command=self.replace).pack(side='left', padx=4)
 
         # --- placement
         frame_find.pack(fill='x', padx=4)
-        replace_frame.pack(side="bottom", expand=True, fill='x', padx=4, pady=4)
+        replace_frame.pack(side="bottom", fill='x', padx=4, pady=4)
         result_frame.pack(fill='both', expand=True, pady=4, padx=4)
         self.entry_search.focus_set()
 
@@ -92,9 +92,12 @@ class SearchDialog(tk.Toplevel):
             tab, start, end = self.results.item(item, 'values')
         except ValueError:
             return
-        self.master.editor.select(int(tab))
-        self.master.editor.goto_item(start, end)
-        self.master.update_idletasks()
+        try:
+            self.master.editor.select(int(tab))
+            self.master.editor.goto_item(start, end)
+            self.master.update_idletasks()
+        except (tk.TclError, KeyError, ValueError):
+            return
 
     def find(self, event=None):
         self.results.delete(*self.results.get_children(''))
@@ -126,6 +129,7 @@ class SearchDialog(tk.Toplevel):
                                         tags='result')
 
     def replace(self):
+        self.find()
         text = self.entry_replace.get()
         files = self.results.get_children()
         replacements = {}
