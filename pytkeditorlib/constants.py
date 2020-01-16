@@ -164,6 +164,7 @@ if not CONFIG.read(PATH_CONFIG):
     CONFIG.add_section('Code structure')
     CONFIG.set('Code structure', 'visible', "True")
     CONFIG.add_section('File browser')
+    CONFIG.set('File browser', 'filename_filter', "README, INSTALL, LICENSE, CHANGELOG, *.npy, *.npz, *.csv, *.txt, *.jpg, *.png, *.gif, *.tif, *.pkl, *.pickle, *.json, *.py, *.ipynb, *.txt, *.rst, *.md, *.dat, *.pdf, *.png, *.svg, *.eps")
     CONFIG.set('File browser', 'visible', "True")
     CONFIG.add_section('Dark Theme')
     CONFIG.set('Dark Theme', 'bg', '#454545')

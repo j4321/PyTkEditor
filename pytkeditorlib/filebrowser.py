@@ -20,15 +20,15 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 GUI widget to browse local files
 """
-from tkinter.ttk import Treeview, Frame, Button
+import tkinter as tk
+from tkinter import ttk
 from tkinter.font import Font
 import os
+import re
 
-from pytkeditorlib.autoscrollbar import AutoHideScrollbar as Scrollbar
-from pytkeditorlib.base_widget import BaseWidget
-
-# TODO: browsing history
-# TODO: filename filter
+from .autoscrollbar import AutoHideScrollbar as Scrollbar
+from .base_widget import BaseWidget
+from .constants import CONFIG, save_config
 
 
 class Filebrowser(BaseWidget):
@@ -40,24 +40,28 @@ class Filebrowser(BaseWidget):
         self.history = []
         self.history_index = -1
 
+        self.load_filters()
         # --- browsing buttons
-        frame_btn = Frame(self)
-        self.b_up = Button(frame_btn, image='img_up', padding=0,
-                           command=self.browse_up)
-        self.b_backward = Button(frame_btn, image='img_left', padding=0,
-                                 command=self.browse_backward)
-        self.b_forward = Button(frame_btn, image='img_right', padding=0,
-                                command=self.browse_forward)
+        frame_btn = ttk.Frame(self)
+        self.b_up = ttk.Button(frame_btn, image='img_up', padding=0,
+                               command=self.browse_up)
+        self.b_backward = ttk.Button(frame_btn, image='img_left', padding=0,
+                                     command=self.browse_backward)
+        self.b_forward = ttk.Button(frame_btn, image='img_right', padding=0,
+                                    command=self.browse_forward)
         self.b_backward.pack(side='left', padx=2)
         self.b_forward.pack(side='left', padx=2)
         self.b_up.pack(side='left', padx=2)
         self.b_forward.state(['disabled'])
         self.b_backward.state(['disabled'])
 
+        ttk.Button(frame_btn, image='img_properties', padding=0,
+                   command=self.edit_filter).pack(side='right', padx=2)
+
         # --- filetree
         # self.filetree = FileTree(self, callback=callback)
-        self.filetree = Treeview(self, show='tree', selectmode='none',
-                                 style='flat.Treeview', padding=4)
+        self.filetree = ttk.Treeview(self, show='tree', selectmode='none',
+                                     style='flat.Treeview', padding=4)
         self._sx = Scrollbar(self, orient='horizontal', command=self.filetree.xview)
         self._sy = Scrollbar(self, orient='vertical', command=self.filetree.yview)
 
@@ -94,6 +98,38 @@ class Filebrowser(BaseWidget):
         item = self.filetree.focus()
         if item:
             self.populate(item)
+
+    def load_filters(self):
+        filters = CONFIG.get('File browser', 'filename_filter',
+                             fallback='README, *.py, *.rst').split(', ')
+        filters = ['^' + ext.strip().replace('.', '\.').replace('*', '.*') + '$' for ext in filters]
+        self.filter = re.compile('|'.join(filters))
+
+    def edit_filter(self):
+
+        def ok(event=None):
+            CONFIG.set('File browser', 'filename_filter', entry.get())
+            save_config()
+            self.load_filters()
+            self.populate(self.filetree.get_children()[0], history=False)
+            top.destroy()
+
+        top = tk.Toplevel(self, padx=4, pady=4)
+        top.title('Filename filters')
+        top.resizable(True, False)
+        top.columnconfigure(0, weight=1)
+        top.columnconfigure(1, weight=1)
+        ttk.Label(top, text='Name filters:').grid(columnspan=2, sticky='w')
+        entry = ttk.Entry(top)
+        entry.grid(columnspan=2, sticky='ew', pady=4)
+        entry.insert(0, CONFIG.get('File browser', 'filename_filter',
+                                   fallback='README, *.py, *.rst'))
+        entry.bind('<Return>', ok)
+        entry.bind('<Escape>', lambda e: top.destroy())
+        entry.focus_set()
+        ttk.Button(top, text='Ok', command=ok).grid(row=2, column=0, padx=4, sticky='e')
+        ttk.Button(top, text='Cancel',
+                   command=top.destroy).grid(row=2, column=1, padx=4, sticky='w')
 
     def history_add(self, path):
         self.history_index += 1
@@ -132,13 +168,17 @@ class Filebrowser(BaseWidget):
 
     def _rec_populate(self, path):
         content = sorted(os.scandir(path), key=self._key_sort_files)
-        tags = ['file', 'folder']
         for item in content:
             is_dir = item.is_dir()
             ipath = item.path
-            self.filetree.insert(path, 'end', ipath, text=item.name, tags=tags[is_dir])
+            name = item.name
             if is_dir:
-                self._rec_populate(ipath)
+                if not name[0] == '.':
+                    self.filetree.insert(path, 'end', ipath, text=name, tags='folder')
+                    self._rec_populate(ipath)
+            elif self.filter.search(name):
+                self.filetree.insert(path, 'end', ipath, text=name, tags='file')
+
 
     def populate(self, path, history=True, reset=False):
         self.configure(cursor='watch')
@@ -148,7 +188,7 @@ class Filebrowser(BaseWidget):
 
         self.filetree.delete(*self.filetree.get_children())
         p = os.path.abspath(path)
-        self.filetree.insert('', 1, p, text=p, image='img_folder', open=True)
+        self.filetree.insert('', 0, p, text=p, image='img_folder', open=True)
 
         self._rec_populate(p)
 
