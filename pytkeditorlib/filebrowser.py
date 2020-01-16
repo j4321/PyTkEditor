@@ -59,7 +59,6 @@ class Filebrowser(BaseWidget):
                    command=self.edit_filter).pack(side='right', padx=2)
 
         # --- filetree
-        # self.filetree = FileTree(self, callback=callback)
         self.filetree = ttk.Treeview(self, show='tree', selectmode='none',
                                      style='flat.Treeview', padding=4)
         self._sx = Scrollbar(self, orient='horizontal', command=self.filetree.xview)
@@ -167,7 +166,10 @@ class Filebrowser(BaseWidget):
         return item.is_file(), item.name.lower()
 
     def _rec_populate(self, path):
-        content = sorted(os.scandir(path), key=self._key_sort_files)
+        try:
+            content = sorted(os.scandir(path), key=self._key_sort_files)
+        except PermissionError:
+            return
         for item in content:
             is_dir = item.is_dir()
             ipath = item.path
