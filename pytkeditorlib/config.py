@@ -114,6 +114,18 @@ class Config(tk.Toplevel):
         self.code_check.grid(row=1, columnspan=2, sticky='w', padx=4, pady=4)
         self.style_check.grid(row=2, columnspan=2, sticky='w', padx=4, pady=4)
 
+        # --- History
+        frame_history = ttk.Frame(self)
+        frame_history.columnconfigure(1, weight=1)
+        ttk.Label(frame_history, text='History',
+                  font=('TkDefaultFont', 10, 'bold')).grid(row=0, columnspan=2,
+                                                           sticky='w', pady=4)
+        ttk.Label(frame_history, text='Maximum size (truncated when quitting):').grid(row=1, column=0, sticky='e',
+                                                            padx=4, pady=4)
+        self.history_size = ttk.Entry(frame_history)
+        self.history_size.insert(0, CONFIG.get('History', 'max_size', fallback='10000'))
+        self.history_size.grid(row=1, column=1, sticky='ew', padx=4, pady=4)
+
         # --- ok / cancel buttons
         frame_btn = ttk.Frame(self)
         ttk.Button(frame_btn, text='Ok', command=self.validate).pack(side='left', padx=4)
@@ -125,6 +137,8 @@ class Config(tk.Toplevel):
         frame_s_h.pack(side='top', anchor='w')
         ttk.Separator(self, orient='horizontal').pack(side='top', fill='x', pady=8)
         frame_check.pack(side='top', fill='x')
+        ttk.Separator(self, orient='horizontal').pack(side='top', fill='x', pady=8)
+        frame_history.pack(side='top', fill='x')
         frame_btn.pack(side='top', pady=8)
 
     def edit_template(self):
@@ -159,5 +173,13 @@ class Config(tk.Toplevel):
             CONFIG.set('Editor', 'style_check', 'True')
         else:
             CONFIG.set('Editor', 'style_check', 'False')
+        # --- history
+        try:
+            size = int(self.history_size.get())
+            assert size > 0
+        except (ValueError, AssertionError):
+            pass
+        else:
+            CONFIG.set('History', 'max_size', str(size))
         save_config()
         self.destroy()

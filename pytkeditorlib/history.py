@@ -28,7 +28,7 @@ import pickle
 from pygments import lex
 from pygments.lexers import Python3Lexer
 
-from pytkeditorlib.constants import load_style, CONFIG, HISTFILE, save_config
+from pytkeditorlib.constants import load_style, CONFIG, HISTFILE
 from pytkeditorlib.autoscrollbar import AutoHideScrollbar
 from pytkeditorlib.base_widget import BaseWidget
 
@@ -36,14 +36,14 @@ from pytkeditorlib.base_widget import BaseWidget
 class History(tk.Text):
     """Python console command history."""
 
-    def __init__(self, master=None, histfile=HISTFILE, max_size=10000, **kw):
+    def __init__(self, master=None, histfile=HISTFILE, **kw):
         """ Crée un historique vide """
         kw.setdefault('width', 1)
         tk.Text.__init__(self, master, **kw)
         self._syntax_highlighting_tags = []
         self.update_style()
         self.histfile = histfile
-        self.maxsize = max_size
+        self.maxsize = CONFIG.getint('History', 'max_size', fallback=10000)
         self.history = []
 
         # --- bindings
@@ -67,6 +67,7 @@ class History(tk.Text):
         return "break"
 
     def update_style(self):
+        self.maxsize = CONFIG.getint('History', 'max_size', fallback=10000)
         FONT = (CONFIG.get("General", "fontfamily"),
                 CONFIG.getint("General", "fontsize"))
         CONSOLE_BG, CONSOLE_HIGHLIGHT_BG, CONSOLE_SYNTAX_HIGHLIGHTING = load_style(CONFIG.get('Console', 'style'))
@@ -152,12 +153,6 @@ class History(tk.Text):
     def get_length(self):
         return len(self.history)
 
-    def set_max_size(self, maxsize):
-        self.maxsize = maxsize
-
-    def get_max_size(self):
-        return self.maxsize
-
     def get_session_hist(self):
         return self.history[self._session_start:]
 
@@ -173,7 +168,6 @@ class HistoryFrame(BaseWidget):
 
         syh = AutoHideScrollbar(self, orient='vertical')
         self.history = History(self, HISTFILE,
-                               max_size=CONFIG.getint('History', 'max_size', fallback=10000),
                                yscrollcommand=syh.set,
                                relief='flat', borderwidth=0, highlightthickness=0)
         syh.configure(command=self.history.yview)
