@@ -223,6 +223,14 @@ class EditorNotebook(Notebook):
         if self.current_tab >= 0:
             self._tabs[self.current_tab].toggle_comment()
 
+    def upper_case(self):
+        if self.current_tab >= 0:
+            self._tabs[self.current_tab].upper_case()
+
+    def lower_case(self):
+        if self.current_tab >= 0:
+            self._tabs[self.current_tab].lower_case()
+
     def indent(self):
         if self.current_tab >= 0:
             self._tabs[self.current_tab].on_tab(force_indent=True)

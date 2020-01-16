@@ -190,6 +190,8 @@ class Editor(ttk.Frame):
         self.text.bind("<Control-d>", self.duplicate_lines)
         self.text.bind("<Control-k>", self.delete_lines)
         self.text.bind("<Control-a>", self.select_all)
+        self.text.bind("<Control-u>", self.upper_case)
+        self.text.bind("<Control-Shift-U>", self.lower_case)
         self.text.bind("<Control-Return>", self.on_ctrl_return)
         self.text.bind("<Return>", self.on_return)
         self.text.bind("<BackSpace>", self.on_backspace)
@@ -903,6 +905,21 @@ class Editor(ttk.Frame):
             res = self.text.search(pattern, end, count=self._search_count,
                                    **options)
         return results
+
+    # --- change case
+    def upper_case(self, event=None):
+        sel = self.text.tag_ranges('sel')
+        if sel:
+            self.text.edit_separator()
+            self.text.replace('sel.first', 'sel.last',
+                              self.text.get('sel.first', 'sel.last').upper())
+
+    def lower_case(self, event=None):
+        sel = self.text.tag_ranges('sel')
+        if sel:
+            self.text.edit_separator()
+            self.text.replace('sel.first', 'sel.last',
+                              self.text.get('sel.first', 'sel.last').lower())
 
     # --- goto
     def goto_line(self, event=None):

@@ -284,7 +284,7 @@ class TooltipNotebookWrapper:
             if not event.widget.winfo_containing(x, y) in self.notebook._tab_labels[self.current_tab].children.values():
                 self.tooltip.withdraw()
         except KeyError:
-                self.tooltip.withdraw()
+            self.tooltip.withdraw()
 
     def display_tooltip(self):
         """Display tooltip with text corresponding to current widget."""

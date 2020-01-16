@@ -32,7 +32,6 @@ from datetime import datetime
 
 from ewmh import ewmh, EWMH
 from tkfilebrowser import askopenfilenames, asksaveasfilename
-from tkcolorpicker import askcolor
 
 from pytkeditorlib.editornotebook import EditorNotebook
 from pytkeditorlib.syntax_check import check_file
@@ -213,6 +212,15 @@ class App(tk.Tk):
                                    command=self.editor.unindent,
                                    image=self._images['dedent'],
                                    accelerator='Shift+Tab', compound='left')
+        self.menu_edit.add_separator()
+        self.menu_edit.add_command(label='Upper case',
+                                   command=self.editor.upper_case,
+                                   image=self._images['menu_dummy'],
+                                   accelerator='Ctrl+U', compound='left')
+        self.menu_edit.add_command(label='Lower case',
+                                   command=self.editor.lower_case,
+                                   image=self._images['menu_dummy'],
+                                   accelerator='Ctrl+Shift+U', compound='left')
         self.menu_edit.add_separator()
         self.menu_edit.add_command(label='Color chooser',
                                    command=self.editor.choose_color,
