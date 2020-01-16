@@ -102,7 +102,6 @@ class Filebrowser(BaseWidget):
         if self.history_index > 0:
             self.b_backward.state(['!disabled'])
         self.b_forward.state(['disabled'])
-        print(self.history_index, self.history)
 
     def browse_up(self):
         path = os.path.dirname(self.filetree.get_children()[0])
@@ -127,6 +126,20 @@ class Filebrowser(BaseWidget):
     def clear(self, event=None):
         self.filetree.delete(*self.filetree.get_children())
 
+    @staticmethod
+    def _key_sort_files(item):
+        return item.is_file(), item.name.lower()
+
+    def _rec_populate(self, path):
+        content = sorted(os.scandir(path), key=self._key_sort_files)
+        tags = ['file', 'folder']
+        for item in content:
+            is_dir = item.is_dir()
+            ipath = item.path
+            self.filetree.insert(path, 'end', ipath, text=item.name, tags=tags[is_dir])
+            if is_dir:
+                self._rec_populate(ipath)
+
     def populate(self, path, history=True, reset=False):
         self.configure(cursor='watch')
         self.update_idletasks()
@@ -136,13 +149,9 @@ class Filebrowser(BaseWidget):
         self.filetree.delete(*self.filetree.get_children())
         p = os.path.abspath(path)
         self.filetree.insert('', 1, p, text=p, image='img_folder', open=True)
-        for (root, folders, files) in os.walk(p):
-            for f in sorted(folders):
-                self.filetree.insert(root, 'end', os.path.join(root, f), text=f,
-                                     tags='folder')
-            for f in sorted(files):
-                self.filetree.insert(root, 'end', os.path.join(root, f), text=f,
-                                     tags='file')
+
+        self._rec_populate(p)
+
         self.configure(cursor='')
         if reset:
             self.history = []
