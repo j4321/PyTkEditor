@@ -46,7 +46,6 @@ from pygments.token import Comment
 from Xlib import display
 from Xlib.ext.xinerama import query_screens
 
-
 settings.case_insensitive_completion = False
 os.environ['PYFLAKES_BUILTINS'] = '_'
 
@@ -63,7 +62,7 @@ PYTHON_LEX = MyLexer()
 
 
 # --- paths
-PATH = os.path.dirname(__file__)
+PATH = os.path.dirname(os.path.dirname(__file__))
 
 if os.access(PATH, os.W_OK) and os.path.exists(os.path.join(PATH, "images")):
     # the app is not installed
