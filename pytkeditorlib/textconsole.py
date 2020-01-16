@@ -40,6 +40,8 @@ from pytkeditorlib.tooltip import Tooltip
 from pytkeditorlib.constants import get_screen, load_style, CONFIG, SERVER_CERT, \
     CLIENT_CERT
 from pytkeditorlib.messagebox import askyesno
+from pytkeditorlib.base_widget import BaseWidget
+from pytkeditorlib.autoscrollbar import AutoHideScrollbar
 
 
 class TextConsole(tk.Text):
@@ -67,10 +69,6 @@ class TextConsole(tk.Text):
         self._tooltip = Tooltip(self, title='Arguments',
                                 titlestyle='args.title.tooltip.TLabel')
         self._tooltip.withdraw()
-
-        self.menu = tk.Menu(self)
-        self.menu.add_command(label='Clear console', command=self._shell_clear)
-        self.menu.add_command(label='Restart console', command=self.restart_shell)
 
         # --- shell socket
         self._init_shell()
@@ -134,10 +132,10 @@ class TextConsole(tk.Text):
             self.shell_client.shutdown(socket.SHUT_RDWR)
             self.shell_client.close()
             self.shell_socket.close()
-            self._shell_clear()
+            self.shell_clear()
             self._init_shell()
 
-    def _shell_clear(self):
+    def shell_clear(self):
         self.delete('banner.last', 'end')
         self.insert('insert', '\n')
         self.prompt()
@@ -465,7 +463,7 @@ class TextConsole(tk.Text):
                 self.shell_client.send(line.encode())
                 self.configure(state='disabled')
             except SystemExit:
-                self._shell_clear()
+                self.shell_clear()
                 return
             except Exception as e:
                 print(e)
@@ -506,7 +504,7 @@ class TextConsole(tk.Text):
 
             if err.strip():
                 if err == 'SystemExit\n':
-                    self._shell_clear()
+                    self.shell_clear()
                     return
                 else:
                     self.insert('end', err, 'Token.Error')
@@ -570,3 +568,21 @@ class TextConsole(tk.Text):
                 self.delete('insert-1c')
         self.parse()
         return 'break'
+
+
+class ConsoleFrame(BaseWidget):
+    def __init__(self, master, history, **kw):
+        BaseWidget.__init__(self, master, 'Console', **kw)
+        self.columnconfigure(0, weight=1)
+        self.rowconfigure(0, weight=1)
+        sy = AutoHideScrollbar(self, orient='vertical')
+        self.console = TextConsole(self, history,
+                                   yscrollcommand=sy.set, relief='flat',
+                                   borderwidth=0, highlightthickness=0)
+        sy.configure(command=self.console.yview)
+        sy.grid(row=0, column=1, sticky='ns')
+        self.console.grid(row=0, column=0, sticky='nswe')
+
+        self.menu.add_command(label='Clear console', command=self.console.shell_clear)
+        self.menu.add_command(label='Restart console', command=self.console.restart_shell)
+

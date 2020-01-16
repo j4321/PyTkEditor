@@ -20,7 +20,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 GUI widget to display the code structure
 """
-from tkinter import PhotoImage
+from tkinter import PhotoImage, BooleanVar, Menu
 from tkinter.ttk import Treeview, Frame, Label
 from tkinter.font import Font
 import tokenize
@@ -29,8 +29,7 @@ import re
 
 from pytkeditorlib.autoscrollbar import AutoHideScrollbar as Scrollbar
 from pytkeditorlib.autocomplete import AutoCompleteCombobox2
-# from pytkeditorlib.constants import IM_CLASS, IM_FCT, IM_HFCT, IM_SEP, IM_CELL
-from pytkeditorlib.constants import IMAGES
+from pytkeditorlib.constants import IMAGES, CONFIG, save_config
 
 
 class Tree:
@@ -150,12 +149,17 @@ class CodeTree(Treeview):
 
 class CodeStructure(Frame):
     def __init__(self, master):
-        Frame.__init__(self, master, style='border.TFrame',
-                       padding=2)
+        Frame.__init__(self, master, style='border.TFrame', padding=2)
         self.rowconfigure(1, weight=1)
         self.columnconfigure(0, weight=1)
 
-        self.filename = Label(self, padding=(4, 2))
+        self.visible = BooleanVar(self)
+        self.visible.trace_add('write', self._visibility_trace)
+
+        self.menu = Menu(self)
+        self.menu.add_command(label='Hide', command=lambda: self.visible.set(False))
+
+        self.filename = Label(self, padding=(4, 2), anchor='w')
         self.codetree = CodeTree(self)
         self._sx = Scrollbar(self, orient='horizontal', command=self.codetree.xview)
         self._sy = Scrollbar(self, orient='vertical', command=self.codetree.yview)
@@ -169,7 +173,7 @@ class CodeStructure(Frame):
         self.codetree.configure(xscrollcommand=self._sx.set,
                                 yscrollcommand=self._sy.set)
 
-        self.filename.grid(row=0, column=0, sticky='w')
+        self.filename.grid(row=0, column=0, sticky='we')
         self.codetree.grid(row=1, column=0, sticky='ewns')
         self._sx.grid(row=2, column=0, sticky='ew')
         self._sy.grid(row=1, column=1, sticky='ns')
@@ -182,8 +186,22 @@ class CodeStructure(Frame):
         self.goto_entry.bind('<<ComboboxSelected>>', self.goto)
         self.goto_entry.bind('<Key>', self._reset_goto)
 
+        self.filename.bind('<ButtonRelease-3>', self._show_menu)
+
     def _reset_goto(self, event):
         self._goto_index = 0
+
+    def _show_menu(self, event):
+        self.menu.tk_popup(event.x_root, event.y_root)
+
+    def _visibility_trace(self, *args):
+        visible = self.visible.get()
+        if visible:
+            self.master.insert(0, self, weight=1)
+        else:
+            self.master.forget(self)
+        CONFIG.set('Code structure', 'visible', str(visible))
+        save_config()
 
     def get_cells(self):
         return self.codetree.cells

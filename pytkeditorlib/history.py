@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 PyTkEditor - Python IDE
-Copyright 2018-2019 Juliette Monsel <j_4321 at protonmail dot com>
+Copyright 2018-2020 Juliette Monsel <j_4321 at protonmail dot com>
 
 PyTkEditor is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -28,8 +28,9 @@ import pickle
 from pygments import lex
 from pygments.lexers import Python3Lexer
 
-from pytkeditorlib.constants import load_style, CONFIG, HISTFILE
+from pytkeditorlib.constants import load_style, CONFIG, HISTFILE, save_config
 from pytkeditorlib.autoscrollbar import AutoHideScrollbar
+from pytkeditorlib.base_widget import BaseWidget
 
 
 class History(tk.Text):
@@ -161,17 +162,19 @@ class History(tk.Text):
         return self.history[self._session_start:]
 
 
-class HistoryFrame(ttk.Frame):
+class HistoryFrame(BaseWidget):
 
     def __init__(self, master=None, histfile=HISTFILE, **kw):
-        ttk.Frame.__init__(self, master, **kw)
+        BaseWidget.__init__(self, master, 'History', **kw)
         self.columnconfigure(0, weight=1)
         self.rowconfigure(0, weight=1)
 
         self._search_count = tk.IntVar(self)
 
         syh = AutoHideScrollbar(self, orient='vertical')
-        self.history = History(self, HISTFILE, yscrollcommand=syh.set,
+        self.history = History(self, HISTFILE,
+                               max_size=CONFIG.getint('History', 'max_size', fallback=10000),
+                               yscrollcommand=syh.set,
                                relief='flat', borderwidth=0, highlightthickness=0)
         syh.configure(command=self.history.yview)
 

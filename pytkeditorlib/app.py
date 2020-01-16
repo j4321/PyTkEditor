@@ -39,11 +39,11 @@ from pytkeditorlib.codestructure import CodeStructure
 from pytkeditorlib.filebrowser import Filebrowser
 from pytkeditorlib.constants import IMAGES, CONFIG, save_config, IM_CLOSE
 from pytkeditorlib import constants as cst
-from pytkeditorlib.textconsole import TextConsole
+from pytkeditorlib.textconsole import ConsoleFrame
 from pytkeditorlib.history import HistoryFrame
 from pytkeditorlib.search import SearchDialog
 from pytkeditorlib.config import Config
-from pytkeditorlib.autoscrollbar import AutoHideScrollbar
+from pytkeditorlib.base_widget import WidgetNotebook
 from pytkeditorlib.menu import LongMenu
 from pytkeditorlib.help import Help
 from pytkeditorlib.messagebox import showerror
@@ -72,8 +72,11 @@ class App(tk.Tk):
         self.menu_edit = tk.Menu(self.menu)
         self.menu_search = tk.Menu(self.menu)
         self.menu_doc = tk.Menu(self.menu)
+        self.menu_view = tk.Menu(self.menu)
         self.menu_filetype = tk.Menu(self.menu_doc)
         self.menu_errors = LongMenu(self.menu_doc, 40)
+
+        self.widgets = {}
 
         self._search_dialog = None
 
@@ -93,43 +96,37 @@ class App(tk.Tk):
 
         # --- GUI elements
         pane = ttk.PanedWindow(self, orient='horizontal')
-        # ----- code structure tree
+        # --- --- code structure tree
         self.codestruct = CodeStructure(pane)
-        # ----- editor notebook
+        # --- --- editor notebook
         self.editor = EditorNotebook(pane, width=696)
-        # ----- right pane
-        self.right_nb = ttk.Notebook(pane)
-        # -------- command history
-        self.history = HistoryFrame(self.right_nb, padding=1)
-        # -------- python console
-        console_frame = ttk.Frame(self.right_nb, padding=1)
-        console_frame.columnconfigure(0, weight=1)
-        console_frame.rowconfigure(0, weight=1)
-        sy = AutoHideScrollbar(console_frame, orient='vertical')
-        self.console = TextConsole(console_frame, self.history.history,
-                                   yscrollcommand=sy.set, relief='flat',
-                                   borderwidth=0, highlightthickness=0)
-        sy.configure(command=self.console.yview)
-        sy.grid(row=0, column=1, sticky='ns')
-        self.console.grid(row=0, column=0, sticky='nswe')
-        # -------- help
-        self.help = Help(self.right_nb,
-                         help_cmds={'Editor': self.editor.get_docstring,
-                                    'Console': self.console.get_docstring},
-                         padding=1)
-        # -------- filebrowser
-        self.filebrowser = Filebrowser(self, self.open_file)
-        # -------- placement
-        self.right_nb.add(console_frame, text='Console')
-        self.right_nb.add(self.history, text='History')
-        self.right_nb.add(self.help, text='Help')
-        self.right_nb.add(self.filebrowser, text='Filebrowser')
+        # --- --- right pane
+        self.right_nb = WidgetNotebook(pane)
+        widgets = ['Console', 'History', 'Help', 'File browser']
+        # --- --- --- command history
+        self.widgets['History'] = HistoryFrame(self.right_nb, padding=1)
+        # --- --- --- python console
+        self.widgets['Console'] = ConsoleFrame(self.right_nb,
+                                               history=self.widgets['History'].history,
+                                               padding=1)
+        self.console = self.widgets['Console'].console
+        # --- --- --- help
+        self.widgets['Help'] = Help(self.right_nb, padding=1,
+                                    help_cmds={'Editor': self.editor.get_docstring,
+                                               'Console': self.console.get_docstring})
+        # --- --- --- filebrowser
+        self.widgets['File browser'] = Filebrowser(self.right_nb, self.open_file)
 
         # ----- placement
         pane.add(self.codestruct, weight=1)
         pane.add(self.editor, weight=50)
-        pane.add(self.right_nb, weight=5)
+        # pane.add(self.right_nb, weight=5)
         pane.pack(fill='both', expand=True, pady=(0, 4))
+        self.codestruct.visible.set(CONFIG.getboolean('Code structure', 'visible', fallback=True))
+        for name in widgets:
+            self.right_nb.add(self.widgets[name], text=name)
+        for name, widget in self.widgets.items():
+            widget.visible.set(CONFIG.getboolean(name, 'visible', fallback=True))
 
         # --- menu
         # ------- file
@@ -271,11 +268,16 @@ class App(tk.Tk):
         self.menu_filetype.add_radiobutton(label='Text', value='Text',
                                            variable=self.filetype,
                                            command=self.set_filetype)
+        # ------- view
+        self.menu_view.add_checkbutton(label='Code structure', variable=self.codestruct.visible)
+        for name in widgets:
+            self.menu_view.add_checkbutton(label=name, variable=self.widgets[name].visible)
 
         self.menu.add_cascade(label='File', underline=0, menu=self.menu_file)
         self.menu.add_cascade(label='Edit', underline=0, menu=self.menu_edit)
         self.menu.add_cascade(label='Search', underline=0, menu=self.menu_search)
         self.menu.add_cascade(label='Document', underline=0, menu=self.menu_doc)
+        self.menu.add_cascade(label='View', underline=0, menu=self.menu_view)
         self.menu.add_command(label='About', underline=0,
                               command=lambda: About(self))
 
@@ -292,8 +294,6 @@ class App(tk.Tk):
         self.editor.bind('<<Modified>>', lambda e: self._edit_modified())
         self.editor.bind('<<Reload>>', self.reload)
         self.editor.bind('<<Filebrowser>>', self.view_in_filebrowser)
-
-        self.right_nb.bind('<ButtonRelease-3>', self._show_menu_nb)
 
         self.bind_class('Text', '<Control-o>', lambda e: None)
         self.bind('<Control-Shift-T>', self.restore_last_closed)
@@ -341,12 +341,6 @@ class App(tk.Tk):
     def _select_all(event):
         """Select all entry content."""
         event.widget.selection_range(0, "end")
-
-    def _show_menu_nb(self, event):
-        tab = self.right_nb.index('@%i,%i' % (event.x, event.y))
-        if tab is not None:
-            if self.right_nb.tab(tab, 'text') == 'Console':
-                self.console.menu.tk_popup(event.x_root, event.y_root)
 
     def _on_signal(self, *args):
         self.lift()
@@ -518,42 +512,25 @@ class App(tk.Tk):
                             borderwidth=0, activeborderwidth=0,
                             activebackground=theme['selectbg'],
                             activeforeground=theme['selectfg'])
-        self.menu_file.configure(bg=theme['fieldbg'], activebackground=theme['selectbg'],
-                                 fg=theme['fg'], activeforeground=theme['fg'],
-                                 disabledforeground=theme['disabledfg'],
-                                 selectcolor=theme['fg'])
-        self.menu_recent_files.configure(bg=theme['fieldbg'], activebackground=theme['selectbg'],
-                                         fg=theme['fg'], activeforeground=theme['fg'],
-                                         disabledforeground=theme['disabledfg'],
-                                         selectcolor=theme['fg'])
-        self.menu_edit.configure(bg=theme['fieldbg'], activebackground=theme['selectbg'],
-                                 fg=theme['fg'], activeforeground=theme['fg'],
-                                 disabledforeground=theme['disabledfg'],
-                                 selectcolor=theme['fg'])
-        self.menu_errors.configure(bg=theme['fieldbg'],
-                                   activebackground=theme['selectbg'],
-                                   fg=theme['fg'],
-                                   activeforeground=theme['fg'],
-                                   disabledforeground=theme['disabledfg'],
-                                   selectcolor=theme['fg'])
-        self.menu_search.configure(bg=theme['fieldbg'],
-                                   activebackground=theme['selectbg'],
-                                   fg=theme['fg'],
-                                   activeforeground=theme['fg'],
-                                   disabledforeground=theme['disabledfg'],
-                                   selectcolor=theme['fg'])
-        self.menu_doc.configure(bg=theme['fieldbg'],
-                                activebackground=theme['selectbg'],
-                                fg=theme['fg'],
-                                activeforeground=theme['fg'],
-                                disabledforeground=theme['disabledfg'],
-                                selectcolor=theme['fg'])
-        self.menu_filetype.configure(bg=theme['fieldbg'],
-                                     activebackground=theme['selectbg'],
-                                     fg=theme['fg'],
-                                     activeforeground=theme['fg'],
-                                     disabledforeground=theme['disabledfg'],
-                                     selectcolor=theme['fg'])
+        submenu_options = dict(bg=theme['fieldbg'], activebackground=theme['selectbg'],
+                               fg=theme['fg'], activeforeground=theme['fg'],
+                               disabledforeground=theme['disabledfg'],
+                               selectcolor=theme['fg'])
+        self.menu_file.configure(**submenu_options)
+        self.menu_view.configure(**submenu_options)
+        self.menu_recent_files.configure(**submenu_options)
+        self.menu_edit.configure(**submenu_options)
+        self.menu_errors.configure(**submenu_options)
+        self.menu_search.configure(**submenu_options)
+        self.menu_doc.configure(**submenu_options)
+        self.menu_filetype.configure(**submenu_options)
+        try:
+            self.codestruct.menu.configure(**submenu_options)
+        except AttributeError:
+            pass
+        for widget in self.widgets.values():
+            widget.menu.configure(**submenu_options)
+
         self.option_add('*Menu.background', theme['fieldbg'])
         self.option_add('*Menu.activeBackground', theme['selectbg'])
         self.option_add('*Menu.activeForeground', theme['fg'])
@@ -703,9 +680,8 @@ class App(tk.Tk):
         self.wait_window(c)
         self._setup_style()
         self.editor.update_style()
-        self.console.update_style()
-        self.history.update_style()
-        self.help.load_stylesheet()
+        for widget in self.widgets.values():
+            widget.update_style()
 
     def quit(self):
         files = ', '.join(self.editor.get_open_files())
@@ -769,8 +745,12 @@ class App(tk.Tk):
 
     def view_in_filebrowser(self, event):
         file = self.editor.files[self.editor.current_tab]
-        self.filebrowser.populate(os.path.dirname(file))
-        self.right_nb.select(3)
+        fb = self.widgets['File browser']
+        fb.populate(os.path.dirname(file))
+        if not fb.visible.get():
+            fb.visible.set(True)
+        else:
+            self.right_nb.select(fb)
 
     def reload(self, event):
         file = self.editor.files[self.editor.current_tab]
@@ -791,7 +771,7 @@ class App(tk.Tk):
             self._update_recent_files(file)
         else:
             txt = self.load_file(file)
-            self.filebrowser.populate(os.path.dirname(file))
+            self.widgets['File browser'].populate(os.path.dirname(file))
             if txt is not None:
                 self.editor.new(file)
                 self.editor.insert('1.0', txt)

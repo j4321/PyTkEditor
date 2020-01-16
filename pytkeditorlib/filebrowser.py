@@ -21,12 +21,13 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 GUI widget to browse local files
 """
 from tkinter import PhotoImage
-from tkinter.ttk import Treeview, Frame
+from tkinter.ttk import Treeview
 from tkinter.font import Font
 import os
 
 from pytkeditorlib.autoscrollbar import AutoHideScrollbar as Scrollbar
 from pytkeditorlib.constants import IMAGES
+from pytkeditorlib.base_widget import BaseWidget
 
 
 class FileTree(Treeview):
@@ -83,9 +84,9 @@ class FileTree(Treeview):
                             tags='file')
 
 
-class Filebrowser(Frame):
+class Filebrowser(BaseWidget):
     def __init__(self, master, callback):
-        Frame.__init__(self, master, padding=2)
+        BaseWidget.__init__(self, master, 'File browser', padding=2)
         self.rowconfigure(1, weight=1)
         self.columnconfigure(0, weight=1)
 

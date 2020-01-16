@@ -31,6 +31,7 @@ from docutils.parsers.rst import Directive, directives
 from docutils.writers.html4css1 import Writer, HTMLTranslator
 
 from pytkeditorlib.tkhtml import HtmlFrame
+from pytkeditorlib.base_widget import BaseWidget
 from pytkeditorlib.constants import TEMPLATE_PATH, CSS_PATH, CONFIG
 
 
@@ -129,9 +130,9 @@ def get_docstring(jedi_def):
     return txt
 
 
-class Help(ttk.Frame):
+class Help(BaseWidget):
     def __init__(self, master=None, help_cmds={}, **kw):
-        ttk.Frame.__init__(self, master=None, **kw)
+        BaseWidget.__init__(self, master, 'Help', **kw)
 
         self.help_cmds = help_cmds  # {source: help_cmd}
         self._source = tk.StringVar(self)
@@ -153,14 +154,14 @@ class Help(ttk.Frame):
         self.entry.pack(side='left', padx=4, pady=4, fill='x', expand=True)
 
         self.html = HtmlFrame(self)
-        self.load_stylesheet()
+        self.update_style()
         self._source.set('Console')
 
         # --- placement
         top_bar.pack(fill='x')
         self.html.pack(fill='both', expand=True)
 
-    def load_stylesheet(self):
+    def update_style(self):
         with open(CSS_PATH.format(theme=CONFIG.get('General', 'theme'))) as f:
             self.stylesheet = f.read()
         try:
