@@ -799,8 +799,23 @@ class Editor(ttk.Frame):
         else:
             sel_text = self.text.get('sel.first', 'sel.last')
             regexp = 'selected' in self.regexp.state()
-            if ((regexp and re.search('^' + pattern + '$', sel_text))
-               or (not regexp and pattern == sel_text)):
+            if regexp:
+                if 'selected' in self.full_word.state():
+                    # full word: \b at the end
+                    pattern = r"\b{}\b".format(pattern)
+                if 'selected' not in self.case_sensitive.state():
+                    # ignore case: (?i) at the start
+                    pattern = r"(?i)" + pattern
+                cpattern = re.compile('^' + pattern + '$')
+                if cpattern.match(sel_text):
+                    try:
+                        replacement = re.sub(pattern, new_text, sel_text)
+                    except re.error as e:
+                        messagebox.showerror("Error", f"Replacement error: {e.msg}", parent=self)
+                        return False
+                    self.text.replace('sel.first', 'sel.last', replacement)
+                    return True
+            elif pattern == sel_text:
                 self.text.replace('sel.first', 'sel.last', new_text)
                 return True
             else:
@@ -820,12 +835,11 @@ class Editor(ttk.Frame):
             self.search(notify_no_match=False, stopindex='end')
             res = self.replace_sel(notify_no_match=False)
 
-    def replace_text(self, start, end, new_text):
+    def replace_text(self, start, end, pattern, repl):
         self.text.edit_separator()
+        new_text = pattern.sub(repl, self.text.get(start, end))
         self.text.delete(start, end)
         self.text.insert(start, new_text)
-        self.update_nb_line()
-        self.parse_all()
 
     def search(self, event=None, backwards=False, notify_no_match=True, **kw):
         pattern = self.entry_search.get()
@@ -880,22 +894,14 @@ class Editor(ttk.Frame):
         else:
             self.text.tag_remove('highlight', '1.0', 'end')
 
-    def find_all(self, pattern, case_sensitive, regexp, full_word):
-        options = {'regexp': regexp,
-                   'nocase': not case_sensitive,
-                   'count': self._search_count,
-                   'stopindex': 'end'}
-
-        if full_word:
-            pattern = r'\y%s\y' % pattern
-            options['regexp'] = True
-
+    def find_all(self, pattern, options={}):
         results = []
-        res = self.text.search(pattern, '1.0', **options)
+        res = self.text.search(pattern, '1.0', count=self._search_count, **options)
         while res:
             end = f"{res}+{self._search_count.get()}c"
             results.append((res, end, self.text.get(res + " linestart", end + " lineend")))
-            res = self.text.search(pattern, end, **options)
+            res = self.text.search(pattern, end, count=self._search_count,
+                                   **options)
         return results
 
     # --- goto

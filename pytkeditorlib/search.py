@@ -22,12 +22,13 @@ Search in session dialog
 
 import tkinter as tk
 from tkinter import ttk
+import re
 
 from .autoscrollbar import AutoHideScrollbar
 
 
 class SearchDialog(tk.Toplevel):
-    def __init__(self, master):
+    def __init__(self, master, text=''):
         tk.Toplevel.__init__(self, master, class_=master.winfo_class(), padx=4, pady=4)
         self.title('Find & replace')
         frame_find = ttk.Frame(self)
@@ -35,6 +36,7 @@ class SearchDialog(tk.Toplevel):
 
         # --- search entry
         self.entry_search = ttk.Entry(frame_find, width=40)
+        self.entry_search.insert(0, text)
         self.entry_search.bind('<Return>', self.find)
         ttk.Label(frame_find, text='Find: ').grid(row=0, column=0, pady=4)
         self.entry_search.grid(row=0, column=1, sticky='ew', pady=4)
@@ -59,6 +61,7 @@ class SearchDialog(tk.Toplevel):
         result_frame = ttk.Frame(self)
         result_frame.columnconfigure(0, weight=1)
         result_frame.rowconfigure(1, weight=1)
+        self._search_pattern = None
         self.results = ttk.Treeview(result_frame, show='tree',
                                     columns=('tab', 'index_start', 'index_end'), displaycolumns=())
         self.results.tag_bind('result', '<ButtonRelease-1>', self._show_file)
@@ -95,16 +98,30 @@ class SearchDialog(tk.Toplevel):
 
     def find(self, event=None):
         self.results.delete(*self.results.get_children(''))
-        search_pattern = self.entry_search.get()
-        results = self.master.editor.find_all(search_pattern, self.case_sensitive.get(),
-                                              self.regexp.get(), self.full_word.get())
+        pattern = self.entry_search.get()
+        case_sensitive = self.case_sensitive.get()
+        full_word = self.full_word.get()
+        regexp = self.regexp.get()
+        # get regexp for replacement
+        search_pattern = pattern
+        if not regexp:
+            search_pattern = re.escape(search_pattern)
+        if full_word:
+            # full word: \b at the end
+            search_pattern = r"\b{}\b".format(search_pattern)
+        if not case_sensitive:
+            # ignore case: (?i) at the start
+            search_pattern = r"(?i)" + search_pattern
+        self._search_pattern = re.compile("^" + search_pattern + "$")
+        # populate tree
+        results = self.master.editor.find_all(pattern, case_sensitive, regexp, full_word)
         for tab, (file, matches) in results.items():
             if matches:
                 self.results.insert('', 'end', file, text=file, tags='file',
-                                    values=(tab,))
+                                    values=(tab,), open=True)
                 for start, end, line in matches:
-                    start_line = start.split(".")[0]
-                    self.results.insert(file, 'end', text=f"{start_line}: {line}",
+                    start_line, start_col = start.split(".")
+                    self.results.insert(file, 'end', text=f"{start_line}:{start_col}: {line}",
                                         values=(tab, start, end),
                                         tags='result')
 
@@ -116,5 +133,5 @@ class SearchDialog(tk.Toplevel):
             tab = int(self.results.item(file, 'values')[0])
             matches = self.results.get_children(file)
             replacements[tab] = [self.results.item(iid, "values")[1:] for iid in matches]
-        self.master.editor.replace_all(text, replacements)
+        self.master.editor.replace_all(self._search_pattern, text, replacements)
         self.results.delete(*self.results.get_children(''))

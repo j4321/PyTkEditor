@@ -76,6 +76,8 @@ class App(tk.Tk):
         self.menu_filetype = tk.Menu(self.menu_doc)
         self.menu_errors = LongMenu(self.menu_doc, 40)
 
+        self._search_dialog = None
+
         recent_files = CONFIG.get('General', 'recent_files', fallback='').split(', ')
         self.recent_files = [f for f in recent_files if f and os.path.exists(f)]
 
@@ -228,7 +230,8 @@ class App(tk.Tk):
                                      image=self._images['replace'])
         self.menu_search.add_separator()
         self.menu_search.add_command(label='Find & replace in session', image=self._images['replace'],
-                                     compound='left', command=self.search)
+                                     compound='left', command=self.search,
+                                     accelerator='Ctrl+Shift+R',)
         self.menu_search.add_separator()
         self.menu_search.add_command(label='Goto line', accelerator='Ctrl+L', compound='left',
                                      command=self.editor.goto_line, image=self._images['menu_dummy'])
@@ -290,6 +293,7 @@ class App(tk.Tk):
         self.bind('<Control-p>', self.editor.file_switch)
         self.bind('<Control-s>', self.save)
         self.bind('<Control-o>', lambda e: self.open())
+        self.bind('<Control-Shift-R>', self.search)
         self.bind('<Control-Shift-S>', self.saveall)
         self.bind('<Control-Alt-s>', self.saveas)
         self.editor.bind('<<CtrlReturn>>', lambda e: self.console.execute(self.editor.get_cell()))
@@ -827,8 +831,17 @@ class App(tk.Tk):
         else:
             return False
 
-    def search(self):
-        SearchDialog(self)
+    def search(self, venet=None):
+
+        def on_destroy(event):
+            self._search_dialog = None
+
+        if self._search_dialog is None:
+            self._search_dialog = SearchDialog(self, self.editor.get_selection())
+            self._search_dialog.bind('<Destroy>', on_destroy)
+        else:
+            self._search_dialog.lift()
+            self._search_dialog.entry_search.focus_set()
 
     def save(self, event=None, tab=None, update=False):
         if tab is None:

@@ -22,6 +22,7 @@ Notebook containing the code editors for each opened file
 """
 import logging
 import os
+import re
 from tkinter import Menu, Toplevel, TclError
 from subprocess import Popen
 from threading import Thread, Event
@@ -308,10 +309,15 @@ class EditorNotebook(Notebook):
         if self.current_tab >= 0:
             self._tabs[self.current_tab].replace()
 
-    def replace_all(self, text, replacements):
-        for tab, matches in replacements.items():
-            for start, end in matches:
-                self._tabs[tab].replace_text(start, end, text)
+    def replace_all(self, pattern, new_text, replacements):
+        try:
+            for tab, matches in replacements.items():
+                for start, end in reversed(matches):
+                    self._tabs[tab].replace_text(start, end, pattern, new_text)
+                self._tabs[tab].update_nb_line()
+                self._tabs[tab].parse_all()
+        except re.error as e:
+            showerror("Error", f"Replacement error: {e.msg}", parent=self)
 
     def show_syntax_issues(self, results):
         if self.current_tab >= 0:
@@ -348,7 +354,14 @@ class EditorNotebook(Notebook):
 
     def new(self, file=None):
         if file is None:
-            title = 'new.py'
+            new_files = [-1]
+            pattern = re.compile(r"^new(\d+).py - $")
+            for i in self._tab_menu_entries.values():
+                name = self._tab_menu.entrycget(i, 'label')
+                match = pattern.search(name)
+                if match:
+                    new_files.append(int(match.groups()[0]))
+            title = f'new{max(new_files) + 1}.py'
             file = ''
         else:
             title = os.path.split(file)[-1]
@@ -373,7 +386,20 @@ class EditorNotebook(Notebook):
         return self._tabs[tab].get(strip)
 
     def find_all(self, pattern, case_sensitive, regexp, full_word):
-        return {tab: (self.files[tab], self._tabs[tab].find_all(pattern, case_sensitive, regexp, full_word)) for tab in self._visible_tabs}
+        options = {'regexp': regexp,
+                   'nocase': not case_sensitive,
+                   'stopindex': 'end'}
+
+        if full_word:
+            pattern = r'\y%s\y' % pattern
+            options['regexp'] = True
+        results = {}
+        for tab in self._visible_tabs:
+            path = self.files[tab]
+            name = self.tab(tab, 'text')
+            results[tab] = f"{name} - {path}", self._tabs[tab].find_all(pattern, options)
+
+        return results
 
     def get_selection(self):
         if self._current_tab < 0:
@@ -469,7 +495,7 @@ class EditorNotebook(Notebook):
                 with open(file, 'w') as f:
                     f.write(self.get(tab))
             except PermissionError as e:
-                showerror("Error", f"PermissionError: {e.strerror}: {file}")
+                showerror("Error", f"PermissionError: {e.strerror}: {file}", parent=self)
             self._files_mtime[file] = os.stat(file).st_mtime
             try:
                 self._is_modified[file].clear()
