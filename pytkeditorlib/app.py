@@ -666,7 +666,10 @@ class App(tk.Tk):
         """Log exceptions."""
         err = "".join(traceback.format_exception(*args))
         logging.error(err)
-        showerror("Error", str(args[1]), err, True)
+        if args[0] is not KeyboardInterrupt:
+            showerror("Error", str(args[1]), err, True)
+        else:
+            self.destroy()
 
     def config(self):
         c = Config(self)
