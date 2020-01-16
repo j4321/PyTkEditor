@@ -857,7 +857,7 @@ class App(tk.Tk):
             return
         if self._qtconsole_process is None or self._qtconsole_process.poll() is not None:
             self._init_kernel()
-            self._qtconsole_process = Popen(['jupyter-qtconsole', '-f', cst.JUPYTER_KERNEL_PATH])
+            self._qtconsole_process = Popen(['jupyter-qtconsole', '--JupyterWidget.include_other_output=True', '-f', cst.JUPYTER_KERNEL_PATH])
         self.jupyter_kernel.execute(code)
         return "break"
 
