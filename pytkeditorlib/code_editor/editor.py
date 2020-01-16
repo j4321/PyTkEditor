@@ -27,13 +27,12 @@ import tkinter as tk
 from tkinter import ttk
 from tkinter.font import Font
 
-from pytkeditorlib import messagebox
-from pytkeditorlib.autoscrollbar import AutoHideScrollbar
-from pytkeditorlib.constants import get_screen, load_style, PYTHON_LEX, CONFIG, \
+from pytkeditorlib.dialogs import showerror, showinfo, \
+    TooltipTextWrapper, Tooltip, CompListbox
+from pytkeditorlib.gui_utils import AutoHideScrollbar
+from pytkeditorlib.utils.constants import get_screen, load_style, PYTHON_LEX, CONFIG, \
     valide_entree_nb, IMAGES
-from pytkeditorlib.complistbox import CompListbox
-from pytkeditorlib.tooltip import TooltipTextWrapper, Tooltip
-from pytkeditorlib.filebar import FileBar
+from .filebar import FileBar
 
 
 class Editor(ttk.Frame):
@@ -813,7 +812,7 @@ class Editor(ttk.Frame):
                     try:
                         replacement = re.sub(pattern, new_text, sel_text)
                     except re.error as e:
-                        messagebox.showerror("Error", f"Replacement error: {e.msg}", parent=self)
+                        showerror("Error", f"Replacement error: {e.msg}", parent=self)
                         return False
                     self.text.replace('sel.first', 'sel.last', replacement)
                     return True
@@ -871,7 +870,7 @@ class Editor(ttk.Frame):
             self.see(res)
         else:
             if notify_no_match:
-                messagebox.showinfo("Search complete", "No match found", self)
+                showinfo("Search complete", "No match found", self)
 
     def highlight_all(self):
         if 'selected' in self._highlight_btn.state():

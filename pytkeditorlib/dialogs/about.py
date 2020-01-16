@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
 PyTkEditor - Python IDE
@@ -25,8 +24,8 @@ from tkinter.ttk import Button, Label
 
 from PIL.ImageTk import PhotoImage
 
-from .constants import APP_NAME, IMAGES
-from . import __version__
+from pytkeditorlib.utils.constants import APP_NAME, IMAGES
+from pytkeditorlib import __version__
 
 
 def _(txt):

@@ -35,13 +35,11 @@ from pygments import lex
 from pygments.lexers import Python3Lexer
 import jedi
 
-from pytkeditorlib.complistbox import CompListbox
-from pytkeditorlib.tooltip import Tooltip
-from pytkeditorlib.constants import get_screen, load_style, CONFIG, SERVER_CERT, \
+from pytkeditorlib.utils.constants import get_screen, load_style, CONFIG, SERVER_CERT, \
     CLIENT_CERT
-from pytkeditorlib.messagebox import askyesno
-from pytkeditorlib.base_widget import BaseWidget
-from pytkeditorlib.autoscrollbar import AutoHideScrollbar
+from pytkeditorlib.dialogs import askyesno, CompListbox, Tooltip
+from pytkeditorlib.gui_utils import AutoHideScrollbar
+from .base_widget import BaseWidget
 
 
 class TextConsole(tk.Text):
@@ -118,7 +116,7 @@ class TextConsole(tk.Text):
         self.shell_socket.listen(5)
 
         p = Popen(['python',
-                   join(dirname(__file__), 'interactive_console.py'),
+                   join(dirname(dirname(__file__)), 'utils', 'interactive_console.py'),
                    host, str(port)])
         self.shell_pid = p.pid
         client, addr = self.shell_socket.accept()

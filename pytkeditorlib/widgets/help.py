@@ -30,9 +30,9 @@ from docutils.nodes import TextElement, Inline
 from docutils.parsers.rst import Directive, directives
 from docutils.writers.html4css1 import Writer, HTMLTranslator
 
-from pytkeditorlib.tkhtml import HtmlFrame
-from pytkeditorlib.base_widget import BaseWidget
-from pytkeditorlib.constants import TEMPLATE_PATH, CSS_PATH, CONFIG
+from pytkeditorlib.utils.constants import TEMPLATE_PATH, CSS_PATH, CONFIG
+from .tkhtml import HtmlFrame
+from .base_widget import BaseWidget
 
 
 sproles = ['data', 'exc', 'func', 'class', 'const', 'attr', 'meth', 'mod', 'obj',

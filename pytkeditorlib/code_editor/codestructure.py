@@ -27,9 +27,8 @@ import tokenize
 from io import BytesIO
 import re
 
-from pytkeditorlib.autoscrollbar import AutoHideScrollbar as Scrollbar
-from pytkeditorlib.autocomplete import AutoCompleteCombobox2
-from pytkeditorlib.constants import IMAGES, CONFIG, save_config
+from pytkeditorlib.gui_utils import AutoHideScrollbar, AutoCompleteCombobox2
+from pytkeditorlib.utils.constants import IMAGES, CONFIG, save_config
 
 
 class Tree:
@@ -161,8 +160,8 @@ class CodeStructure(Frame):
 
         self.filename = Label(self, padding=(4, 2), anchor='w')
         self.codetree = CodeTree(self)
-        self._sx = Scrollbar(self, orient='horizontal', command=self.codetree.xview)
-        self._sy = Scrollbar(self, orient='vertical', command=self.codetree.yview)
+        self._sx = AutoHideScrollbar(self, orient='horizontal', command=self.codetree.xview)
+        self._sy = AutoHideScrollbar(self, orient='vertical', command=self.codetree.yview)
 
         self.goto_frame = Frame(self)
         Label(self.goto_frame, text='Go to:').pack(side='left')

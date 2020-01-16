@@ -30,12 +30,11 @@ from time import sleep
 
 from tkfilebrowser import asksaveasfilename
 
-from pytkeditorlib.notebook import Notebook
-from pytkeditorlib.editor import Editor
-from pytkeditorlib.colorpicker import ColorPicker
-from pytkeditorlib.autocomplete import AutoCompleteEntryListbox
-from pytkeditorlib.tooltip import TooltipNotebookWrapper
-from pytkeditorlib.messagebox import askyesnocancel, askyesno, showerror
+from pytkeditorlib.gui_utils import AutoCompleteEntryListbox
+from pytkeditorlib.dialogs import askyesnocancel, askyesno, showerror, \
+    ColorPicker, TooltipNotebookWrapper
+from .notebook import Notebook
+from .editor import Editor
 
 
 class EditorNotebook(Notebook):
@@ -542,7 +541,7 @@ class EditorNotebook(Notebook):
         if self.current_tab >= 0:
             file = self.files[self.current_tab]
             if file:
-                filename = os.path.join(os.path.dirname(__file__), 'console.py')
+                filename = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'utils', 'console.py')
                 Popen(['xfce4-terminal', '-e', 'python {} {}'.format(filename, file)])
 
     def goto_start(self):

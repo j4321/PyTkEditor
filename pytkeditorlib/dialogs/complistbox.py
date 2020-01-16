@@ -23,7 +23,7 @@ Code completion listbox
 import tkinter as tk
 from tkinter import ttk
 
-from pytkeditorlib.autoscrollbar import AutoHideScrollbar
+from pytkeditorlib.gui_utils import AutoHideScrollbar
 
 
 class CompListbox(tk.Toplevel):

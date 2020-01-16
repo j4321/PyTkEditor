@@ -37,13 +37,16 @@ setup(name="pytkeditor",
       author_email="j_4321@protonmail.com",
       url="https://gitlab.com/j_4321/PyTkEditor/",
       license="GNU General Public License v3",
-      packages=['pytkeditorlib'],
+      packages=['pytkeditorlib',
+                 'pytkeditorlib.code_editor',
+                 'pytkeditorlib.dialogs',
+                 'pytkeditorlib.gui_utils',
+                 'pytkeditorlib.utils',
+                'pytkeditorlib.widgets'],
       data_files=data_files,
       long_description=long_description,
       scripts=["pytkeditor"],
       install_requires=["jedi", "pygments", "pyflakes", "pycodestyle",
                         "tkfilebrowser", "ewmh", "python-xlib", "tkcolorpicker",
                         "Pillow", "docutils"],
-      extras_require = {
-        'Execute in Jupyter QtConsole':  ["qtconsole"]
-    })
+      extras_require={'Execute in Jupyter QtConsole': ["qtconsole"]})

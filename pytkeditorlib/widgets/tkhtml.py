@@ -32,22 +32,11 @@ import logging
 
 from PIL.ImageTk import PhotoImage
 
-from pytkeditorlib.autoscrollbar import AutoHideScrollbar
-
-_tkhtml_loaded = False
+from pytkeditorlib.gui_utils import AutoHideScrollbar
 
 
 def webOpen(url):
     Popen(['xdg-open', url])
-
-
-def load_tkhtml(master, location=None):
-    global _tkhtml_loaded
-    if not _tkhtml_loaded:
-        if location:
-            master.tk.eval('global auto_path; lappend auto_path {%s}' % location)
-        master.tk.eval('package require Tkhtml')
-        _tkhtml_loaded = True
 
 
 class TkinterHtml(tk.Widget, tk.XView, tk.YView):
@@ -55,8 +44,6 @@ class TkinterHtml(tk.Widget, tk.XView, tk.YView):
         """
         See options descriptions from here: http://tkhtml.tcl.tk/tkhtml.html
         """
-        load_tkhtml(master)
-
         if "imagecmd" not in kw:
             kw["imagecmd"] = master.register(self._fetch_image)
         self.open_url_cmd = kw.pop('open_url_cmd', webOpen)

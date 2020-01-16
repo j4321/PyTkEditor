@@ -26,9 +26,9 @@ from tkinter.font import Font
 import os
 import re
 
-from .autoscrollbar import AutoHideScrollbar as Scrollbar
+from pytkeditorlib.gui_utils import AutoHideScrollbar as Scrollbar
+from pytkeditorlib.utils.constants import CONFIG, save_config
 from .base_widget import BaseWidget
-from .constants import CONFIG, save_config
 
 
 class Filebrowser(BaseWidget):

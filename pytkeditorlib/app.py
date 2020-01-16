@@ -33,26 +33,19 @@ from datetime import datetime
 from ewmh import ewmh, EWMH
 from tkfilebrowser import askopenfilenames, asksaveasfilename
 
-from pytkeditorlib.editornotebook import EditorNotebook
-from pytkeditorlib.syntax_check import check_file
-from pytkeditorlib.codestructure import CodeStructure
-from pytkeditorlib.filebrowser import Filebrowser
-from pytkeditorlib.constants import IMAGES, CONFIG, save_config, IM_CLOSE
-from pytkeditorlib import constants as cst
-from pytkeditorlib.textconsole import ConsoleFrame
-from pytkeditorlib.history import HistoryFrame
-from pytkeditorlib.search import SearchDialog
-from pytkeditorlib.config import Config
-from pytkeditorlib.base_widget import WidgetNotebook
-from pytkeditorlib.menu import LongMenu
-from pytkeditorlib.help import Help
-from pytkeditorlib.messagebox import showerror
-from pytkeditorlib.about import About
+from pytkeditorlib.code_editor import EditorNotebook, CodeStructure
+from pytkeditorlib.utils.constants import IMAGES, CONFIG, save_config, IM_CLOSE
+from pytkeditorlib.utils import constants as cst
+from pytkeditorlib.utils.syntax_check import check_file
+from pytkeditorlib.dialogs import showerror, About, Config, SearchDialog
+from pytkeditorlib.widgets import WidgetNotebook, Help, HistoryFrame, ConsoleFrame, Filebrowser
+from pytkeditorlib.gui_utils import LongMenu
 
 
 class App(tk.Tk):
     def __init__(self, *files):
         tk.Tk.__init__(self, className='PyTkEditor')
+        self.tk.eval('package require Tkhtml')
         self.title('PyTkEditor')
         # --- images
         self._images = {name: tk.PhotoImage(f'img_{name}', file=IMAGES[name], master=self)

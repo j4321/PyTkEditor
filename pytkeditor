@@ -21,12 +21,13 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 Main
 """
 import sys
-from pytkeditorlib.app import App
-from pytkeditorlib.constants import PIDFILE, OPENFILE_PATH
 import os
 import signal
-from pytkeditorlib.messagebox import showerror
 import traceback
+
+from pytkeditorlib.app import App
+from pytkeditorlib.utils.constants import PIDFILE, OPENFILE_PATH
+from pytkeditorlib.dialogs import showerror
 
 pid = str(os.getpid())
 

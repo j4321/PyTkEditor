@@ -25,8 +25,8 @@ from webbrowser import open as url_open
 import tkinter as tk
 from tkinter import ttk
 
-from .autoscrollbar import AutoHideScrollbar as Scrollbar
-from .constants import REPORT_URL, CONFIG
+from pytkeditorlib.gui_utils import AutoHideScrollbar as Scrollbar
+from pytkeditorlib.utils.constants import REPORT_URL, CONFIG
 
 
 ICONS = ['warning', 'information', 'question', 'error']

@@ -23,7 +23,7 @@ Base widget
 from tkinter import BooleanVar, Menu
 from tkinter.ttk import Frame, Notebook
 
-from pytkeditorlib.constants import CONFIG, save_config
+from pytkeditorlib.utils.constants import CONFIG, save_config
 
 
 class BaseWidget(Frame):

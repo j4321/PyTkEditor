@@ -22,15 +22,15 @@ Console history with text display
 """
 import tkinter as tk
 from tkinter import ttk
-from tkinter import messagebox
 import pickle
 
 from pygments import lex
 from pygments.lexers import Python3Lexer
 
-from pytkeditorlib.constants import load_style, CONFIG, HISTFILE
-from pytkeditorlib.autoscrollbar import AutoHideScrollbar
-from pytkeditorlib.base_widget import BaseWidget
+from pytkeditorlib.utils.constants import load_style, CONFIG, HISTFILE
+from pytkeditorlib.gui_utils import AutoHideScrollbar
+from pytkeditorlib.dialogs import showinfo
+from .base_widget import BaseWidget
 
 
 class History(tk.Text):
@@ -260,4 +260,4 @@ class HistoryFrame(BaseWidget):
                 self.history.mark_set('insert', '%s+%ic' % (res, self._search_count.get()))
         else:
             if notify_no_match:
-                messagebox.showinfo("Search complete", "No match found")
+                showinfo("Search complete", "No match found")

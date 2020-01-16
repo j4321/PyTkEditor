@@ -24,7 +24,7 @@ import tkinter as tk
 from tkinter import ttk
 import re
 
-from .autoscrollbar import AutoHideScrollbar
+from pytkeditorlib.gui_utils import AutoHideScrollbar
 
 
 class SearchDialog(tk.Toplevel):

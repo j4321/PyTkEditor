@@ -23,7 +23,7 @@ Combobox with autocompletion
 from tkinter import TclError, Listbox
 from tkinter.ttk import Combobox, Frame, Entry
 
-from pytkeditorlib.autoscrollbar import AutoHideScrollbar
+from .autoscrollbar import AutoHideScrollbar
 
 
 class AutoCompleteCombobox(Combobox):

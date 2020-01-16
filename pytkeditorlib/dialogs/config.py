@@ -27,8 +27,8 @@ from tkinter import font
 
 from pygments.styles import get_all_styles
 
-from pytkeditorlib.constants import CONFIG, save_config, PATH_TEMPLATE
-from pytkeditorlib.autocomplete import AutoCompleteCombobox
+from pytkeditorlib.utils.constants import CONFIG, save_config, PATH_TEMPLATE
+from pytkeditorlib.gui_utils import AutoCompleteCombobox
 
 
 class Config(tk.Toplevel):
@@ -120,8 +120,9 @@ class Config(tk.Toplevel):
         ttk.Label(frame_history, text='History',
                   font=('TkDefaultFont', 10, 'bold')).grid(row=0, columnspan=2,
                                                            sticky='w', pady=4)
-        ttk.Label(frame_history, text='Maximum size (truncated when quitting):').grid(row=1, column=0, sticky='e',
-                                                            padx=4, pady=4)
+        ttk.Label(frame_history,
+                  text='Maximum size (truncated when quitting):').grid(row=1, column=0, sticky='e',
+                                                                       padx=4, pady=4)
         self.history_size = ttk.Entry(frame_history)
         self.history_size.insert(0, CONFIG.get('History', 'max_size', fallback='10000'))
         self.history_size.grid(row=1, column=1, sticky='ew', padx=4, pady=4)
