@@ -308,6 +308,11 @@ class EditorNotebook(Notebook):
         if self.current_tab >= 0:
             self._tabs[self.current_tab].replace()
 
+    def replace_all(self, text, replacements):
+        for tab, matches in replacements.items():
+            for start, end in matches:
+                self._tabs[tab].replace_text(start, end, text)
+
     def show_syntax_issues(self, results):
         if self.current_tab >= 0:
             self._tabs[self.current_tab].show_syntax_issues(results)
@@ -367,8 +372,8 @@ class EditorNotebook(Notebook):
             tab = self.current_tab
         return self._tabs[tab].get(strip)
 
-    def get_all_files(self):
-        return {tab: (self.files[tab], self._tabs[tab].get(strip=False)) for tab in self._visible_tabs}
+    def find_all(self, pattern, case_sensitive, regexp, full_word):
+        return {tab: (self.files[tab], self._tabs[tab].find_all(pattern, case_sensitive, regexp, full_word)) for tab in self._visible_tabs}
 
     def get_selection(self):
         if self._current_tab < 0:

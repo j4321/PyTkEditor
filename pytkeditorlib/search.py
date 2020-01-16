@@ -22,21 +22,19 @@ Search in session dialog
 
 import tkinter as tk
 from tkinter import ttk
-import re
 
 from .autoscrollbar import AutoHideScrollbar
-from .constants import RE_NEWLINE
 
 
 class SearchDialog(tk.Toplevel):
     def __init__(self, master):
         tk.Toplevel.__init__(self, master, class_=master.winfo_class(), padx=4, pady=4)
-        self.title('Find')
+        self.title('Find & replace')
         frame_find = ttk.Frame(self)
         frame_find.columnconfigure(1, weight=1)
 
         # --- search entry
-        self.entry_search = ttk.Entry(frame_find)
+        self.entry_search = ttk.Entry(frame_find, width=40)
         self.entry_search.bind('<Return>', self.find)
         ttk.Label(frame_find, text='Find: ').grid(row=0, column=0, pady=4)
         self.entry_search.grid(row=0, column=1, sticky='ew', pady=4)
@@ -62,7 +60,7 @@ class SearchDialog(tk.Toplevel):
         result_frame.columnconfigure(0, weight=1)
         result_frame.rowconfigure(1, weight=1)
         self.results = ttk.Treeview(result_frame, show='tree',
-                                    columns=('tab', 'line'), displaycolumns=())
+                                    columns=('tab', 'index_start', 'index_end'), displaycolumns=())
         self.results.tag_bind('result', '<ButtonRelease-1>', self._show_file)
         scroll = AutoHideScrollbar(result_frame, orient='vertical',
                                    command=self.results.yview)
@@ -71,43 +69,52 @@ class SearchDialog(tk.Toplevel):
         self.results.grid(row=1, column=0, sticky='ewns')
         scroll.grid(row=1, column=1, sticky='ns')
 
+        # --- replace
+        replace_frame = ttk.Frame(self)
+        ttk.Label(replace_frame, text="Replace by: ").pack(side="left")
+        self.entry_replace = ttk.Entry(replace_frame)
+        self.entry_replace.pack(side="left", fill="x", expand=True)
+        ttk.Button(replace_frame, text="Replace all", padding=1,
+                   command=self.replace).pack(side='left', padx=4)
+
         # --- placement
         frame_find.pack(fill='x', padx=4)
+        replace_frame.pack(side="bottom", expand=True, fill='x', padx=4, pady=4)
         result_frame.pack(fill='both', expand=True, pady=4, padx=4)
         self.entry_search.focus_set()
 
     def _show_file(self, event):
         item = self.results.focus()
-        tab, line = self.results.item(item, 'values')
+        try:
+            tab, start, end = self.results.item(item, 'values')
+        except ValueError:
+            return
         self.master.editor.select(int(tab))
-        self.master.editor.goto_item(f"{line}.0", f"{line}.end")
+        self.master.editor.goto_item(start, end)
         self.master.update_idletasks()
 
     def find(self, event=None):
         self.results.delete(*self.results.get_children(''))
-        # --- get search pattern
-        pattern = self.entry_search.get()
-        flags = 0
-        if not self.regexp.get():
-            pattern = re.escape(pattern)
-        if self.full_word.get():
-            # full word: \b at the end
-            pattern = r"\b{}\b".format(pattern)
-        if self.case_sensitive.get():
-            # ignore case: (?i) at the start
-            flags = re.IGNORECASE
-        pattern = re.compile(pattern, flags)
-
-        # --- search
-        files = self.master.editor.get_all_files()
-        for tab, (file, text) in files.items():
-            results = list(pattern.finditer(text))
-            if results:
+        search_pattern = self.entry_search.get()
+        results = self.master.editor.find_all(search_pattern, self.case_sensitive.get(),
+                                              self.regexp.get(), self.full_word.get())
+        for tab, (file, matches) in results.items():
+            if matches:
                 self.results.insert('', 'end', file, text=file, tags='file',
                                     values=(tab,))
-                lines = text.splitlines()
-                for match in results:
-                    start = match.start()
-                    line_nb = len(RE_NEWLINE.findall(text, 0, start)) + 1
-                    self.results.insert(file, 'end', text=f"{line_nb}: {lines[line_nb - 1]}",
-                                        values=(tab, line_nb), tags='result')
+                for start, end, line in matches:
+                    start_line = start.split(".")[0]
+                    self.results.insert(file, 'end', text=f"{start_line}: {line}",
+                                        values=(tab, start, end),
+                                        tags='result')
+
+    def replace(self):
+        text = self.entry_replace.get()
+        files = self.results.get_children()
+        replacements = {}
+        for file in files:
+            tab = int(self.results.item(file, 'values')[0])
+            matches = self.results.get_children(file)
+            replacements[tab] = [self.results.item(iid, "values")[1:] for iid in matches]
+        self.master.editor.replace_all(text, replacements)
+        self.results.delete(*self.results.get_children(''))

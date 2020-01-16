@@ -83,8 +83,7 @@ class App(tk.Tk):
         for seq in self.bind_class('TButton'):
             self.bind_class('Notebook.Tab.Close', seq, self.bind_class('TButton', seq), True)
         style = ttk.Style(self)
-        style.element_create('close', 'image', self._im_close,
-                             sticky='')
+        style.element_create('close', 'image', self._im_close, sticky='')
         self._setup_style()
 
         # --- jupyter kernel
@@ -224,12 +223,12 @@ class App(tk.Tk):
         self.menu_search.add_command(label='Find', command=self.editor.find,
                                      accelerator='Ctrl+F', compound='left',
                                      image=self._images['find'])
-        self.menu_search.add_command(label='Find in session', image=self._images['find'],
-                                     compound='left', command=self.search)
-        self.menu_search.add_separator()
         self.menu_search.add_command(label='Replace', command=self.editor.replace,
                                      accelerator='Ctrl+R', compound='left',
                                      image=self._images['replace'])
+        self.menu_search.add_separator()
+        self.menu_search.add_command(label='Find & replace in session', image=self._images['replace'],
+                                     compound='left', command=self.search)
         self.menu_search.add_separator()
         self.menu_search.add_command(label='Goto line', accelerator='Ctrl+L', compound='left',
                                      command=self.editor.goto_line, image=self._images['menu_dummy'])

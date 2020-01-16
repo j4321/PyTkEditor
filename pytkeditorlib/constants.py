@@ -34,7 +34,6 @@ The images in ICONS were taken from "icons.tcl":
 Constants and functions
 """
 import os
-import re
 import configparser
 import logging
 from logging.handlers import TimedRotatingFileHandler
@@ -62,7 +61,6 @@ class MyLexer(Python3Lexer):
 
 PYTHON_LEX = MyLexer()
 
-RE_NEWLINE = re.compile(r'\n')
 
 # --- paths
 PATH = os.path.dirname(__file__)

@@ -30,7 +30,7 @@ from tkinter.font import Font
 from pytkeditorlib import messagebox
 from pytkeditorlib.autoscrollbar import AutoHideScrollbar
 from pytkeditorlib.constants import get_screen, load_style, PYTHON_LEX, CONFIG, \
-    valide_entree_nb, IMAGES, RE_NEWLINE
+    valide_entree_nb, IMAGES
 from pytkeditorlib.complistbox import CompListbox
 from pytkeditorlib.tooltip import TooltipTextWrapper, Tooltip
 from pytkeditorlib.filebar import FileBar
@@ -44,7 +44,6 @@ class Editor(ttk.Frame):
         self.rowconfigure(0, weight=1)
 
         self._filetype = filetype
-
 
         self._valid_nb = self.register(valide_entree_nb)
 
@@ -821,6 +820,13 @@ class Editor(ttk.Frame):
             self.search(notify_no_match=False, stopindex='end')
             res = self.replace_sel(notify_no_match=False)
 
+    def replace_text(self, start, end, new_text):
+        self.text.edit_separator()
+        self.text.delete(start, end)
+        self.text.insert(start, new_text)
+        self.update_nb_line()
+        self.parse_all()
+
     def search(self, event=None, backwards=False, notify_no_match=True, **kw):
         pattern = self.entry_search.get()
         full_word = 'selected' in self.full_word.state()
@@ -873,6 +879,24 @@ class Editor(ttk.Frame):
                 res = self.text.search(pattern, end, **options)
         else:
             self.text.tag_remove('highlight', '1.0', 'end')
+
+    def find_all(self, pattern, case_sensitive, regexp, full_word):
+        options = {'regexp': regexp,
+                   'nocase': not case_sensitive,
+                   'count': self._search_count,
+                   'stopindex': 'end'}
+
+        if full_word:
+            pattern = r'\y%s\y' % pattern
+            options['regexp'] = True
+
+        results = []
+        res = self.text.search(pattern, '1.0', **options)
+        while res:
+            end = f"{res}+{self._search_count.get()}c"
+            results.append((res, end, self.text.get(res + " linestart", end + " lineend")))
+            res = self.text.search(pattern, end, **options)
+        return results
 
     # --- goto
     def goto_line(self, event=None):
