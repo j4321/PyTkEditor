@@ -771,7 +771,7 @@ class App(tk.Tk):
             self._update_recent_files(file)
         else:
             txt = self.load_file(file)
-            self.widgets['File browser'].populate(os.path.dirname(file))
+            self.widgets['File browser'].populate(os.path.dirname(file), reset=True)
             if txt is not None:
                 self.editor.new(file)
                 self.editor.insert('1.0', txt)

@@ -20,7 +20,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 GUI widget to display the code structure
 """
-from tkinter import PhotoImage, BooleanVar, Menu
+from tkinter import PhotoImage, BooleanVar, Menu, TclError
 from tkinter.ttk import Treeview, Frame, Label
 from tkinter.font import Font
 import tokenize
@@ -214,7 +214,11 @@ class CodeStructure(Frame):
         self.filename.configure(text=title)
         self._sx.timer = self._sx.threshold + 1
         self._sy.timer = self._sy.threshold + 1
-        names = list(self.codetree.populate(text))
+        try:
+            names = list(self.codetree.populate(text))
+        except TclError:
+            self.codetree.delete(*self.codetree.get_children())
+            return
         names.sort()
         self.goto_entry.delete(0, "end")
         self.goto_entry.set_completion_list(names)
