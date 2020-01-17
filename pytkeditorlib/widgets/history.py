@@ -62,6 +62,9 @@ class History(tk.Text):
         self.parse()
         self.configure(state='disabled')
 
+    def new_session(self):
+        self._session_start = len(self.history)
+
     def select_all(self, event):
         self.tag_add('sel', '1.0', 'end')
         return "break"

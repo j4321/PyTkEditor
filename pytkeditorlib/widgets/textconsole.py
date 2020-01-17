@@ -130,6 +130,8 @@ class TextConsole(tk.Text):
             self.shell_client.shutdown(socket.SHUT_RDWR)
             self.shell_client.close()
             self.shell_socket.close()
+            self.configure(state='normal')
+            self.history.new_session()
             self.shell_clear()
             self._init_shell()
 
@@ -461,6 +463,7 @@ class TextConsole(tk.Text):
                 self.shell_client.send(line.encode())
                 self.configure(state='disabled')
             except SystemExit:
+                self.history.new_session()
                 self.shell_clear()
                 return
             except Exception as e:
@@ -502,6 +505,7 @@ class TextConsole(tk.Text):
 
             if err.strip():
                 if err == 'SystemExit\n':
+                    self.history.new_session()
                     self.shell_clear()
                     return
                 else:
