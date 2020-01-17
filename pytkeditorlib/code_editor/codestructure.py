@@ -26,6 +26,7 @@ from tkinter.font import Font
 import tokenize
 from io import BytesIO
 import re
+import logging
 
 from pytkeditorlib.gui_utils import AutoHideScrollbar, AutoCompleteCombobox2
 from pytkeditorlib.utils.constants import IMAGES, CONFIG, save_config
@@ -51,7 +52,7 @@ class Tree:
                         return t.node
                     else:
                         return res
-            elif t.level == level:
+            else:
                 return "reached"
         return rec(self)
 
@@ -134,9 +135,8 @@ class CodeTree(Treeview):
             if add:
                 tree_index += 1
                 parent = tree.insert('I-%i' % tree_index, indent)
-
                 max_length = max(max_length, self.font.measure(name) + 20 + (indent//4 + 1) * 20)
-                self.insert(parent, 'end', 'I-%i' % tree_index, text=name,
+                self.insert(parent, 'end', f'I-{tree_index}', text=name,
                             tags=(obj_type, name),
                             values=('%i.%i' % token.start, '%i.%i' % token.end))
 
@@ -216,6 +216,7 @@ class CodeStructure(Frame):
         try:
             names = list(self.codetree.populate(text))
         except TclError:
+            logging.exception('CodeStructure Error')
             self.codetree.delete(*self.codetree.get_children())
             return
         names.sort()
