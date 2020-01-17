@@ -21,8 +21,9 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 Base widget
 """
 from tkinter import BooleanVar, Menu
-from tkinter.ttk import Frame, Notebook
+from tkinter.ttk import Frame
 
+from pytkeditorlib.gui_utils.notebook import Notebook
 from pytkeditorlib.utils.constants import CONFIG, save_config
 
 
@@ -52,16 +53,22 @@ class BaseWidget(Frame):
         CONFIG.set(self.name, 'visible', str(visible))
         save_config()
 
+    def set_order(self, order):
+        CONFIG.set(self.name, 'order', str(order))
+
 
 class WidgetNotebook(Notebook):
     """Notebook containing the widgets"""
 
     def __init__(self, master, **kw):
-        Notebook.__init__(self, master, **kw)
-
-        self._visible_tabs = set()
-
+        Notebook.__init__(self, master, tabmenu=False, closecommand=self.close, **kw)
         self.bind('<ButtonRelease-3>', self._show_menu)
+        self.bind('<Destroy>', self._save_order)
+
+    def _save_order(self, event):
+        for i, tab in enumerate(self._visible_tabs):
+            self._tabs[tab].set_order(i)
+        save_config()
 
     def _show_menu(self, event):
         tab = self.index('@%i,%i' % (event.x, event.y))
@@ -71,7 +78,6 @@ class WidgetNotebook(Notebook):
 
     def hide(self, tabId):
         Notebook.hide(self, tabId)
-        self._visible_tabs.remove(tabId)
         if not self._visible_tabs:
             self.master.forget(self)
 
@@ -79,4 +85,12 @@ class WidgetNotebook(Notebook):
         if not self._visible_tabs:
             self.master.insert('end', self, weight=5)
         Notebook.add(self, child, **kw)
-        self._visible_tabs.add(child)
+
+    def close(self, tabId):
+        tab = self.index(tabId)
+        if tab in self._visible_tabs:
+            self._tabs[tab].visible.set(False)
+
+    def select_first_tab(self):
+        if self._visible_tabs:
+            self.select(self._visible_tabs[0])

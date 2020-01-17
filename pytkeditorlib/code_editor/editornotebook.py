@@ -33,7 +33,7 @@ from tkfilebrowser import asksaveasfilename
 from pytkeditorlib.gui_utils import AutoCompleteEntryListbox
 from pytkeditorlib.dialogs import askyesnocancel, askyesno, showerror, \
     ColorPicker, TooltipNotebookWrapper
-from .notebook import Notebook
+from pytkeditorlib.gui_utils import Notebook
 from .editor import Editor
 
 

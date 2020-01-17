@@ -21,3 +21,4 @@ Misc GUI elements
 from .autocomplete import AutoCompleteCombobox, AutoCompleteCombobox2, AutoCompleteEntryListbox
 from .autoscrollbar import AutoHideScrollbar
 from .menu import LongMenu
+from .notebook import Notebook

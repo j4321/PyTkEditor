@@ -96,8 +96,10 @@ class App(tk.Tk):
         # --- --- right pane
         self.right_nb = WidgetNotebook(pane)
         widgets = ['Console', 'History', 'Help', 'File browser']
+        widgets.sort(key=lambda w: CONFIG.getint(w, 'order', fallback=0))
         # --- --- --- command history
-        self.widgets['History'] = HistoryFrame(self.right_nb, padding=1)
+        self.widgets['History'] = HistoryFrame(self.right_nb,
+                                               padding=1)
         # --- --- --- python console
         self.widgets['Console'] = ConsoleFrame(self.right_nb,
                                                history=self.widgets['History'].history,
@@ -120,7 +122,7 @@ class App(tk.Tk):
             self.right_nb.add(self.widgets[name], text=name)
         for name, widget in self.widgets.items():
             widget.visible.set(CONFIG.getboolean(name, 'visible', fallback=True))
-
+        self.right_nb.select_first_tab()
         # --- menu
         # ------- file
         self.menu_file.add_command(label='New', command=self.new,
@@ -330,6 +332,7 @@ class App(tk.Tk):
         self.protocol('WM_DELETE_WINDOW', self.quit)
         signal.signal(signal.SIGUSR1, self._on_signal)
 
+
     @staticmethod
     def _select_all(event):
         """Select all entry content."""
@@ -499,6 +502,20 @@ class App(tk.Tk):
                         'children': [('Treeview.treearea', {'sticky': 'nswe'})]})])
         style.configure('flat.Treeview', background=theme['fieldbg'])
         style.configure('Treeview', background=theme['fieldbg'])
+        style.layout('widget.TNotebook.Tab',
+                     [('Notebook.tab',
+                       {'sticky': 'nswe',
+                        'children': [('Notebook.padding',
+                                      {'side': 'top',
+                                       'sticky': 'nswe',
+                                       'children': [('Notebook.label',
+                                                     {'side': 'left',
+                                                      'border': '2',
+                                                      'sticky': 'w'}),
+                                                    ('Notebook.close',
+                                                     {'side': 'right',
+                                                      'border': '2',
+                                                      'sticky': 'e'})]})]})])
         self.configure(bg=theme['bg'], padx=6, pady=2)
         # --- menu
         self.menu.configure(bg=theme['bg'], fg=theme['fg'],

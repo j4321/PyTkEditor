@@ -32,8 +32,8 @@ from .base_widget import BaseWidget
 
 
 class Filebrowser(BaseWidget):
-    def __init__(self, master, callback):
-        BaseWidget.__init__(self, master, 'File browser', padding=2)
+    def __init__(self, master, callback, **kw):
+        BaseWidget.__init__(self, master, 'File browser', padding=2, **kw)
         self.rowconfigure(1, weight=1)
         self.columnconfigure(0, weight=1)
 
