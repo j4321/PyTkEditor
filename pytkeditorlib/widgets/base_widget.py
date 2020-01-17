@@ -23,7 +23,7 @@ Base widget
 from tkinter import BooleanVar, Menu
 from tkinter.ttk import Frame
 
-from pytkeditorlib.gui_utils.notebook import Notebook
+from pytkeditorlib.gui_utils import Notebook
 from pytkeditorlib.utils.constants import CONFIG, save_config
 
 
@@ -34,8 +34,9 @@ class BaseWidget(Frame):
 
         self.name = name
 
-        self.menu = Menu(self)
-        self.menu.add_command(label='Hide', command=lambda: self.visible.set(False))
+        self.menu = None
+        # self.menu = Menu(self)
+        # self.menu.add_command(label='Hide', command=lambda: self.visible.set(False))
 
         self.visible = BooleanVar(self)
         self.visible.trace_add('write', self._visibility_trace)
@@ -62,7 +63,6 @@ class WidgetNotebook(Notebook):
 
     def __init__(self, master, **kw):
         Notebook.__init__(self, master, tabmenu=False, closecommand=self.close, **kw)
-        self.bind('<ButtonRelease-3>', self._show_menu)
         self.bind('<Destroy>', self._save_order)
 
     def _save_order(self, event):
@@ -70,11 +70,10 @@ class WidgetNotebook(Notebook):
             self._tabs[tab].set_order(i)
         save_config()
 
-    def _show_menu(self, event):
-        tab = self.index('@%i,%i' % (event.x, event.y))
-        if tab is not None:
-            name = self.tabs()[tab]
-            self.nametowidget(name).menu.tk_popup(event.x_root, event.y_root)
+    def _popup_menu(self, event, tab):
+        widget = self._tabs[tab]
+        if widget.menu is not None:
+            widget.menu.tk_popup(event.x_root, event.y_root)
 
     def hide(self, tabId):
         Notebook.hide(self, tabId)

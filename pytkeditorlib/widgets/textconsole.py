@@ -585,6 +585,7 @@ class ConsoleFrame(BaseWidget):
         sy.grid(row=0, column=1, sticky='ns')
         self.console.grid(row=0, column=0, sticky='nswe')
 
+        self.menu = tk.Menu(self)
         self.menu.add_command(label='Clear console', command=self.console.shell_clear)
         self.menu.add_command(label='Restart console', command=self.console.restart_shell)
 

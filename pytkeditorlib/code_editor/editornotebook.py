@@ -64,6 +64,11 @@ class EditorNotebook(Notebook):
 
         self.bind('<Destroy>', self._on_destroy)
 
+    def _popup_menu(self, event, tab):
+        self._show(tab)
+        if self.menu is not None:
+            self.menu.tk_popup(event.x_root, event.y_root)
+
     def _watch_modif(self, file):
         sleep(5)
         while not self._stop_thread[file]:

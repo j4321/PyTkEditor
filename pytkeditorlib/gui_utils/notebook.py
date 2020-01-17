@@ -444,9 +444,7 @@ class Notebook(ttk.Frame):
         self.event_generate('<<NotebookTabChanged>>')
 
     def _popup_menu(self, event, tab):
-        self._show(tab)
-        if self.menu is not None:
-            self.menu.tk_popup(event.x_root, event.y_root)
+        pass # to be overriden in subclass
 
     @property
     def current_tab(self):
