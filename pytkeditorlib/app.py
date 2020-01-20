@@ -43,8 +43,9 @@ from pytkeditorlib.gui_utils import LongMenu
 
 
 class App(tk.Tk):
-    def __init__(self, *files):
+    def __init__(self, pid, *files):
         tk.Tk.__init__(self, className='PyTkEditor')
+        self.pid = pid
         self.tk.eval('package require Tkhtml')
         self.title('PyTkEditor')
         # --- images
@@ -65,6 +66,7 @@ class App(tk.Tk):
         self.menu_edit = tk.Menu(self.menu)
         self.menu_search = tk.Menu(self.menu)
         self.menu_doc = tk.Menu(self.menu)
+        self.menu_consoles = tk.Menu(self.menu)
         self.menu_view = tk.Menu(self.menu)
         self.menu_filetype = tk.Menu(self.menu_doc)
         self.menu_errors = LongMenu(self.menu_doc, 40)
@@ -84,8 +86,10 @@ class App(tk.Tk):
         self._setup_style()
 
         # --- jupyter kernel
-        self._init_kernel()
+        self._kernel_manager = None
         self._qtconsole_process = None
+        self._qtconsole_ready = False
+        self._init_kernel()
 
         # --- GUI elements
         pane = ttk.PanedWindow(self, orient='horizontal')
@@ -263,6 +267,22 @@ class App(tk.Tk):
         self.menu_filetype.add_radiobutton(label='Text', value='Text',
                                            variable=self.filetype,
                                            command=self.set_filetype)
+        # ------- consoles
+        self.menu_consoles.add_command(label='Clear console',
+                                       command=self.console.shell_clear,
+                                       image='img_console_clear',
+                                       compound='left')
+        self.menu_consoles.add_command(label='Restart console',
+                                       command=self.console.restart_shell,
+                                       image='img_console_restart',
+                                       compound='left')
+        if cst.JUPYTER:
+            self.menu_consoles.add_separator()
+            self.menu_consoles.add_command(label='Start Jupyter QtConsole',
+                                           command=self.start_jupyter,
+                                           image='img_qtconsole_start',
+                                           compound='left')
+
         # ------- view
         self.menu_view.add_checkbutton(label='Code structure', variable=self.codestruct.visible)
         for name in widgets:
@@ -272,6 +292,7 @@ class App(tk.Tk):
         self.menu.add_cascade(label='Edit', underline=0, menu=self.menu_edit)
         self.menu.add_cascade(label='Search', underline=0, menu=self.menu_search)
         self.menu.add_cascade(label='Document', underline=0, menu=self.menu_doc)
+        self.menu.add_cascade(label='Consoles', underline=0, menu=self.menu_consoles)
         self.menu.add_cascade(label='View', underline=0, menu=self.menu_view)
         self.menu.add_command(label='About', underline=0,
                               command=lambda: About(self))
@@ -330,7 +351,10 @@ class App(tk.Tk):
             self._on_empty_notebook()
 
         self.protocol('WM_DELETE_WINDOW', self.quit)
-        signal.signal(signal.SIGUSR1, self._on_signal)
+
+        # --- signals
+        signal.signal(signal.SIGUSR1, self._signal_open_files)
+        signal.signal(signal.SIGUSR2, self._signal_exec_jupyter)
 
 
     @staticmethod
@@ -338,7 +362,7 @@ class App(tk.Tk):
         """Select all entry content."""
         event.widget.selection_range(0, "end")
 
-    def _on_signal(self, *args):
+    def _signal_open_files(self, *args):
         self.lift()
         self.focus_get()
         if os.path.exists(cst.OPENFILE_PATH):
@@ -531,6 +555,7 @@ class App(tk.Tk):
         self.menu_recent_files.configure(**submenu_options)
         self.menu_edit.configure(**submenu_options)
         self.menu_errors.configure(**submenu_options)
+        self.menu_consoles.configure(**submenu_options)
         self.menu_search.configure(**submenu_options)
         self.menu_doc.configure(**submenu_options)
         self.menu_filetype.configure(**submenu_options)
@@ -539,7 +564,10 @@ class App(tk.Tk):
         except AttributeError:
             pass
         for widget in self.widgets.values():
-            widget.menu.configure(**submenu_options)
+            try:
+                widget.menu.configure(**submenu_options)
+            except AttributeError:
+                pass
 
         self.option_add('*Menu.background', theme['fieldbg'])
         self.option_add('*Menu.activeBackground', theme['selectbg'])
@@ -644,15 +672,6 @@ class App(tk.Tk):
             self.menu_file.entryconfigure('Save', state='normal')
         else:
             self.menu_file.entryconfigure('Save', state='disabled')
-
-    def _init_kernel(self):
-        """Initialize Jupyter kernel"""
-        if not cst.JUPYTER:
-            return
-        cfm = cst.ConnectionFileMixin(connection_file=cst.JUPYTER_KERNEL_PATH)
-        cfm.write_connection_file()
-        self.jupyter_kernel = cst.BlockingKernelClient(connection_file=cst.JUPYTER_KERNEL_PATH)
-        self.jupyter_kernel.load_connection_file()
 
     def _on_empty_notebook(self, event=None):
         """Disable irrelevant menus when no file is opened"""
@@ -810,6 +829,20 @@ class App(tk.Tk):
             for file in files:
                 self.open_file(file)
 
+    # --- search
+    def search(self, venet=None):
+
+        def on_destroy(event):
+            self._search_dialog = None
+
+        if self._search_dialog is None:
+            self._search_dialog = SearchDialog(self, self.editor.get_selection())
+            self._search_dialog.bind('<Destroy>', on_destroy)
+        else:
+            self._search_dialog.lift()
+            self._search_dialog.entry_search.focus_set()
+
+    # --- save
     def saveas(self, event=None):
         tab = self.editor.select()
         if tab < 0:
@@ -832,18 +865,6 @@ class App(tk.Tk):
         else:
             return False
 
-    def search(self, venet=None):
-
-        def on_destroy(event):
-            self._search_dialog = None
-
-        if self._search_dialog is None:
-            self._search_dialog = SearchDialog(self, self.editor.get_selection())
-            self._search_dialog.bind('<Destroy>', on_destroy)
-        else:
-            self._search_dialog.lift()
-            self._search_dialog.entry_search.focus_set()
-
     def save(self, event=None, tab=None, update=False):
         if tab is None:
             tab = self.editor.select()
@@ -860,6 +881,7 @@ class App(tk.Tk):
         for tab in self.editor.tabs():
             self.save(tab=tab, update=True)
 
+    # --- run
     def run(self, event=None):
         if self.save():
             self.editor.run()
@@ -869,18 +891,62 @@ class App(tk.Tk):
         if code:
             self.console.execute(code)
 
+    # --- jupyter
+    def _init_kernel(self):
+        """Initialize Jupyter kernel"""
+        if not cst.JUPYTER:
+            return
+        # launch new kernel
+        cfm = cst.ConnectionFileMixin(connection_file=cst.JUPYTER_KERNEL_PATH)
+        cfm.write_connection_file()
+        self.jupyter_kernel = cst.BlockingKernelClient(connection_file=cst.JUPYTER_KERNEL_PATH)
+        self.jupyter_kernel.load_connection_file()
+        self.jupyter_kernel.start_channels()
+
+    def start_jupyter(self):
+        """Return true if new instance was started"""
+        if not cst.JUPYTER:
+            return
+        if (self._qtconsole_process is None) or (self._qtconsole_process.poll() is not None):
+            self._init_kernel()
+            self._qtconsole_ready = False
+            self._qtconsole_process = Popen(['python', '-m', 'pytkeditorlib.custom_qtconsole',
+                                             '--JupyterWidget.include_other_output=True',
+                                             '--JupyterWidget.other_output_prefix=[editor]',
+                                             f'--PyTkEditor.pid={self.pid}',
+                                             '-f', cst.JUPYTER_KERNEL_PATH])
+            return True
+        else:
+            return False
+
+    def _signal_exec_jupyter(self, *args):
+
+        def ready():
+            self._qtconsole_ready = True
+
+        self.after(200, ready)
+
+    def _wait_execute_in_jupyter(self, code):
+        if self._qtconsole_ready:
+            self.jupyter_kernel.execute(code)
+            os.kill(self._qtconsole_process.pid, signal.SIGUSR1)
+        else:
+            self.after(1000, lambda: self._wait_execute_in_jupyter(code))
+
     def execute_in_jupyter(self, event=None):
         if not cst.JUPYTER:
             return
         code = self.editor.get_selection()
         if not code:
             return
-        if self._qtconsole_process is None or self._qtconsole_process.poll() is not None:
-            self._init_kernel()
-            self._qtconsole_process = Popen(['jupyter-qtconsole', '--JupyterWidget.include_other_output=True', '-f', cst.JUPYTER_KERNEL_PATH])
-        self.jupyter_kernel.execute(code)
+        if self.start_jupyter():
+            self._wait_execute_in_jupyter(code)
+        else:
+            self.jupyter_kernel.execute(code)
+            os.kill(self._qtconsole_process.pid, signal.SIGUSR1)
         return "break"
 
+    # --- syntax check
     def check_syntax(self, tab=None):
         if tab is None:
             tab = self.editor.select()

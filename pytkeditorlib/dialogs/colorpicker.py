@@ -19,6 +19,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 Colorpicker dialog
 """
 from tkinter import ttk
+import re
 
 from tkcolorpicker import colorpicker
 
@@ -28,6 +29,11 @@ class ColorPicker(colorpicker.ColorPicker):
 
     def __init__(self, parent=None, color=(255, 0, 0), alpha=False,
                  title="Color Chooser"):
+        if re.match(r"^[0-9A-F]{6}$", color.upper()):
+            color = '#' + color
+            self._prefix = False
+        else:
+            self._prefix = True
         colorpicker.ColorPicker.__init__(self, parent, color, alpha, title)
 
         # --- validation
@@ -43,6 +49,14 @@ class ColorPicker(colorpicker.ColorPicker):
             rgb += (self.alpha.get(),)
         self.color = rgb, hsv, hexa
         self.event_generate("<<ColorSelected>>")
+
+    def get_color(self):
+        if self._prefix:
+            # return HTML format with leading #
+            return self.color[2]
+        else:
+            # return HTML format without leading #
+            return self.color[2][1:]
 
     def ok(self):
         self.insert()

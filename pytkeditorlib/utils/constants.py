@@ -105,8 +105,10 @@ except ImportError:
     JUPYTER = False
 else:
     from jupyter_client.connect import ConnectionFileMixin
-    from jupyter_client import BlockingKernelClient
+    from jupyter_client import BlockingKernelClient, find_connection_file
+    from jupyter_core.paths import jupyter_runtime_dir
     JUPYTER = True
+JUPYTER_ICON = os.path.join(PATH_IMG, 'JupyterConsole.svg')
 
 # --- images
 IMAGES = {}
@@ -116,6 +118,7 @@ for img in os.listdir(PATH_IMG):
         IMAGES[name] = os.path.join(PATH_IMG, img)
 
 IM_CLOSE = os.path.join(PATH_IMG, 'close_{theme}.png')
+
 
 # --- log
 handler = TimedRotatingFileHandler(PATH_LOG, when='midnight',

@@ -48,7 +48,7 @@ class TextConsole(tk.Text):
         kw.setdefault('wrap', 'word')
         kw.setdefault('prompt1', '>>> ')
         kw.setdefault('prompt2', '... ')
-        banner = kw.pop('banner', 'Python %s\n' % sys.version)
+        banner = kw.pop('banner', f'Python {sys.version.splitlines()[0]}\n')
 
         self.history = history
         self._hist_item = self.history.get_length()

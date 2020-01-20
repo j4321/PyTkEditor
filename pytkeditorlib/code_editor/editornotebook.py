@@ -256,7 +256,7 @@ class EditorNotebook(Notebook):
         if tab >= 0:
 
             def insert(event):
-                color = picker.get_color()[2]
+                color = picker.get_color()
                 if color:
                     self._tabs[self.current_tab].insert("insert", color, True)
 

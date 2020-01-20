@@ -48,7 +48,7 @@ open(PIDFILE, 'w').write(pid)
 
 
 try:
-    app = App(*sys.argv[1:])
+    app = App(pid, *sys.argv[1:])
     app.mainloop()
 except Exception as e:
     msg = traceback.format_exc()
