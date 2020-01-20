@@ -560,53 +560,42 @@ class Editor(ttk.Frame):
 
     def _find_closing_par(self, char):
         """Highlight the closing bracket of CHAR if it is on the same line."""
-        line = self.text.get('insert', 'insert lineend')
-        if not line:
-            return False
-        length = len(line)
         close_char = self._autoclose[char]
+        index = 'insert'
+        close_index = self.text.search(close_char, 'insert', 'end')
         stack = 1
-        i = 0
-        while stack > 0 and i < length:
-            if line[i] == char:
-                stack += 1
-            elif line[i] == close_char:
-                stack -= 1
-            i += 1
-        if stack:
-            return False
-        else:
-            i -= 1
+        while stack > 0 and close_index:
+            print(self.text.get(index, close_index), stack)
+            stack += self.text.get(index, close_index).count(char) - 1
+            index = close_index + '+1c'
+            close_index = self.text.search(close_char, index, 'end')
+        if stack == 0:
             self.text.tag_add('highlight', 'insert-1c')
-            self.text.tag_add('highlight', 'insert+%ic' % i)
+            self.text.tag_add('highlight', index + '-1c')
             self._highlights.append(self.text.index('insert-1c'))
-            self._highlights.append(self.text.index('insert+%ic' % i))
+            self._highlights.append(self.text.index(index + '-1c'))
             return True
+        else:
+            return False
 
     def _find_opening_par(self, char):
         """Highlight the opening bracket of CHAR if it is on the same line."""
-        line = self.text.get('insert linestart', 'insert-1c')
-        if not line:
-            return False
-        length = len(line)
         open_char = '(' if char == ')' else ('{' if char == '}' else '[')
+        index = 'insert-1c'
+        open_index = self.text.search(open_char, 'insert', '1.0', backwards=True)
         stack = 1
-        i = length - 1
-        while stack > 0 and i >= 0:
-            if line[i] == char:
-                stack += 1
-            elif line[i] == open_char:
-                stack -= 1
-            i -= 1
-        if stack:
-            return False
-        else:
-            i += 1
+        while stack > 0 and open_index:
+            stack += self.text.get(open_index + '+1c', index).count(char) - 1
+            index = open_index
+            open_index = self.text.search(open_char, index, '1.0', backwards=True)
+        if stack == 0:
             self.text.tag_add('highlight', 'insert-1c')
-            self.text.tag_add('highlight', 'insert linestart+%ic' % i)
+            self.text.tag_add('highlight', index)
             self._highlights.append(self.text.index('insert-1c'))
-            self._highlights.append(self.text.index('insert linestart+%ic' % i))
+            self._highlights.append(self.text.index(index))
             return True
+        else:
+            return False
 
     def _args_hint(self, event=None):
         index = self.text.index('insert')
