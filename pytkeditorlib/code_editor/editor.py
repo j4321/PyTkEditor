@@ -57,8 +57,6 @@ class Editor(ttk.Frame):
 
         self.cells = []
 
-        self._highlights = []
-
         self._comp = CompListbox(self)
         self._comp.set_callback(self._comp_sel)
 
@@ -100,6 +98,7 @@ class Editor(ttk.Frame):
         self.syntax_checks.configure(yscrollcommand=sy.set)
 
         # --- search and replace
+        self._highlighted = ''
         self.frame_search = ttk.Frame(self, padding=2)
         self.frame_search.columnconfigure(1, weight=1)
         self.entry_search = ttk.Entry(self.frame_search)
@@ -229,11 +228,6 @@ class Editor(ttk.Frame):
             for tag in self.text.tag_names():
                 self.text.tag_remove(tag, '1.0', 'end')
 
-    def _clear_highlights(self):
-        for i in self._highlights:
-            self.text.tag_remove('highlight', i)
-        self._highlights.clear()
-
     def set_cells(self, cells):
         self.cells = cells
         self.filebar.clear_cells()
@@ -242,17 +236,17 @@ class Editor(ttk.Frame):
 
     # --- keyboard bindings
     def _on_focusout(self, event):
-        self._clear_highlights()
+        self.text.tag_remove('highlight', '1.0', 'end')
         self._comp.withdraw()
         self._tooltip.withdraw()
 
     def _on_press(self, event):
-        self._clear_highlights()
+        self.text.tag_remove('highlight', '1.0', 'end')
         self._comp.withdraw()
         self._tooltip.withdraw()
 
     def _on_keypress(self, event):
-        self._clear_highlights()
+        self.text.tag_remove('highlight', '1.0', 'end')
         self._tooltip.withdraw()
 
     def _on_key_release_Left_Right(self, event):
@@ -292,7 +286,7 @@ class Editor(ttk.Frame):
             self._comp.sel_next()
             return "break"
         else:
-            self._clear_highlights()
+            self.text.tag_remove('highlight', '1.0', 'end')
             self.parse(self.text.get('insert linestart', 'insert lineend'), 'insert linestart')
 
     def on_up(self, event):
@@ -300,7 +294,7 @@ class Editor(ttk.Frame):
             self._comp.sel_prev()
             return "break"
         else:
-            self._clear_highlights()
+            self.text.tag_remove('highlight', '1.0', 'end')
             self.parse(self.text.get('insert linestart', 'insert lineend'), 'insert linestart')
 
     def on_key(self, event):
@@ -325,7 +319,7 @@ class Editor(ttk.Frame):
         return "break"
 
     def on_paste(self, event):
-        self._clear_highlights()
+        self.text.tag_remove('highlight', '1.0', 'end')
         self.text.edit_separator()
         self._paste = True
         sel = self.text.tag_ranges('sel')
@@ -386,7 +380,7 @@ class Editor(ttk.Frame):
         return "break"
 
     def on_tab(self, event=None, force_indent=False):
-        self._clear_highlights()
+        self.text.tag_remove('highlight', '1.0', 'end')
         if self._comp.winfo_ismapped():
             self._comp_sel()
             return "break"
@@ -411,13 +405,13 @@ class Editor(ttk.Frame):
         return "break"
 
     def on_ctrl_return(self, event):
-        self._clear_highlights()
+        self.text.tag_remove('highlight', '1.0', 'end')
         self.text.edit_separator()
         self.master.event_generate('<<CtrlReturn>>')
         return 'break'
 
     def on_return(self, event):
-        self._clear_highlights()
+        self.text.tag_remove('highlight', '1.0', 'end')
         self.text.edit_separator()
         if self._comp.winfo_ismapped():
             self._comp_sel()
@@ -444,7 +438,7 @@ class Editor(ttk.Frame):
         return "break"
 
     def on_backspace(self, event):
-        self._clear_highlights()
+        self.text.tag_remove('highlight', '1.0', 'end')
         self.text.edit_separator()
         txt = event.widget
         sel = self.text.tag_ranges('sel')
@@ -523,6 +517,7 @@ class Editor(ttk.Frame):
             opts['selectforeground'] = selectfg
             self.text.tag_configure(tag, **opts)
         self.text.tag_configure('highlight', background=EDITOR_HIGHLIGHT_BG)
+        self.text.tag_configure('highlight_find', background=EDITOR_HIGHLIGHT_BG)
         self.text.tag_raise('sel')
 
     def parse(self, text, start):
@@ -561,18 +556,16 @@ class Editor(ttk.Frame):
             self.text.tag_remove('sel', 'sel.first', 'sel.last')
             self.parse(event.char + text + self._autoclose[event.char], index)
         else:
-            self._clear_highlights()
+            self.text.tag_remove('highlight', '1.0', 'end')
             self.text.insert('insert', event.char, ['Token.Punctuation', 'highlight'])
             if not self._find_matching_par():
-                self._highlights.append(self.text.index('insert-1c'))
-                self._highlights.append(self.text.index('insert'))
                 self.text.insert('insert', self._autoclose[event.char], ['Token.Punctuation', 'highlight'])
                 self.text.mark_set('insert', 'insert-1c')
         self.text.edit_separator()
         return 'break'
 
     def auto_close_string(self, event):
-        self._clear_highlights()
+        self.text.tag_remove('highlight', '1.0', 'end')
         sel = self.text.tag_ranges('sel')
         if sel:
             text = self.text.get('sel.first', 'sel.last')
@@ -594,7 +587,7 @@ class Editor(ttk.Frame):
         return 'break'
 
     def close_brackets(self, event):
-        self._clear_highlights()
+        self.text.tag_remove('highlight', '1.0', 'end')
         if self.text.get('insert') == event.char:
             self.text.mark_set('insert', 'insert+1c')
         else:
@@ -619,15 +612,12 @@ class Editor(ttk.Frame):
         close_index = self.text.search(close_char, 'insert', 'end')
         stack = 1
         while stack > 0 and close_index:
-            print(self.text.get(index, close_index), stack)
             stack += self.text.get(index, close_index).count(char) - 1
             index = close_index + '+1c'
             close_index = self.text.search(close_char, index, 'end')
         if stack == 0:
             self.text.tag_add('highlight', 'insert-1c')
             self.text.tag_add('highlight', index + '-1c')
-            self._highlights.append(self.text.index('insert-1c'))
-            self._highlights.append(self.text.index(index + '-1c'))
             return True
         else:
             return False
@@ -645,8 +635,6 @@ class Editor(ttk.Frame):
         if stack == 0:
             self.text.tag_add('highlight', 'insert-1c')
             self.text.tag_add('highlight', index)
-            self._highlights.append(self.text.index('insert-1c'))
-            self._highlights.append(self.text.index(index))
             return True
         else:
             return False
@@ -709,13 +697,11 @@ class Editor(ttk.Frame):
 
     # --- find and replace
     def hide_search(self):
-        self.text.tag_remove('highlight', '1.0', 'end')
+        self.text.tag_remove('highlight_find', '1.0', 'end')
         self._highlight_btn.state(['!selected'])
         self.frame_search.grid_remove()
 
     def find(self, event=None):
-        self.text.tag_remove('highlight', '1.0', 'end')
-        self._highlight_btn.state(['!selected'])
         self.label_replace.grid_remove()
         self.entry_replace.grid_remove()
         self.replace_buttons.grid_remove()
@@ -810,6 +796,7 @@ class Editor(ttk.Frame):
             pattern = r'\y%s\y' % pattern
             options['regexp'] = True
 
+        self.highlight_all()
         res = self.text.search(pattern, 'insert', **options)
 
         self.text.tag_remove('sel', '1.0', 'end')
@@ -827,9 +814,16 @@ class Editor(ttk.Frame):
     def highlight_all(self):
         if 'selected' in self._highlight_btn.state():
             pattern = self.entry_search.get()
+
             if not pattern:
                 self._highlight_btn.state(['!selected'])
                 return
+            if self._highlighted == pattern and self.text.tag_ranges('highlight_find'):
+                return
+
+            self._highlighted = pattern
+            self.text.tag_remove('highlight_find', '1.0', 'end')
+
             full_word = 'selected' in self.full_word.state()
             options = {'regexp': 'selected' in self.regexp.state(),
                        'nocase': 'selected' not in self.case_sensitive.state(),
@@ -838,14 +832,13 @@ class Editor(ttk.Frame):
             if full_word:
                 pattern = r'\y%s\y' % pattern
                 options['regexp'] = True
-
             res = self.text.search(pattern, '1.0', **options)
             while res:
                 end = f"{res}+{self._search_count.get()}c"
-                self.text.tag_add('highlight', res, end)
+                self.text.tag_add('highlight_find', res, end)
                 res = self.text.search(pattern, end, **options)
         else:
-            self.text.tag_remove('highlight', '1.0', 'end')
+            self.text.tag_remove('highlight_find', '1.0', 'end')
 
     def find_all(self, pattern, options={}):
         results = []
