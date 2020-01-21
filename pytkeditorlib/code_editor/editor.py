@@ -445,11 +445,24 @@ class Editor(ttk.Frame):
         if sel:
             self.text.delete('sel.first', 'sel.last')
         else:
+            text = txt.get('insert-1c', 'insert+1c')
             linestart = txt.get('insert linestart', 'insert')
             if re.search(r'    $', linestart):
                 txt.delete('insert-4c', 'insert')
-            elif txt.get('insert-1c', 'insert+1c') in [c1 + c2 for c1, c2 in self._autoclose.items()]:
+            elif text in ["()", "[]", "{}"]:
                 txt.delete('insert-1c', 'insert+1c')
+            elif text in ["''"]:
+                if 'Token.Literal.String.Single' not in self.text.tag_names('insert-2c'):
+                    # avoid situation where deleting the 2nd quote in '<text>'' result in deletion of both the 2nd and 3rd quotes
+                    txt.delete('insert-1c', 'insert+1c')
+                else:
+                    txt.delete('insert-1c')
+            elif text in ['""']:
+                if 'Token.Literal.String.Double' not in self.text.tag_names('insert-2c'):
+                    # avoid situation where deleting the 2nd quote in "<text>"" result in deletion of both the 2nd and 3rd quotes
+                    txt.delete('insert-1c', 'insert+1c')
+                else:
+                    txt.delete('insert-1c')
             else:
                 txt.delete('insert-1c')
         self.update_nb_line()
