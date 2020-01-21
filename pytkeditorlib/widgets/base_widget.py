@@ -64,6 +64,16 @@ class RichText(Text):
 
         self._syntax_highlighting_tags = []
         self.update_style()
+        self._autoclose = {'(': ')', '[': ']', '{': '}', '"': '"', "'": "'"}
+
+        self.bind("<KeyRelease-Up>", self._find_matching_par)
+        self.bind("<KeyRelease-Down>", self._find_matching_par)
+        self.bind("<KeyRelease-Left>", self._find_matching_par)
+        self.bind("<KeyRelease-Right>", self._find_matching_par)
+        self.bind("<KeyRelease>", self._clear_highlight)
+        self.bind("<FocusOut>", self._clear_highlight)
+        self.bind("<ButtonRelease>", self._clear_highlight)
+        self.bind("<ButtonRelease-1>", self._find_matching_par)
 
     def update_style(self):
         FONT = (CONFIG.get("General", "fontfamily"),
@@ -95,8 +105,57 @@ class RichText(Text):
         self.tag_configure('prompt', **CONSOLE_SYNTAX_HIGHLIGHTING['Token.Generic.Prompt'])
         self.tag_configure('output', foreground=CONSOLE_FG)
         self.tag_configure('highlight_find', background=CONSOLE_HIGHLIGHT_BG)
+        self.tag_configure('highlight', background=CONSOLE_HIGHLIGHT_BG)
         self.tag_raise('sel')
         self.tag_raise('prompt')
+
+    def _clear_highlight(self, event=None):
+        self.tag_remove('highlight', '1.0', 'end')
+
+    def _find_matching_par(self, event=None):
+        """Highlight matching brackets."""
+        self.tag_remove('highlight', '1.0', 'end')
+        char = self.get('insert-1c')
+        if char in ['(', '{', '[']:
+            return self._find_closing_par(char)
+        elif char in [')', '}', ']']:
+            return self._find_opening_par(char)
+        else:
+            return False
+
+    def _find_closing_par(self, char):
+        """Highlight the closing bracket of CHAR if it is on the same line."""
+        close_char = self._autoclose[char]
+        index = 'insert'
+        close_index = self.search(close_char, 'insert', 'end')
+        stack = 1
+        while stack > 0 and close_index:
+            stack += self.get(index, close_index).count(char) - 1
+            index = close_index + '+1c'
+            close_index = self.search(close_char, index, 'end')
+        if stack == 0:
+            self.tag_add('highlight', 'insert-1c')
+            self.tag_add('highlight', index + '-1c')
+            return True
+        else:
+            return False
+
+    def _find_opening_par(self, char):
+        """Highlight the opening bracket of CHAR if it is on the same line."""
+        open_char = '(' if char == ')' else ('{' if char == '}' else '[')
+        index = 'insert-1c'
+        open_index = self.search(open_char, 'insert', '1.0', backwards=True)
+        stack = 1
+        while stack > 0 and open_index:
+            stack += self.get(open_index + '+1c', index).count(char) - 1
+            index = open_index
+            open_index = self.search(open_char, index, '1.0', backwards=True)
+        if stack == 0:
+            self.tag_add('highlight', 'insert-1c')
+            self.tag_add('highlight', index)
+            return True
+        else:
+            return False
 
 
 class WidgetNotebook(Notebook):

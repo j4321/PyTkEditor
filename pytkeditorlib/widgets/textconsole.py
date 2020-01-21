@@ -47,6 +47,8 @@ class TextConsole(RichText):
         kw.setdefault('wrap', 'word')
         kw.setdefault('prompt1', '>>> ')
         kw.setdefault('prompt2', '... ')
+        kw.setdefault('undo', True)
+        kw.setdefault('autoseparators', False)
         banner = kw.pop('banner', f'Python {sys.version.splitlines()[0]}\n')
 
         self.history = history
@@ -88,12 +90,45 @@ class TextConsole(RichText):
         self.bind('<Return>', self.on_return)
         self.bind('<BackSpace>', self.on_backspace)
         self.bind('<Control-c>', self.on_ctrl_c)
+        self.bind('<Control-y>', self.redo)
+        self.bind('<Control-z>', self.undo)
+        self.bind("<Control-w>", lambda e: "break")
+        self.bind("<Control-h>", lambda e: "break")
+        self.bind("<Control-i>", lambda e: "break")
+        self.bind("<Control-b>", lambda e: "break")
+        self.bind("<Control-t>", lambda e: "break")
         self.bind('<<Paste>>', self.on_paste)
         self.bind('<<Cut>>', self.on_cut)
         self.bind('<<LineStart>>', self.on_goto_linestart)
         self.bind('<Destroy>', self.quit)
         self.bind('<FocusOut>', self._on_focusout)
         self.bind("<ButtonPress>", self._on_press)
+        self.bind("<apostrophe>", self.auto_close_string)
+        self.bind("<quotedbl>", self.auto_close_string)
+        self.bind('<parenleft>', self.auto_close, True)
+        self.bind("<bracketleft>", self.auto_close)
+        self.bind("<braceleft>", self.auto_close)
+        self.bind("<parenright>", self.close_brackets)
+        self.bind("<bracketright>", self.close_brackets)
+        self.bind("<braceright>", self.close_brackets)
+
+    def undo(self, event=None):
+        try:
+            self.edit_undo()
+        except tk.TclError:
+            pass
+        finally:
+            self.parse()
+        return "break"
+
+    def redo(self, event=None):
+        try:
+            self.edit_redo()
+        except tk.TclError:
+            pass
+        finally:
+            self.parse()
+        return "break"
 
     def quit(self, event=None):
         self.history.save()
@@ -170,6 +205,7 @@ class TextConsole(RichText):
             self.mark_set("range_start", "range_end")
 
     def on_goto_linestart(self, event):
+        self.edit_separator()
         self.mark_set('insert', 'insert linestart+%ic' % (len(self._prompt1)))
         return "break"
 
@@ -209,6 +245,7 @@ class TextConsole(RichText):
             self.delete('sel.first', 'sel.last')
         except tk.TclError:
             pass
+        self.edit_separator()
         txt = self.clipboard_get()
         self.insert("insert", txt)
         self.insert_cmd(self.get("input", "end"))
@@ -216,6 +253,7 @@ class TextConsole(RichText):
         return 'break'
 
     def insert_cmd(self, cmd):
+        self.edit_separator()
         input_index = self.index('input')
         self.delete('input', 'end')
         lines = cmd.splitlines()
@@ -232,9 +270,11 @@ class TextConsole(RichText):
 
     def prompt(self, result=False):
         if result:
+            self.edit_separator()
             self.insert('end', self._prompt2, 'prompt')
         else:
             self.insert('end', self._prompt1, 'prompt')
+            self.edit_reset()
         self.mark_set('input', 'end-1c')
 
     def on_key_press(self, event):
@@ -253,6 +293,7 @@ class TextConsole(RichText):
     def on_key_release(self, event):
         if self.compare('insert', '<', 'input') and event.keysym not in ['Left', 'Right']:
             self._hist_item = self.history.get_length()
+            self.tag_remove('highlight', '1.0', 'end')
             return 'break'
         elif self._comp.winfo_ismapped():
             if event.char.isalnum():
@@ -260,6 +301,10 @@ class TextConsole(RichText):
             elif event.keysym not in ['Tab', 'Down', 'Up']:
                 self._comp.withdraw()
         else:
+            if (event.char in [' ', ':', ',', ';', '(', '[', '{', ')', ']', '}']
+               or event.keysym in ['BackSpace', 'Left', 'Right']):
+                self.edit_separator()
+            self.tag_remove('highlight', '1.0', 'end')
             self.parse()
 
     def on_up(self, event):
@@ -534,6 +579,7 @@ class TextConsole(RichText):
         if self.compare('insert', '<=', 'input'):
             self.mark_set('insert', 'input lineend')
             return 'break'
+        self.edit_separator()
         sel = self.tag_ranges('sel')
         if sel:
             self.delete('sel.first', 'sel.last')
@@ -541,9 +587,60 @@ class TextConsole(RichText):
             linestart = self.get('insert linestart', 'insert')
             if re.search(r'    $', linestart):
                 self.delete('insert-4c', 'insert')
+            elif self.get('insert-2c', 'insert') in [c1 + c2 for c1, c2 in self._autoclose.items()]:
+                self.delete('insert-2c', 'insert')
             else:
                 self.delete('insert-1c')
         self.parse()
+        return 'break'
+
+    # --- brackets
+    def auto_close(self, event):
+        sel = self.tag_ranges('sel')
+        if sel:
+            self.insert('sel.first', event.char)
+            self.insert('sel.last', self._autoclose[event.char])
+            self.mark_set('insert', 'sel.last+1c')
+            self.tag_remove('sel', 'sel.first', 'sel.last')
+            self.parse()
+        else:
+            self.tag_remove('highlight', '1.0', 'end')
+            self.insert('insert', event.char, ['Token.Punctuation', 'highlight'])
+            if not self._find_matching_par():
+                self.insert('insert', self._autoclose[event.char], ['Token.Punctuation', 'highlight'])
+                self.mark_set('insert', 'insert-1c')
+        self.edit_separator()
+        return 'break'
+
+    def auto_close_string(self, event):
+        self.tag_remove('highlight', '1.0', 'end')
+        sel = self.tag_ranges('sel')
+        if sel:
+            text = self.get('sel.first', 'sel.last')
+            if len(text.splitlines()) > 1:
+                char = event.char * 3
+            else:
+                char = event.char
+            self.insert('sel.first', char)
+            self.insert('sel.last', char)
+            self.mark_set('insert', 'sel.last+%ic' % (len(char)))
+            self.tag_remove('sel', 'sel.first', 'sel.last')
+        elif self.get('insert') == event.char:
+            self.mark_set('insert', 'insert+1c')
+        else:
+            self.insert('insert', event.char * 2)
+            self.mark_set('insert', 'insert-1c')
+        self.parse()
+        self.edit_separator()
+        return 'break'
+
+    def close_brackets(self, event):
+        self.tag_remove('highlight', '1.0', 'end')
+        if self.get('insert') == event.char:
+            self.mark_set('insert', 'insert+1c')
+        else:
+            self.insert('insert', event.char, 'Token.Punctuation')
+        self._find_opening_par(event.char)
         return 'break'
 
 
