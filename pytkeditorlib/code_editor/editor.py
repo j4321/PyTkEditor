@@ -215,6 +215,32 @@ class Editor(ttk.Frame):
         self.text.focus_set()
         self.text.edit_modified(0)
 
+    @property
+    def filetype(self):
+        return self._filetype
+
+    @filetype.setter
+    def filetype(self, filetype):
+        self.reset_syntax_issues()
+        self._filetype = filetype
+        if filetype == 'Python':
+            self.parse_all()
+        else:
+            for tag in self.text.tag_names():
+                self.text.tag_remove(tag, '1.0', 'end')
+
+    def _clear_highlights(self):
+        for i in self._highlights:
+            self.text.tag_remove('highlight', i)
+        self._highlights.clear()
+
+    def set_cells(self, cells):
+        self.cells = cells
+        self.filebar.clear_cells()
+        for i in cells:
+            self.filebar.add_mark(i, 'sep')
+
+    # --- keyboard bindings
     def _on_focusout(self, event):
         self._clear_highlights()
         self._comp.withdraw()
@@ -241,73 +267,6 @@ class Editor(ttk.Frame):
         self.yview('scroll', 3, 'units')
         return "break"
 
-    @property
-    def filetype(self):
-        return self._filetype
-
-    @filetype.setter
-    def filetype(self, filetype):
-        self.reset_syntax_issues()
-        self._filetype = filetype
-        if filetype == 'Python':
-            self.parse_all()
-        else:
-            for tag in self.text.tag_names():
-                self.text.tag_remove(tag, '1.0', 'end')
-
-    def update_style(self):
-        FONT = (CONFIG.get("General", "fontfamily"),
-                CONFIG.getint("General", "fontsize"))
-        font = Font(self, FONT)
-        self._sep_x = font.measure(' ' * 79)
-        self.sep.place(y=0, relheight=1, relx=self._sep_x / self.text.winfo_width(), width=1)
-
-        EDITOR_BG, EDITOR_HIGHLIGHT_BG, EDITOR_SYNTAX_HIGHLIGHTING = load_style(CONFIG.get('Editor', 'style'))
-        EDITOR_FG = EDITOR_SYNTAX_HIGHLIGHTING.get('Token.Name', {}).get('foreground', 'black')
-
-        self._syntax_highlighting_tags = list(EDITOR_SYNTAX_HIGHLIGHTING.keys())
-
-        theme = f"{CONFIG.get('General', 'theme').capitalize()} Theme"
-        selectbg = CONFIG.get(theme, 'textselectbg')
-        selectfg = CONFIG.get(theme, 'textselectfg')
-        self.text.configure(fg=EDITOR_FG, bg=EDITOR_BG, font=FONT,
-                            selectbackground=selectbg,
-                            selectforeground=selectfg,
-                            inactiveselectbackground=selectbg,
-                            insertbackground=EDITOR_FG)
-        fg = self.line_nb.option_get('foreground', '*Text')
-        bg = self.line_nb.option_get('background', '*Text')
-        comment_fg = EDITOR_SYNTAX_HIGHLIGHTING['Token.Comment'].get('foreground', EDITOR_FG)
-        self.sep.configure(bg=comment_fg)
-        self.line_nb.configure(fg=fg, bg=bg, font=FONT,
-                               selectbackground=bg, selectforeground=fg,
-                               inactiveselectbackground=bg)
-        self.syntax_checks.configure(fg=fg, bg=bg, font=FONT,
-                                     selectbackground=bg, selectforeground=fg,
-                                     inactiveselectbackground=bg)
-        self.filebar.update_style(comment_fg=comment_fg)
-
-        # --- syntax highlighting
-        tags = list(self.text.tag_names())
-        tags.remove('sel')
-        tag_props = {key: '' for key in self.text.tag_configure('sel')}
-        for tag in tags:
-            self.text.tag_configure(tag, **tag_props)
-        EDITOR_SYNTAX_HIGHLIGHTING['Token.Comment.Cell'] = EDITOR_SYNTAX_HIGHLIGHTING['Token.Comment'].copy()
-        EDITOR_SYNTAX_HIGHLIGHTING['Token.Comment.Cell']['underline'] = True
-        for tag, opts in EDITOR_SYNTAX_HIGHLIGHTING.items():
-            opts['selectbackground'] = selectbg
-            opts['selectforeground'] = selectfg
-            self.text.tag_configure(tag, **opts)
-        self.text.tag_configure('highlight', background=EDITOR_HIGHLIGHT_BG)
-        self.text.tag_raise('sel')
-
-    def set_cells(self, cells):
-        self.cells = cells
-        self.filebar.clear_cells()
-        for i in cells:
-            self.filebar.add_mark(i, 'sep')
-
     def undo(self, event=None):
         try:
             self.text.edit_undo()
@@ -327,29 +286,6 @@ class Editor(ttk.Frame):
             self.update_nb_line()
             self.parse_all()
         return "break"
-
-    def parse(self, text, start):
-        if self.filetype != 'Python':
-            return
-        data = text
-        while data and '\n' == data[0]:
-            start = self.text.index('%s+1c' % start)
-            data = data[1:]
-        self.text.mark_set('range_start', start)
-        for t in self._syntax_highlighting_tags:
-            self.text.tag_remove(t, start, "range_start +%ic" % len(data))
-        for token, content in lex(data, PYTHON_LEX):
-            self.text.mark_set("range_end", "range_start + %ic" % len(content))
-            for t in token.split():
-                self.text.tag_add(str(t), "range_start", "range_end")
-            if str(token) == 'Token.Comment.Cell':
-                line, col = tuple(map(int, self.text.index("range_end").split(".")))
-                if col < 79:
-                    self.text.insert("range_end", " " * (79 - col), "Token.Comment.Cell")
-            self.text.mark_set("range_start", "range_end")
-
-    def parse_all(self):
-        self.parse(self.text.get('1.0', 'end'), '1.0')
 
     def on_down(self, event):
         if self._comp.winfo_ismapped():
@@ -387,58 +323,6 @@ class Editor(ttk.Frame):
     def select_all(self, event=None):
         self.text.tag_add('sel', '1.0', 'end')
         return "break"
-
-    def auto_close(self, event):
-        sel = self.text.tag_ranges('sel')
-        if sel:
-            text = self.text.get('sel.first', 'sel.last')
-            index = self.text.index('sel.first')
-            self.text.insert('sel.first', event.char)
-            self.text.insert('sel.last', self._autoclose[event.char])
-            self.text.mark_set('insert', 'sel.last+1c')
-            self.text.tag_remove('sel', 'sel.first', 'sel.last')
-            self.parse(event.char + text + self._autoclose[event.char], index)
-        else:
-            self._clear_highlights()
-            self.text.insert('insert', event.char, ['Token.Punctuation', 'highlight'])
-            if not self._find_matching_par():
-                self._highlights.append(self.text.index('insert-1c'))
-                self._highlights.append(self.text.index('insert'))
-                self.text.insert('insert', self._autoclose[event.char], ['Token.Punctuation', 'highlight'])
-                self.text.mark_set('insert', 'insert-1c')
-        self.text.edit_separator()
-        return 'break'
-
-    def auto_close_string(self, event):
-        self._clear_highlights()
-        sel = self.text.tag_ranges('sel')
-        if sel:
-            text = self.text.get('sel.first', 'sel.last')
-            if len(text.splitlines()) > 1:
-                char = event.char * 3
-            else:
-                char = event.char
-            self.text.insert('sel.first', char)
-            self.text.insert('sel.last', char)
-            self.text.mark_set('insert', 'sel.last+%ic' % (len(char)))
-            self.text.tag_remove('sel', 'sel.first', 'sel.last')
-        elif self.text.get('insert') == event.char:
-            self.text.mark_set('insert', 'insert+1c')
-        else:
-            self.text.insert('insert', event.char * 2)
-            self.text.mark_set('insert', 'insert-1c')
-        self.parse_all()
-        self.text.edit_separator()
-        return 'break'
-
-    def close_brackets(self, event):
-        self._clear_highlights()
-        if self.text.get('insert') == event.char:
-            self.text.mark_set('insert', 'insert+1c')
-        else:
-            self.text.insert('insert', event.char, 'Token.Punctuation')
-        self._find_opening_par(event.char)
-        return 'break'
 
     def on_paste(self, event):
         self._clear_highlights()
@@ -501,28 +385,6 @@ class Editor(ttk.Frame):
         self.update_nb_line()
         return "break"
 
-    def get_selection(self):
-        sel = self.text.tag_ranges('sel')
-        if sel:
-            return self.text.get('sel.first', 'sel.last')
-
-    def _get_indent(self):
-        line_nb, col = [int(i) for i in str(self.text.index('insert')).split('.')]
-        if line_nb == 1:
-            return '    '
-        line_nb -= 1
-        prev_line = self.text.get('%i.0' % line_nb, '%i.end' % line_nb)
-        line = self.text.get('insert linestart', 'insert lineend')
-        res = re.match(r'( )*', line)
-        if res.span()[-1] < col:
-            return '    '
-        indent_prev = len(re.match(r'( )*', prev_line).group())
-        indent = len(res.group())
-        if indent < indent_prev:
-            return ' ' * (indent_prev - indent)
-        else:
-            return '    '
-
     def on_tab(self, event=None, force_indent=False):
         self._clear_highlights()
         if self._comp.winfo_ismapped():
@@ -548,10 +410,197 @@ class Editor(ttk.Frame):
                 self._comp_display()
         return "break"
 
-    def _clear_highlights(self):
-        for i in self._highlights:
-            self.text.tag_remove('highlight', i)
-        self._highlights.clear()
+    def on_ctrl_return(self, event):
+        self._clear_highlights()
+        self.text.edit_separator()
+        self.master.event_generate('<<CtrlReturn>>')
+        return 'break'
+
+    def on_return(self, event):
+        self._clear_highlights()
+        self.text.edit_separator()
+        if self._comp.winfo_ismapped():
+            self._comp_sel()
+            return "break"
+
+        sel = self.text.tag_ranges('sel')
+        if sel:
+            self.text.delete('sel.first', 'sel.last')
+        index = self.text.index('insert linestart')
+        t = self.text.get("insert linestart", "insert")
+        self.parse(t, index)
+        indent = re.match(r'( )*', t).group()
+        colon = re.search(r':( )*$', t)
+        if colon:
+            if len(colon.group()) > 1:
+                self.text.delete('insert-%ic' % (len(colon.group()) - 1), 'insert')
+            indent = indent + '    '
+
+        self.text.insert('insert', '\n' + indent)
+        self.update_nb_line()
+        # update whole syntax highlighting
+        self.parse_all()
+        self.see('insert')
+        return "break"
+
+    def on_backspace(self, event):
+        self._clear_highlights()
+        self.text.edit_separator()
+        txt = event.widget
+        sel = self.text.tag_ranges('sel')
+        if sel:
+            self.text.delete('sel.first', 'sel.last')
+        else:
+            linestart = txt.get('insert linestart', 'insert')
+            if re.search(r'    $', linestart):
+                txt.delete('insert-4c', 'insert')
+            elif txt.get('insert-1c', 'insert+1c') in [c1 + c2 for c1, c2 in self._autoclose.items()]:
+                txt.delete('insert-1c', 'insert+1c')
+            else:
+                txt.delete('insert-1c')
+        self.update_nb_line()
+        return "break"
+
+    def unindent(self, event=None):
+        self.text.edit_separator()
+        sel = self.text.tag_ranges('sel')
+        if sel:
+            start = str(self.text.index('sel.first'))
+            end = str(self.text.index('sel.last'))
+        else:
+            start = str(self.text.index('insert'))
+            end = str(self.text.index('insert'))
+        start_line = int(start.split('.')[0])
+        end_line = int(end.split('.')[0]) + 1
+        for line in range(start_line, end_line):
+            if self.text.get('%i.0' % line, '%i.4' % line) == '    ':
+                self.text.delete('%i.0' % line, '%i.4' % line)
+        return "break"
+
+    # --- style and syntax highlighting
+    def update_style(self):
+        FONT = (CONFIG.get("General", "fontfamily"),
+                CONFIG.getint("General", "fontsize"))
+        font = Font(self, FONT)
+        self._sep_x = font.measure(' ' * 79)
+        self.sep.place(y=0, relheight=1, relx=self._sep_x / self.text.winfo_width(), width=1)
+
+        EDITOR_BG, EDITOR_HIGHLIGHT_BG, EDITOR_SYNTAX_HIGHLIGHTING = load_style(CONFIG.get('Editor', 'style'))
+        EDITOR_FG = EDITOR_SYNTAX_HIGHLIGHTING.get('Token.Name', {}).get('foreground', 'black')
+
+        self._syntax_highlighting_tags = list(EDITOR_SYNTAX_HIGHLIGHTING.keys())
+
+        theme = f"{CONFIG.get('General', 'theme').capitalize()} Theme"
+        selectbg = CONFIG.get(theme, 'textselectbg')
+        selectfg = CONFIG.get(theme, 'textselectfg')
+        self.text.configure(fg=EDITOR_FG, bg=EDITOR_BG, font=FONT,
+                            selectbackground=selectbg,
+                            selectforeground=selectfg,
+                            inactiveselectbackground=selectbg,
+                            insertbackground=EDITOR_FG)
+        fg = self.line_nb.option_get('foreground', '*Text')
+        bg = self.line_nb.option_get('background', '*Text')
+        comment_fg = EDITOR_SYNTAX_HIGHLIGHTING['Token.Comment'].get('foreground', EDITOR_FG)
+        self.sep.configure(bg=comment_fg)
+        self.line_nb.configure(fg=fg, bg=bg, font=FONT,
+                               selectbackground=bg, selectforeground=fg,
+                               inactiveselectbackground=bg)
+        self.syntax_checks.configure(fg=fg, bg=bg, font=FONT,
+                                     selectbackground=bg, selectforeground=fg,
+                                     inactiveselectbackground=bg)
+        self.filebar.update_style(comment_fg=comment_fg)
+
+        # --- syntax highlighting
+        tags = list(self.text.tag_names())
+        tags.remove('sel')
+        tag_props = {key: '' for key in self.text.tag_configure('sel')}
+        for tag in tags:
+            self.text.tag_configure(tag, **tag_props)
+        EDITOR_SYNTAX_HIGHLIGHTING['Token.Comment.Cell'] = EDITOR_SYNTAX_HIGHLIGHTING['Token.Comment'].copy()
+        EDITOR_SYNTAX_HIGHLIGHTING['Token.Comment.Cell']['underline'] = True
+        for tag, opts in EDITOR_SYNTAX_HIGHLIGHTING.items():
+            opts['selectbackground'] = selectbg
+            opts['selectforeground'] = selectfg
+            self.text.tag_configure(tag, **opts)
+        self.text.tag_configure('highlight', background=EDITOR_HIGHLIGHT_BG)
+        self.text.tag_raise('sel')
+
+    def parse(self, text, start):
+        """Apply syntax highlighting to text at index start"""
+        if self.filetype != 'Python':
+            return
+        data = text
+        while data and '\n' == data[0]:
+            start = self.text.index('%s+1c' % start)
+            data = data[1:]
+        self.text.mark_set('range_start', start)
+        for t in self._syntax_highlighting_tags:
+            self.text.tag_remove(t, start, "range_start +%ic" % len(data))
+        for token, content in lex(data, PYTHON_LEX):
+            self.text.mark_set("range_end", "range_start + %ic" % len(content))
+            for t in token.split():
+                self.text.tag_add(str(t), "range_start", "range_end")
+            if str(token) == 'Token.Comment.Cell':
+                line, col = tuple(map(int, self.text.index("range_end").split(".")))
+                if col < 79:
+                    self.text.insert("range_end", " " * (79 - col), "Token.Comment.Cell")
+            self.text.mark_set("range_start", "range_end")
+
+    def parse_all(self):
+        self.parse(self.text.get('1.0', 'end'), '1.0')
+
+    # --- brackets
+    def auto_close(self, event):
+        sel = self.text.tag_ranges('sel')
+        if sel:
+            text = self.text.get('sel.first', 'sel.last')
+            index = self.text.index('sel.first')
+            self.text.insert('sel.first', event.char)
+            self.text.insert('sel.last', self._autoclose[event.char])
+            self.text.mark_set('insert', 'sel.last+1c')
+            self.text.tag_remove('sel', 'sel.first', 'sel.last')
+            self.parse(event.char + text + self._autoclose[event.char], index)
+        else:
+            self._clear_highlights()
+            self.text.insert('insert', event.char, ['Token.Punctuation', 'highlight'])
+            if not self._find_matching_par():
+                self._highlights.append(self.text.index('insert-1c'))
+                self._highlights.append(self.text.index('insert'))
+                self.text.insert('insert', self._autoclose[event.char], ['Token.Punctuation', 'highlight'])
+                self.text.mark_set('insert', 'insert-1c')
+        self.text.edit_separator()
+        return 'break'
+
+    def auto_close_string(self, event):
+        self._clear_highlights()
+        sel = self.text.tag_ranges('sel')
+        if sel:
+            text = self.text.get('sel.first', 'sel.last')
+            if len(text.splitlines()) > 1:
+                char = event.char * 3
+            else:
+                char = event.char
+            self.text.insert('sel.first', char)
+            self.text.insert('sel.last', char)
+            self.text.mark_set('insert', 'sel.last+%ic' % (len(char)))
+            self.text.tag_remove('sel', 'sel.first', 'sel.last')
+        elif self.text.get('insert') == event.char:
+            self.text.mark_set('insert', 'insert+1c')
+        else:
+            self.text.insert('insert', event.char * 2)
+            self.text.mark_set('insert', 'insert-1c')
+        self.parse_all()
+        self.text.edit_separator()
+        return 'break'
+
+    def close_brackets(self, event):
+        self._clear_highlights()
+        if self.text.get('insert') == event.char:
+            self.text.mark_set('insert', 'insert+1c')
+        else:
+            self.text.insert('insert', event.char, 'Token.Punctuation')
+        self._find_opening_par(event.char)
+        return 'break'
 
     def _find_matching_par(self, event=None):
         """Highlight matching brackets."""
@@ -602,6 +651,7 @@ class Editor(ttk.Frame):
         else:
             return False
 
+    # --- autocompletion and help tooltips
     def _args_hint(self, event=None):
         index = self.text.index('insert')
         row, col = str(index).split('.')
@@ -656,98 +706,6 @@ class Editor(ttk.Frame):
         txt = self._comp.get()
         self._comp.withdraw()
         self.text.insert('insert', txt)
-
-    def on_ctrl_return(self, event):
-        self._clear_highlights()
-        self.text.edit_separator()
-        self.master.event_generate('<<CtrlReturn>>')
-        return 'break'
-
-    def on_return(self, event):
-        self._clear_highlights()
-        self.text.edit_separator()
-        if self._comp.winfo_ismapped():
-            self._comp_sel()
-            return "break"
-
-        sel = self.text.tag_ranges('sel')
-        if sel:
-            self.text.delete('sel.first', 'sel.last')
-        index = self.text.index('insert linestart')
-        t = self.text.get("insert linestart", "insert")
-        self.parse(t, index)
-        indent = re.match(r'( )*', t).group()
-        colon = re.search(r':( )*$', t)
-        if colon:
-            if len(colon.group()) > 1:
-                self.text.delete('insert-%ic' % (len(colon.group()) - 1), 'insert')
-            indent = indent + '    '
-
-        self.text.insert('insert', '\n' + indent)
-        self.update_nb_line()
-        # update whole syntax highlighting
-        self.parse_all()
-        self.see('insert')
-        return "break"
-
-    def update_nb_line(self):
-        row = int(str(self.text.index('end')).split('.')[0]) - 1
-        row_old = int(str(self.line_nb.index('end')).split('.')[0]) - 1
-        self.line_nb.configure(state='normal')
-        self.syntax_checks.configure(state='normal')
-        if row_old < row:
-            self.syntax_checks.insert('end', '\n')
-            self.line_nb.insert('end',
-                                '\n' + '\n'.join([str(i) for i in range(row_old + 1, row + 1)]),
-                                'right')
-        elif row_old > row:
-            self.line_nb.delete('%i.0' % (row + 1), 'end')
-            self.syntax_checks.delete('%i.0' % (row + 1), 'end')
-        self.line_nb.configure(width=len(str(row)), state='disabled')
-        self.syntax_checks.configure(state='disabled')
-        self.filebar.update_positions()
-
-    def on_backspace(self, event):
-        self._clear_highlights()
-        self.text.edit_separator()
-        txt = event.widget
-        sel = self.text.tag_ranges('sel')
-        if sel:
-            self.text.delete('sel.first', 'sel.last')
-        else:
-            linestart = txt.get('insert linestart', 'insert')
-            if re.search(r'    $', linestart):
-                txt.delete('insert-4c', 'insert')
-            elif txt.get('insert-1c', 'insert+1c') in [c1 + c2 for c1, c2 in self._autoclose.items()]:
-                txt.delete('insert-1c', 'insert+1c')
-            else:
-                txt.delete('insert-1c')
-        self.update_nb_line()
-        return "break"
-
-    def unindent(self, event=None):
-        self.text.edit_separator()
-        sel = self.text.tag_ranges('sel')
-        if sel:
-            start = str(self.text.index('sel.first'))
-            end = str(self.text.index('sel.last'))
-        else:
-            start = str(self.text.index('insert'))
-            end = str(self.text.index('insert'))
-        start_line = int(start.split('.')[0])
-        end_line = int(end.split('.')[0]) + 1
-        for line in range(start_line, end_line):
-            if self.text.get('%i.0' % line, '%i.4' % line) == '    ':
-                self.text.delete('%i.0' % line, '%i.4' % line)
-        return "break"
-
-    def yview(self, *args):
-        self.line_nb.yview(*args)
-        self.syntax_checks.yview(*args)
-        res = self.text.yview(*args)
-        if args:
-            self.filebar.update_positions()
-        return res
 
     # --- find and replace
     def hide_search(self):
@@ -946,6 +904,7 @@ class Editor(ttk.Frame):
         self.text.tag_remove('sel', '1.0', 'end')
         self.text.tag_add('sel', start, end)
 
+    # --- get
     def get(self, strip=True):
         txt = self.text.get('1.0', 'end')
         if strip:
@@ -963,6 +922,28 @@ class Editor(ttk.Frame):
         self.text.edit_separator()
         return txt
 
+    def get_selection(self):
+        sel = self.text.tag_ranges('sel')
+        if sel:
+            return self.text.get('sel.first', 'sel.last')
+
+    def _get_indent(self):
+        line_nb, col = [int(i) for i in str(self.text.index('insert')).split('.')]
+        if line_nb == 1:
+            return '    '
+        line_nb -= 1
+        prev_line = self.text.get('%i.0' % line_nb, '%i.end' % line_nb)
+        line = self.text.get('insert linestart', 'insert lineend')
+        res = re.match(r'( )*', line)
+        if res.span()[-1] < col:
+            return '    '
+        indent_prev = len(re.match(r'( )*', prev_line).group())
+        indent = len(res.group())
+        if indent < indent_prev:
+            return ' ' * (indent_prev - indent)
+        else:
+            return '    '
+
     def get_end(self):
         return str(self.text.index('end'))
 
@@ -976,6 +957,7 @@ class Editor(ttk.Frame):
         else:
             return None
 
+    # --- text edit
     def delete(self, index1, index2=None):
         self.text.edit_separator()
         self.text.delete(index1, index2=index2)
@@ -992,11 +974,37 @@ class Editor(ttk.Frame):
         self.update_nb_line()
         self.parse_all()
 
+    # --- view
     def see(self, index):
         i = self.text.index(index)
         self.text.see(i)
         self.line_nb.see(i)
         self.syntax_checks.see(i)
+
+    def update_nb_line(self):
+        row = int(str(self.text.index('end')).split('.')[0]) - 1
+        row_old = int(str(self.line_nb.index('end')).split('.')[0]) - 1
+        self.line_nb.configure(state='normal')
+        self.syntax_checks.configure(state='normal')
+        if row_old < row:
+            self.syntax_checks.insert('end', '\n')
+            self.line_nb.insert('end',
+                                '\n' + '\n'.join([str(i) for i in range(row_old + 1, row + 1)]),
+                                'right')
+        elif row_old > row:
+            self.line_nb.delete('%i.0' % (row + 1), 'end')
+            self.syntax_checks.delete('%i.0' % (row + 1), 'end')
+        self.line_nb.configure(width=len(str(row)), state='disabled')
+        self.syntax_checks.configure(state='disabled')
+        self.filebar.update_positions()
+
+    def yview(self, *args):
+        self.line_nb.yview(*args)
+        self.syntax_checks.yview(*args)
+        res = self.text.yview(*args)
+        if args:
+            self.filebar.update_positions()
+        return res
 
     # --- syntax issues highlighting
     def show_line(self, line):
