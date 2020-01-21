@@ -23,7 +23,7 @@ Notebook containing the code editors for each opened file
 import logging
 import os
 import re
-from tkinter import Menu, Toplevel, TclError
+from tkinter import Menu, Toplevel
 from subprocess import Popen
 from threading import Thread, Event
 from time import sleep
@@ -260,10 +260,7 @@ class EditorNotebook(Notebook):
                 if color:
                     self._tabs[self.current_tab].insert("insert", color, True)
 
-            try:
-                picker = ColorPicker(color=self._tabs[self.current_tab].get_selection(), parent=self)
-            except TclError:
-                picker = ColorPicker(parent=self)
+            picker = ColorPicker(color=self._tabs[self.current_tab].get_selection(), parent=self)
             picker.bind("<<ColorSelected>>", insert)
 
     def get_docstring(self, obj):

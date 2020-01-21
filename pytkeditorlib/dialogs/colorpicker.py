@@ -27,20 +27,29 @@ from tkcolorpicker import colorpicker
 class ColorPicker(colorpicker.ColorPicker):
     """Color picker dialog."""
 
-    def __init__(self, parent=None, color=(255, 0, 0), alpha=False,
+    def __init__(self, parent=None, color=None, alpha=False,
                  title="Color Chooser"):
-        if re.match(r"^[0-9A-F]{6}$", color.upper()):
-            color = '#' + color
-            self._prefix = False
-        else:
+        self._prefix = True
+        try:
+            match = re.match(r"^(#?)[0-9A-Fa-f]{6}$", color)
+            if not match.groups()[0]:
+                color = '#' + color
+                self._prefix = False
+        except (TypeError, AttributeError):
+            color = '#FF0000'
             self._prefix = True
         colorpicker.ColorPicker.__init__(self, parent, color, alpha, title)
 
         # --- validation
         button_frame = self.grid_slaves(4, 0)[0]
+        b_ok, b_close = button_frame.pack_slaves()
+        b_close.configure(text='Close')
+        b_ok.pack_forget()
+        b_ok.pack(side="right", padx=10)
         ttk.Button(button_frame, text="Insert",
                    command=self.insert).pack(side="right", padx=10)
         self.grab_release()
+        self.bind_all('<2>', lambda e: print(e.widget))
 
     def insert(self):
         rgb, hsv, hexa = self.square.get()
