@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 PyTkEditor - Python IDE
-Copyright 2018-2019 Juliette Monsel <j_4321 at protonmail dot com>
+Copyright 2018-2020 Juliette Monsel <j_4321 at protonmail dot com>
 
 PyTkEditor is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -26,50 +26,34 @@ import traceback
 import os
 import signal
 import logging
+from subprocess import Popen
+from getpass import getuser
+from datetime import datetime
 
 from ewmh import ewmh, EWMH
 from tkfilebrowser import askopenfilenames, asksaveasfilename
 
-from pytkeditorlib.editornotebook import EditorNotebook
-from pytkeditorlib.syntax_check import check_file
-from pytkeditorlib.codestructure import CodeStructure
-from pytkeditorlib.filebrowser import Filebrowser
-from pytkeditorlib.constants import ICON, CONFIG, save_config, IM_CLOSE
-from pytkeditorlib import constants as cst
-from pytkeditorlib.textconsole import TextConsole
-from pytkeditorlib.history import HistoryFrame
-from pytkeditorlib.config import Config
-from pytkeditorlib.autoscrollbar import AutoHideScrollbar
-from pytkeditorlib.menu import LongMenu
-from pytkeditorlib.help import Help
-from pytkeditorlib.messagebox import showerror
-from pytkeditorlib.about import About
+from pytkeditorlib.code_editor import EditorNotebook, CodeStructure
+from pytkeditorlib.utils.constants import IMAGES, CONFIG, save_config, IM_CLOSE
+from pytkeditorlib.utils import constants as cst
+from pytkeditorlib.utils.syntax_check import check_file
+from pytkeditorlib.dialogs import showerror, About, Config, SearchDialog
+from pytkeditorlib.widgets import WidgetNotebook, Help, HistoryFrame, ConsoleFrame, Filebrowser
+from pytkeditorlib.gui_utils import LongMenu
 
 
 class App(tk.Tk):
-    def __init__(self, *files):
+    def __init__(self, pid, *files):
         tk.Tk.__init__(self, className='PyTkEditor')
+        self.pid = pid
+        self.tk.eval('package require Tkhtml')
         self.title('PyTkEditor')
-        self._icon = tk.PhotoImage(file=ICON, master=self)
-        self._im_run = tk.PhotoImage(file=cst.IM_RUN, master=self)
-        self._im_new = tk.PhotoImage(file=cst.IM_NEW, master=self)
-        self._im_open = tk.PhotoImage(file=cst.IM_OPEN, master=self)
-        self._im_reopen = tk.PhotoImage(file=cst.IM_REOPEN, master=self)
-        self._im_save = tk.PhotoImage(file=cst.IM_SAVE, master=self)
-        self._im_saveall = tk.PhotoImage(file=cst.IM_SAVEALL, master=self)
-        self._im_saveas = tk.PhotoImage(file=cst.IM_SAVEAS, master=self)
-        self._im_undo = tk.PhotoImage(file=cst.IM_UNDO, master=self)
-        self._im_redo = tk.PhotoImage(file=cst.IM_REDO, master=self)
-        self._im_recents = tk.PhotoImage(file=cst.IM_RECENTS, master=self)
+        # --- images
+        self._images = {name: tk.PhotoImage(f'img_{name}', file=IMAGES[name], master=self)
+                        for name, path in IMAGES.items()}
+        self._images['menu_dummy'] = tk.PhotoImage('img_menu_dummy', width=18, height=18, master=self)
         self._im_close = tk.PhotoImage(master=self)
-        self._im_quit = tk.PhotoImage(file=cst.IM_QUIT, master=self)
-        self._im_find = tk.PhotoImage(file=cst.IM_FIND, master=self)
-        self._im_replace = tk.PhotoImage(file=cst.IM_REPLACE, master=self)
-        self._im_settings = tk.PhotoImage(file=cst.IM_SETTINGS, master=self)
-        self._im_menu_dummy = tk.PhotoImage(width=18, height=18, master=self)
-        self.iconphoto(True, self._icon)
-        self._syntax_icons = {'warning': tk.PhotoImage(master=self, file=cst.IM_WARN),
-                              'error': tk.PhotoImage(master=self, file=cst.IM_ERR)}
+        self.iconphoto(True, self._images['icon'])
 
         self.option_add('*Menu.borderWidth', 1)
         self.option_add('*Menu.activeBorderWidth', 0)
@@ -80,125 +64,201 @@ class App(tk.Tk):
         self.menu_file = tk.Menu(self.menu)
         self.menu_recent_files = tk.Menu(self.menu_file)
         self.menu_edit = tk.Menu(self.menu)
+        self.menu_search = tk.Menu(self.menu)
         self.menu_doc = tk.Menu(self.menu)
+        self.menu_consoles = tk.Menu(self.menu)
+        self.menu_view = tk.Menu(self.menu)
         self.menu_filetype = tk.Menu(self.menu_doc)
-        self.menu_errors = LongMenu(self.menu, 40)
+        self.menu_errors = LongMenu(self.menu_doc, 40)
+
+        self.widgets = {}
+
+        self._search_dialog = None
 
         recent_files = CONFIG.get('General', 'recent_files', fallback='').split(', ')
         self.recent_files = [f for f in recent_files if f and os.path.exists(f)]
 
-        # -- style
+        # --- style
         for seq in self.bind_class('TButton'):
             self.bind_class('Notebook.Tab.Close', seq, self.bind_class('TButton', seq), True)
         style = ttk.Style(self)
-        style.element_create('close', 'image', self._im_close,
-                             sticky='')
+        style.element_create('close', 'image', self._im_close, sticky='')
         self._setup_style()
+
+        # --- jupyter kernel
+        self._kernel_manager = None
+        self._qtconsole_process = None
+        self._qtconsole_ready = False
+        self._init_kernel()
 
         # --- GUI elements
         pane = ttk.PanedWindow(self, orient='horizontal')
-        # ----- code structure tree
+        # --- --- code structure tree
         self.codestruct = CodeStructure(pane)
-        # ----- editor notebook
+        # --- --- editor notebook
         self.editor = EditorNotebook(pane, width=696)
-        # ----- right pane
-        self.right_nb = ttk.Notebook(pane)
-        # -------- command history
-        self.history = HistoryFrame(self.right_nb, padding=1)
-        # -------- python console
-        console_frame = ttk.Frame(self.right_nb, padding=1)
-        console_frame.columnconfigure(0, weight=1)
-        console_frame.rowconfigure(0, weight=1)
-        sy = AutoHideScrollbar(console_frame, orient='vertical')
-        self.console = TextConsole(console_frame, self.history.history,
-                                   yscrollcommand=sy.set, relief='flat',
-                                   borderwidth=0, highlightthickness=0)
-        sy.configure(command=self.console.yview)
-        sy.grid(row=0, column=1, sticky='ns')
-        self.console.grid(row=0, column=0, sticky='nswe')
-        # -------- help
-        self.help = Help(self.right_nb,
-                         help_cmds={'Editor': self.editor.get_docstring,
-                                    'Console': self.console.get_docstring},
-                         padding=1)
-        # -------- filebrowser
-        self.filebrowser = Filebrowser(self, self.open_file)
-        # -------- placement
-        self.right_nb.add(console_frame, text='Console')
-        self.right_nb.add(self.history, text='History')
-        self.right_nb.add(self.help, text='Help')
-        self.right_nb.add(self.filebrowser, text='Filebrowser')
+        # --- --- right pane
+        self.right_nb = WidgetNotebook(pane)
+        widgets = ['Console', 'History', 'Help', 'File browser']
+        widgets.sort(key=lambda w: CONFIG.getint(w, 'order', fallback=0))
+        # --- --- --- command history
+        self.widgets['History'] = HistoryFrame(self.right_nb,
+                                               padding=1)
+        # --- --- --- python console
+        self.widgets['Console'] = ConsoleFrame(self.right_nb,
+                                               history=self.widgets['History'].history,
+                                               padding=1)
+        self.console = self.widgets['Console'].console
+        # --- --- --- help
+        self.widgets['Help'] = Help(self.right_nb, padding=1,
+                                    help_cmds={'Editor': self.editor.get_docstring,
+                                               'Console': self.console.get_docstring})
+        # --- --- --- filebrowser
+        self.widgets['File browser'] = Filebrowser(self.right_nb, self.open_file)
 
         # ----- placement
         pane.add(self.codestruct, weight=1)
         pane.add(self.editor, weight=50)
-        pane.add(self.right_nb, weight=5)
+        # pane.add(self.right_nb, weight=5)
         pane.pack(fill='both', expand=True, pady=(0, 4))
-
+        self.codestruct.visible.set(CONFIG.getboolean('Code structure', 'visible', fallback=True))
+        for name in widgets:
+            self.right_nb.add(self.widgets[name], text=name)
+        for name, widget in self.widgets.items():
+            widget.visible.set(CONFIG.getboolean(name, 'visible', fallback=True))
+        self.right_nb.select_first_tab()
         # --- menu
         # ------- file
-        self.menu_file.add_command(label='New', command=self.new, image=self._im_new,
+        self.menu_file.add_command(label='New', command=self.new,
+                                   image=self._images['new'],
                                    accelerator='Ctrl+N', compound='left')
         self.menu_file.add_separator()
         self.menu_file.add_command(label='Open', command=self.open,
-                                   image=self._im_open,
+                                   image=self._images['open'],
                                    accelerator='Ctrl+O', compound='left')
         self.menu_file.add_command(label='Restore last closed',
                                    command=self.restore_last_closed,
-                                   image=self._im_reopen, compound='left',
+                                   image=self._images['reopen'], compound='left',
                                    accelerator='Ctrl+Shift+T')
         self.menu_file.add_command(label='File switcher', accelerator='Ctrl+P',
                                    command=self.editor.file_switch,
-                                   image=self._im_menu_dummy, compound='left')
+                                   image=self._images['menu_dummy'], compound='left')
         # ------- file --- recent
         for f in self.recent_files:
             self.menu_recent_files.add_command(label=f,
                                                command=lambda file=f: self.open_file(file))
 
-        self.menu_file.add_cascade(label='Recent files', image=self._im_recents,
+        self.menu_file.add_cascade(label='Recent files', image=self._images['recents'],
                                    menu=self.menu_recent_files, compound='left')
 
         self.menu_file.add_separator()
         self.menu_file.add_command(label='Save', command=self.save,
-                                   state='disabled', image=self._im_save,
+                                   state='disabled', image=self._images['save'],
                                    accelerator='Ctrl+S', compound='left')
         self.menu_file.add_command(label='Save as', command=self.saveas,
-                                   image=self._im_saveas,
+                                   image=self._images['saveas'],
                                    accelerator='Ctrl+Alt+S', compound='left')
         self.menu_file.add_command(label='Save all', command=self.saveall,
-                                   image=self._im_saveall,
+                                   image=self._images['saveall'],
                                    accelerator='Ctrl+Shift+S', compound='left')
         self.menu_file.add_separator()
         self.menu_file.add_command(label='Close all files', image=self._im_close,
                                    command=self.editor.closeall, compound='left')
         self.menu_file.add_command(label='Quit', command=self.quit,
-                                   image=self._im_quit, compound='left')
+                                   image=self._images['quit'], compound='left')
         # ------- edit
         self.menu_edit.add_command(label='Undo', command=self.editor.undo,
-                                   image=self._im_undo,
+                                   image=self._images['undo'],
                                    accelerator='Ctrl+Z', compound='left')
         self.menu_edit.add_command(label='Redo', command=self.editor.redo,
-                                   image=self._im_redo,
+                                   image=self._images['redo'],
                                    accelerator='Ctrl+Y', compound='left')
         self.menu_edit.add_separator()
+        self.menu_edit.add_command(label='Cut', command=self.editor.cut,
+                                   image=self._images['cut'],
+                                   accelerator='Ctrl+X', compound='left')
+        self.menu_edit.add_command(label='Copy', command=self.editor.copy,
+                                   image=self._images['copy'],
+                                   accelerator='Ctrl+C', compound='left')
+        self.menu_edit.add_command(label='Paste', command=self.editor.paste,
+                                   image=self._images['paste'],
+                                   accelerator='Ctrl+V', compound='left')
+        self.menu_edit.add_command(label='Select all', command=self.editor.select_all,
+                                   image=self._images['menu_dummy'],
+                                   accelerator='Ctrl+A', compound='left')
+        self.menu_edit.add_separator()
+        self.menu_edit.add_command(label='Duplicate lines',
+                                   command=self.editor.duplicate_lines,
+                                   image=self._images['menu_dummy'],
+                                   accelerator='Ctrl+D', compound='left')
+        self.menu_edit.add_command(label='Delete lines',
+                                   command=self.editor.delete_lines,
+                                   image=self._images['menu_dummy'],
+                                   accelerator='Ctrl+K', compound='left')
+        self.menu_edit.add_separator()
+        self.menu_edit.add_command(label='Toggle comment',
+                                   command=self.editor.toggle_comment,
+                                   image=self._images['menu_dummy'],
+                                   accelerator='Ctrl+E', compound='left')
+        self.menu_edit.add_command(label='Indent',
+                                   command=self.editor.indent,
+                                   image=self._images['indent'],
+                                   accelerator='Tab', compound='left')
+        self.menu_edit.add_command(label='Dedent',
+                                   command=self.editor.unindent,
+                                   image=self._images['dedent'],
+                                   accelerator='Shift+Tab', compound='left')
+        self.menu_edit.add_separator()
+        self.menu_edit.add_command(label='Upper case',
+                                   command=self.editor.upper_case,
+                                   image=self._images['menu_dummy'],
+                                   accelerator='Ctrl+U', compound='left')
+        self.menu_edit.add_command(label='Lower case',
+                                   command=self.editor.lower_case,
+                                   image=self._images['menu_dummy'],
+                                   accelerator='Ctrl+Shift+U', compound='left')
+        self.menu_edit.add_separator()
+        self.menu_edit.add_command(label='Color chooser',
+                                   command=self.editor.choose_color,
+                                   image=self._images['color'],
+                                   compound='left')
+        self.menu_edit.add_separator()
         self.menu_edit.add_command(label='Settings', command=self.config,
-                                   compound='left', image=self._im_settings)
+                                   compound='left', image=self._images['settings'])
+        # ------- search
+        self.menu_search.add_command(label='Find', command=self.editor.find,
+                                     accelerator='Ctrl+F', compound='left',
+                                     image=self._images['find'])
+        self.menu_search.add_command(label='Replace', command=self.editor.replace,
+                                     accelerator='Ctrl+R', compound='left',
+                                     image=self._images['replace'])
+        self.menu_search.add_separator()
+        self.menu_search.add_command(label='Find & replace in session', image=self._images['replace'],
+                                     compound='left', command=self.search,
+                                     accelerator='Ctrl+Shift+R',)
+        self.menu_search.add_separator()
+        self.menu_search.add_command(label='Goto line', accelerator='Ctrl+L', compound='left',
+                                     command=self.editor.goto_line, image=self._images['menu_dummy'])
+
         # ------- doc
         self.menu_doc.add_cascade(label='Filetype', menu=self.menu_filetype,
-                                  image=self._im_menu_dummy, compound='left')
+                                  image=self._images['menu_dummy'], compound='left')
         self.menu_doc.add_separator()
-        self.menu_doc.add_command(label='Find', command=self.editor.find,
-                                  accelerator='Ctrl+F', compound='left',
-                                  image=self._im_find)
-        self.menu_doc.add_command(label='Replace', command=self.editor.replace,
-                                  accelerator='Ctrl+R', compound='left',
-                                  image=self._im_replace)
-        self.menu_doc.add_command(label='Goto line', accelerator='Ctrl+L', compound='left',
-                                  command=self.editor.goto_line, image=self._im_menu_dummy)
+        self.menu_doc.add_cascade(label='Error list', menu=self.menu_errors,
+                                  image=self._images['menu_dummy'], compound='left')
         self.menu_doc.add_separator()
-        self.menu_doc.add_command(image=self._im_run, command=self.run,
+        self.menu_doc.add_command(image=self._images['run'], command=self.run,
                                   compound='left', label='Run',
                                   accelerator='F5')
+        self.menu_doc.add_command(image=self._images['run'],
+                                  command=self.run_selection,
+                                  compound='left', label='Run selected code in console',
+                                  accelerator='F9')
+        if cst.JUPYTER:
+            self.menu_doc.add_command(image=self._images['run'],
+                                      command=self.execute_in_jupyter,
+                                      compound='left', label='Run selected code in Jupyter QtConsole',
+                                      accelerator='F10')
         # ------- doc --- filetypes
         self.filetype = tk.StringVar(self, 'Python')
         self.menu_filetype.add_radiobutton(label='Python', value='Python',
@@ -207,11 +267,33 @@ class App(tk.Tk):
         self.menu_filetype.add_radiobutton(label='Text', value='Text',
                                            variable=self.filetype,
                                            command=self.set_filetype)
+        # ------- consoles
+        self.menu_consoles.add_command(label='Clear console',
+                                       command=self.console.shell_clear,
+                                       image='img_console_clear',
+                                       compound='left')
+        self.menu_consoles.add_command(label='Restart console',
+                                       command=self.console.restart_shell,
+                                       image='img_console_restart',
+                                       compound='left')
+        if cst.JUPYTER:
+            self.menu_consoles.add_separator()
+            self.menu_consoles.add_command(label='Start Jupyter QtConsole',
+                                           command=self.start_jupyter,
+                                           image='img_qtconsole_start',
+                                           compound='left')
+
+        # ------- view
+        self.menu_view.add_checkbutton(label='Code structure', variable=self.codestruct.visible)
+        for name in widgets:
+            self.menu_view.add_checkbutton(label=name, variable=self.widgets[name].visible)
 
         self.menu.add_cascade(label='File', underline=0, menu=self.menu_file)
         self.menu.add_cascade(label='Edit', underline=0, menu=self.menu_edit)
+        self.menu.add_cascade(label='Search', underline=0, menu=self.menu_search)
         self.menu.add_cascade(label='Document', underline=0, menu=self.menu_doc)
-        self.menu.add_cascade(label='Error list', underline=6, menu=self.menu_errors)
+        self.menu.add_cascade(label='Consoles', underline=0, menu=self.menu_consoles)
+        self.menu.add_cascade(label='View', underline=0, menu=self.menu_view)
         self.menu.add_command(label='About', underline=0,
                               command=lambda: About(self))
 
@@ -221,14 +303,13 @@ class App(tk.Tk):
         self.bind_class('TEntry', '<Control-a>', self._select_all)
         self.bind_class('TCombobox', '<Control-a>', self._select_all)
         self.codestruct.bind('<<Populate>>', self._on_populate)
-        self.editor.bind('<<NotebookEmpty>>', self.codestruct.clear)
+        self.editor.bind('<<NotebookEmpty>>', self._on_empty_notebook)
+        self.editor.bind('<<NotebookFirstTab>>', self._on_first_tab_creation)
         self.editor.bind('<<NotebookTabChanged>>', self._on_tab_changed)
         self.editor.bind('<<FiletypeChanged>>', self._filetype_change)
         self.editor.bind('<<Modified>>', lambda e: self._edit_modified())
         self.editor.bind('<<Reload>>', self.reload)
         self.editor.bind('<<Filebrowser>>', self.view_in_filebrowser)
-
-        self.right_nb.bind('<ButtonRelease-3>', self._show_menu_nb)
 
         self.bind_class('Text', '<Control-o>', lambda e: None)
         self.bind('<Control-Shift-T>', self.restore_last_closed)
@@ -236,11 +317,14 @@ class App(tk.Tk):
         self.bind('<Control-p>', self.editor.file_switch)
         self.bind('<Control-s>', self.save)
         self.bind('<Control-o>', lambda e: self.open())
+        self.bind('<Control-Shift-R>', self.search)
         self.bind('<Control-Shift-S>', self.saveall)
         self.bind('<Control-Alt-s>', self.saveas)
         self.editor.bind('<<CtrlReturn>>', lambda e: self.console.execute(self.editor.get_cell()))
         self.bind('<F5>', self.run)
-        self.bind('<F9>', lambda e: self.console.execute(self.editor.get_selection()))
+        self.bind('<F9>', self.run_selection)
+        if cst.JUPYTER:
+            self.bind('<F10>', self.execute_in_jupyter)
 
         # --- maximize window
         self.update_idletasks()
@@ -263,21 +347,22 @@ class App(tk.Tk):
         for f in files:
             self.open_file(os.path.abspath(f))
 
+        if ofiles == [''] and not files:
+            self._on_empty_notebook()
+
         self.protocol('WM_DELETE_WINDOW', self.quit)
-        signal.signal(signal.SIGUSR1, self._on_signal)
+
+        # --- signals
+        signal.signal(signal.SIGUSR1, self._signal_open_files)
+        signal.signal(signal.SIGUSR2, self._signal_exec_jupyter)
+
 
     @staticmethod
     def _select_all(event):
         """Select all entry content."""
         event.widget.selection_range(0, "end")
 
-    def _show_menu_nb(self, event):
-        tab = self.right_nb.index('@%i,%i' % (event.x, event.y))
-        if tab is not None:
-            if self.right_nb.tab(tab, 'text') == 'Console':
-                self.console.menu.tk_popup(event.x_root, event.y_root)
-
-    def _on_signal(self, *args):
+    def _signal_open_files(self, *args):
         self.lift()
         self.focus_get()
         if os.path.exists(cst.OPENFILE_PATH):
@@ -395,6 +480,7 @@ class App(tk.Tk):
         self.option_add('*Canvas.highlightThickness', 0)
         self.option_add('*Canvas.borderWidth', 0)
         self.option_add('*Toplevel.background', theme['bg'])
+        self.option_add(f'*{self.winfo_class()}.background', theme['bg'])
         # --- special themes
         style.configure('tooltip.TLabel', background=theme['tooltip_bg'],
                         foreground=theme['fg'])
@@ -420,53 +506,69 @@ class App(tk.Tk):
                         'children': [('Button.padding',
                                       {'sticky': 'nswe',
                                        'children': [('Button.close', {'sticky': 'nswe'})]})]})])
+        style.layout('toggle.TButton',
+                     [('Button.border',
+                       {'sticky': 'nswe',
+                        'border': '1',
+                        'children': [('Button.padding',
+                                      {'sticky': 'nswe',
+                                       'children': [('Button.label', {'sticky': 'nswe'})]})]})])
         style.configure('border.TFrame', borderwidth=1, relief='sunken')
         style.configure('separator.TFrame', background=theme['bordercolor'], padding=1)
         style.configure('Up.TButton', arrowsize=20)
         style.configure('Down.TButton', arrowsize=20)
         style.configure('close.TButton', borderwidth=1, relief='flat')
         style.map('close.TButton', relief=[('active', 'raised')])
+        style.map('toggle.TButton', relief=[('selected', 'sunken'), ('!selected', 'flat')])
         style.layout('flat.Treeview',
                      [('Treeview.padding',
                        {'sticky': 'nswe',
                         'children': [('Treeview.treearea', {'sticky': 'nswe'})]})])
         style.configure('flat.Treeview', background=theme['fieldbg'])
+        style.configure('Treeview', background=theme['fieldbg'])
+        style.layout('widget.TNotebook.Tab',
+                     [('Notebook.tab',
+                       {'sticky': 'nswe',
+                        'children': [('Notebook.padding',
+                                      {'side': 'top',
+                                       'sticky': 'nswe',
+                                       'children': [('Notebook.label',
+                                                     {'side': 'left',
+                                                      'border': '2',
+                                                      'sticky': 'w'}),
+                                                    ('Notebook.close',
+                                                     {'side': 'right',
+                                                      'border': '2',
+                                                      'sticky': 'e'})]})]})])
         self.configure(bg=theme['bg'], padx=6, pady=2)
         # --- menu
         self.menu.configure(bg=theme['bg'], fg=theme['fg'],
                             borderwidth=0, activeborderwidth=0,
                             activebackground=theme['selectbg'],
                             activeforeground=theme['selectfg'])
-        self.menu_file.configure(bg=theme['fieldbg'], activebackground=theme['selectbg'],
-                                 fg=theme['fg'], activeforeground=theme['fg'],
-                                 disabledforeground=theme['disabledfg'],
-                                 selectcolor=theme['fg'])
-        self.menu_recent_files.configure(bg=theme['fieldbg'], activebackground=theme['selectbg'],
-                                         fg=theme['fg'], activeforeground=theme['fg'],
-                                         disabledforeground=theme['disabledfg'],
-                                         selectcolor=theme['fg'])
-        self.menu_edit.configure(bg=theme['fieldbg'], activebackground=theme['selectbg'],
-                                 fg=theme['fg'], activeforeground=theme['fg'],
-                                 disabledforeground=theme['disabledfg'],
-                                 selectcolor=theme['fg'])
-        self.menu_errors.configure(bg=theme['fieldbg'],
-                                   activebackground=theme['selectbg'],
-                                   fg=theme['fg'],
-                                   activeforeground=theme['fg'],
-                                   disabledforeground=theme['disabledfg'],
-                                   selectcolor=theme['fg'])
-        self.menu_doc.configure(bg=theme['fieldbg'],
-                                activebackground=theme['selectbg'],
-                                fg=theme['fg'],
-                                activeforeground=theme['fg'],
-                                disabledforeground=theme['disabledfg'],
-                                selectcolor=theme['fg'])
-        self.menu_filetype.configure(bg=theme['fieldbg'],
-                                     activebackground=theme['selectbg'],
-                                     fg=theme['fg'],
-                                     activeforeground=theme['fg'],
-                                     disabledforeground=theme['disabledfg'],
-                                     selectcolor=theme['fg'])
+        submenu_options = dict(bg=theme['fieldbg'], activebackground=theme['selectbg'],
+                               fg=theme['fg'], activeforeground=theme['fg'],
+                               disabledforeground=theme['disabledfg'],
+                               selectcolor=theme['fg'])
+        self.menu_file.configure(**submenu_options)
+        self.menu_view.configure(**submenu_options)
+        self.menu_recent_files.configure(**submenu_options)
+        self.menu_edit.configure(**submenu_options)
+        self.menu_errors.configure(**submenu_options)
+        self.menu_consoles.configure(**submenu_options)
+        self.menu_search.configure(**submenu_options)
+        self.menu_doc.configure(**submenu_options)
+        self.menu_filetype.configure(**submenu_options)
+        try:
+            self.codestruct.menu.configure(**submenu_options)
+        except AttributeError:
+            pass
+        for widget in self.widgets.values():
+            try:
+                widget.menu.configure(**submenu_options)
+            except AttributeError:
+                pass
+
         self.option_add('*Menu.background', theme['fieldbg'])
         self.option_add('*Menu.activeBackground', theme['selectbg'])
         self.option_add('*Menu.activeForeground', theme['fg'])
@@ -553,6 +655,7 @@ class App(tk.Tk):
         self.codestruct.set_callback(self.editor.goto_item)
         self.codestruct.populate(self.editor.filename, self.editor.get(strip=False))
         self.update_menu_errors()
+        self.editor.focus_tab()
 
     def _filetype_change(self, event):
         filetype = self.filetype.get()
@@ -570,20 +673,47 @@ class App(tk.Tk):
         else:
             self.menu_file.entryconfigure('Save', state='disabled')
 
+    def _on_empty_notebook(self, event=None):
+        """Disable irrelevant menus when no file is opened"""
+        self.codestruct.clear()
+        self.menu.entryconfigure('Document', state='disabled')
+        self.menu.entryconfigure('Search', state='disabled')
+        for entry in range(self.menu_edit.index('end') - 1):
+            try:
+                self.menu_edit.entryconfigure(entry, state='disabled')
+            except tk.TclError:
+                pass
+        for entry in ['Save as', 'Save all', 'Close all files']:
+            self.menu_file.entryconfigure(entry, state='disabled')
+
+    def _on_first_tab_creation(self, event):
+        """Enable menus when fisrt file is opened"""
+        self.menu.entryconfigure('Document', state='normal')
+        self.menu.entryconfigure('Search', state='normal')
+        for entry in range(self.menu_edit.index('end') - 1):
+            try:
+                self.menu_edit.entryconfigure(entry, state='normal')
+            except tk.TclError:
+                pass
+        for entry in ['Save as', 'Save all', 'Close all files']:
+            self.menu_file.entryconfigure(entry, state='normal')
+
     def report_callback_exception(self, *args):
         """Log exceptions."""
         err = "".join(traceback.format_exception(*args))
         logging.error(err)
-        showerror("Error", str(args[1]), err, True)
+        if args[0] is not KeyboardInterrupt:
+            showerror("Error", str(args[1]), err, True)
+        else:
+            self.destroy()
 
     def config(self):
         c = Config(self)
         self.wait_window(c)
         self._setup_style()
         self.editor.update_style()
-        self.console.update_style()
-        self.history.update_style()
-        self.help.load_stylesheet()
+        for widget in self.widgets.values():
+            widget.update_style()
 
     def quit(self):
         files = ', '.join(self.editor.get_open_files())
@@ -594,7 +724,13 @@ class App(tk.Tk):
             self.destroy()
 
     def new(self, event=None):
+        try:
+            with open(cst.PATH_TEMPLATE) as file:
+                txt = file.read()
+        except Exception:
+            txt = ""
         self.editor.new()
+        self.editor.insert('1.0', txt.format(date=datetime.now().strftime('%c'), author=getuser()))
         self.editor.edit_reset()
         self._edit_modified(0)
         self.codestruct.populate('new.py', '')
@@ -641,8 +777,12 @@ class App(tk.Tk):
 
     def view_in_filebrowser(self, event):
         file = self.editor.files[self.editor.current_tab]
-        self.filebrowser.populate(os.path.dirname(file))
-        self.right_nb.select(3)
+        fb = self.widgets['File browser']
+        fb.populate(os.path.dirname(file))
+        if not fb.visible.get():
+            fb.visible.set(True)
+        else:
+            self.right_nb.select(fb)
 
     def reload(self, event):
         file = self.editor.files[self.editor.current_tab]
@@ -663,7 +803,7 @@ class App(tk.Tk):
             self._update_recent_files(file)
         else:
             txt = self.load_file(file)
-            self.filebrowser.populate(os.path.dirname(file))
+            self.widgets['File browser'].populate(os.path.dirname(file), reset=True)
             if txt is not None:
                 self.editor.new(file)
                 self.editor.insert('1.0', txt)
@@ -689,8 +829,24 @@ class App(tk.Tk):
             for file in files:
                 self.open_file(file)
 
+    # --- search
+    def search(self, venet=None):
+
+        def on_destroy(event):
+            self._search_dialog = None
+
+        if self._search_dialog is None:
+            self._search_dialog = SearchDialog(self, self.editor.get_selection())
+            self._search_dialog.bind('<Destroy>', on_destroy)
+        else:
+            self._search_dialog.lift()
+            self._search_dialog.entry_search.focus_set()
+
+    # --- save
     def saveas(self, event=None):
         tab = self.editor.select()
+        if tab < 0:
+            return False
         file = self.editor.files.get(tab, '')
         if file:
             initialdir, initialfile = os.path.split(file)
@@ -718,16 +874,79 @@ class App(tk.Tk):
             self._edit_modified(0, tab=tab)
             self.check_syntax()
             self.codestruct.populate(self.editor.filename, self.editor.get(strip=False))
+        self.editor.focus_tab()
         return saved
 
     def saveall(self, event=None):
         for tab in self.editor.tabs():
             self.save(tab=tab, update=True)
 
+    # --- run
     def run(self, event=None):
         if self.save():
             self.editor.run()
 
+    def run_selection(self, event=None):
+        code = self.editor.get_selection()
+        if code:
+            self.console.execute(code)
+
+    # --- jupyter
+    def _init_kernel(self):
+        """Initialize Jupyter kernel"""
+        if not cst.JUPYTER:
+            return
+        # launch new kernel
+        cfm = cst.ConnectionFileMixin(connection_file=cst.JUPYTER_KERNEL_PATH)
+        cfm.write_connection_file()
+        self.jupyter_kernel = cst.BlockingKernelClient(connection_file=cst.JUPYTER_KERNEL_PATH)
+        self.jupyter_kernel.load_connection_file()
+        self.jupyter_kernel.start_channels()
+
+    def start_jupyter(self):
+        """Return true if new instance was started"""
+        if not cst.JUPYTER:
+            return
+        if (self._qtconsole_process is None) or (self._qtconsole_process.poll() is not None):
+            self._init_kernel()
+            self._qtconsole_ready = False
+            self._qtconsole_process = Popen(['python', '-m', 'pytkeditorlib.custom_qtconsole',
+                                             '--JupyterWidget.include_other_output=True',
+                                             '--JupyterWidget.other_output_prefix=[editor]',
+                                             f'--PyTkEditor.pid={self.pid}',
+                                             '-f', cst.JUPYTER_KERNEL_PATH])
+            return True
+        else:
+            return False
+
+    def _signal_exec_jupyter(self, *args):
+
+        def ready():
+            self._qtconsole_ready = True
+
+        self.after(200, ready)
+
+    def _wait_execute_in_jupyter(self, code):
+        if self._qtconsole_ready:
+            self.jupyter_kernel.execute(code)
+            os.kill(self._qtconsole_process.pid, signal.SIGUSR1)
+        else:
+            self.after(1000, lambda: self._wait_execute_in_jupyter(code))
+
+    def execute_in_jupyter(self, event=None):
+        if not cst.JUPYTER:
+            return
+        code = self.editor.get_selection()
+        if not code:
+            return
+        if self.start_jupyter():
+            self._wait_execute_in_jupyter(code)
+        else:
+            self.jupyter_kernel.execute(code)
+            os.kill(self._qtconsole_process.pid, signal.SIGUSR1)
+        return "break"
+
+    # --- syntax check
     def check_syntax(self, tab=None):
         if tab is None:
             tab = self.editor.select()
@@ -737,13 +956,13 @@ class App(tk.Tk):
             self.update_menu_errors()
 
     def update_menu_errors(self):
-        self.menu.entryconfigure('Error list', state='normal')
+        self.menu_doc.entryconfigure('Error list', state='normal')
         self.menu_errors.delete(0, 'end')
         errors = self.editor.get_syntax_issues()
         if not errors:
-            self.menu.entryconfigure('Error list', state='disabled')
+            self.menu_doc.entryconfigure('Error list', state='disabled')
         else:
             for (category, msg, cmd) in errors:
                 self.menu_errors.add_command(label=msg,
-                                             image=self._syntax_icons[category],
+                                             image=self._images[category],
                                              compound='left', command=cmd)

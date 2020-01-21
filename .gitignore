@@ -5,3 +5,4 @@ dist/
 *.egg-info
 config/
 *.orig
+jupyter_test.py

@@ -23,6 +23,7 @@ I have new ideas.
     - `pyflakes <https://pypi.org/project/pyflakes/>`_
     - `pygments <https://pypi.org/project/pygments/>`_
     - `tkfilebrowser <https://pypi.org/project/tkfilebrowser/>`_
+    - `tkcolorpicker <https://pypi.org/project/tkcolorpicker/>`_
     - `python-xlib <https://pypi.org/project/python-xlib/>`_
     
 **Install:**
