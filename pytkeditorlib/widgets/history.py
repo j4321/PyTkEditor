@@ -27,21 +27,20 @@ import pickle
 from pygments import lex
 from pygments.lexers import Python3Lexer
 
-from pytkeditorlib.utils.constants import load_style, CONFIG, HISTFILE
+from pytkeditorlib.utils.constants import CONFIG, HISTFILE
 from pytkeditorlib.gui_utils import AutoHideScrollbar
 from pytkeditorlib.dialogs import showinfo
-from .base_widget import BaseWidget
+from .base_widget import BaseWidget, RichText
 
 
-class History(tk.Text):
+class History(RichText):
     """Python console command history."""
 
     def __init__(self, master=None, histfile=HISTFILE, **kw):
         """ Crée un historique vide """
         kw.setdefault('width', 1)
-        tk.Text.__init__(self, master, **kw)
-        self._syntax_highlighting_tags = []
-        self.update_style()
+        RichText.__init__(self, master, **kw)
+
         self.histfile = histfile
         self.maxsize = CONFIG.getint('History', 'max_size', fallback=10000)
         self.history = []
@@ -70,28 +69,8 @@ class History(tk.Text):
         return "break"
 
     def update_style(self):
+        RichText.update_style(self)
         self.maxsize = CONFIG.getint('History', 'max_size', fallback=10000)
-        FONT = (CONFIG.get("General", "fontfamily"),
-                CONFIG.getint("General", "fontsize"))
-        CONSOLE_BG, CONSOLE_HIGHLIGHT_BG, CONSOLE_SYNTAX_HIGHLIGHTING = load_style(CONFIG.get('Console', 'style'))
-        CONSOLE_FG = CONSOLE_SYNTAX_HIGHLIGHTING.get('Token.Name', {}).get('foreground', 'black')
-
-        self._syntax_highlighting_tags = list(CONSOLE_SYNTAX_HIGHLIGHTING.keys())
-        self.configure(fg=CONSOLE_FG, bg=CONSOLE_BG, font=FONT,
-                       selectbackground=CONSOLE_HIGHLIGHT_BG,
-                       inactiveselectbackground=CONSOLE_HIGHLIGHT_BG,
-                       insertbackground=CONSOLE_FG)
-        self.tag_configure('error', background=CONSOLE_BG)
-        self.tag_configure('output', foreground=CONSOLE_FG,
-                           background=CONSOLE_BG)
-        # --- syntax highlighting
-        tags = list(self.tag_names())
-        tags.remove('sel')
-        tag_props = {key: '' for key in self.tag_configure('sel')}
-        for tag in tags:
-            self.tag_configure(tag, **tag_props)
-        for tag, opts in CONSOLE_SYNTAX_HIGHLIGHTING.items():
-            self.tag_configure(tag, **opts)
 
     def parse(self):
         data = self.get('1.0', 'end')
@@ -176,6 +155,7 @@ class HistoryFrame(BaseWidget):
         syh.configure(command=self.history.yview)
 
         # --- search bar
+        self._highlighted = ''
         self.frame_search = ttk.Frame(self, padding=2)
         self.frame_search.columnconfigure(1, weight=1)
         self.entry_search = ttk.Entry(self.frame_search)
@@ -195,6 +175,10 @@ class HistoryFrame(BaseWidget):
         self.full_word = ttk.Checkbutton(search_buttons, text='[-]')
         self.full_word.state(['!selected', '!alternate'])
         self.full_word.pack(side='left', padx=2, pady=4)
+        self._highlight_btn = ttk.Checkbutton(search_buttons, image='img_highlight',
+                                              padding=0, style='toggle.TButton',
+                                              command=self.highlight_all)
+        self._highlight_btn.pack(side='left', padx=2, pady=4)
 
         frame_find = ttk.Frame(self.frame_search)
         ttk.Button(frame_find, padding=0,
@@ -226,6 +210,35 @@ class HistoryFrame(BaseWidget):
         self.entry_search.selection_range(0, 'end')
         return "break"
 
+    def highlight_all(self):
+        if 'selected' in self._highlight_btn.state():
+            pattern = self.entry_search.get()
+
+            if not pattern:
+                self._highlight_btn.state(['!selected'])
+                return
+            if self._highlighted == pattern and self.history.tag_ranges('highlight_find'):
+                return
+
+            self._highlighted = pattern
+            self.history.tag_remove('highlight_find', '1.0', 'end')
+
+            full_word = 'selected' in self.full_word.state()
+            options = {'regexp': 'selected' in self.regexp.state(),
+                       'nocase': 'selected' not in self.case_sensitive.state(),
+                       'count': self._search_count, 'stopindex': 'end'}
+
+            if full_word:
+                pattern = r'\y%s\y' % pattern
+                options['regexp'] = True
+            res = self.history.search(pattern, '1.0', **options)
+            while res:
+                end = f"{res}+{self._search_count.get()}c"
+                self.history.tag_add('highlight_find', res, end)
+                res = self.history.search(pattern, end, **options)
+        else:
+            self.history.tag_remove('highlight_find', '1.0', 'end')
+
     def search(self, event=None, backwards=False, notify_no_match=True, **kw):
         pattern = self.entry_search.get()
         full_word = 'selected' in self.full_word.state()
@@ -238,6 +251,7 @@ class HistoryFrame(BaseWidget):
         else:  # forwards
             options['forwards'] = True
 
+        self.highlight_all()
         res = self.history.search(pattern, 'insert', **options)
 
         if res and full_word:

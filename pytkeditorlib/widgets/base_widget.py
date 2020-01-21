@@ -20,11 +20,13 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 Base widget
 """
-from tkinter import BooleanVar, Menu
+from tkinter import BooleanVar, Text
 from tkinter.ttk import Frame
 
+from tkcolorpicker.functions import rgb_to_hsv, hexa_to_rgb
+
 from pytkeditorlib.gui_utils import Notebook
-from pytkeditorlib.utils.constants import CONFIG, save_config
+from pytkeditorlib.utils.constants import CONFIG, save_config, load_style
 
 
 class BaseWidget(Frame):
@@ -35,8 +37,6 @@ class BaseWidget(Frame):
         self.name = name
 
         self.menu = None
-        # self.menu = Menu(self)
-        # self.menu.add_command(label='Hide', command=lambda: self.visible.set(False))
 
         self.visible = BooleanVar(self)
         self.visible.trace_add('write', self._visibility_trace)
@@ -56,6 +56,47 @@ class BaseWidget(Frame):
 
     def set_order(self, order):
         CONFIG.set(self.name, 'order', str(order))
+
+
+class RichText(Text):
+    def __init__(self, master, **kw):
+        Text.__init__(self, master, **kw)
+
+        self._syntax_highlighting_tags = []
+        self.update_style()
+
+    def update_style(self):
+        FONT = (CONFIG.get("General", "fontfamily"),
+                CONFIG.getint("General", "fontsize"))
+        CONSOLE_BG, CONSOLE_HIGHLIGHT_BG, CONSOLE_SYNTAX_HIGHLIGHTING = load_style(CONFIG.get('Console', 'style'))
+        CONSOLE_FG = CONSOLE_SYNTAX_HIGHLIGHTING.get('Token.Name', {}).get('foreground', 'black')
+
+        if rgb_to_hsv(*hexa_to_rgb(CONSOLE_HIGHLIGHT_BG))[2] > 50:
+            selectfg = 'black'
+        else:
+            selectfg = 'white'
+        self._syntax_highlighting_tags = list(CONSOLE_SYNTAX_HIGHLIGHTING.keys())
+        self.configure(fg=CONSOLE_FG, bg=CONSOLE_BG, font=FONT,
+                       selectbackground=CONSOLE_HIGHLIGHT_BG,
+                       selectforeground=selectfg,
+                       inactiveselectbackground=CONSOLE_HIGHLIGHT_BG,
+                       insertbackground=CONSOLE_FG)
+        CONSOLE_SYNTAX_HIGHLIGHTING['Token.Generic.Prompt'].setdefault('foreground', CONSOLE_FG)
+        # --- syntax highlighting
+        tags = list(self.tag_names())
+        tags.remove('sel')
+        tag_props = {key: '' for key in self.tag_configure('sel')}
+        for tag in tags:
+            self.tag_configure(tag, **tag_props)
+        for tag, opts in CONSOLE_SYNTAX_HIGHLIGHTING.items():
+            props = tag_props.copy()
+            props.update(opts)
+            self.tag_configure(tag, **props)
+        self.tag_configure('prompt', **CONSOLE_SYNTAX_HIGHLIGHTING['Token.Generic.Prompt'])
+        self.tag_configure('output', foreground=CONSOLE_FG)
+        self.tag_configure('highlight_find', background=CONSOLE_HIGHLIGHT_BG)
+        self.tag_raise('sel')
+        self.tag_raise('prompt')
 
 
 class WidgetNotebook(Notebook):

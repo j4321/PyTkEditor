@@ -102,8 +102,7 @@ class App(tk.Tk):
         widgets = ['Console', 'History', 'Help', 'File browser']
         widgets.sort(key=lambda w: CONFIG.getint(w, 'order', fallback=0))
         # --- --- --- command history
-        self.widgets['History'] = HistoryFrame(self.right_nb,
-                                               padding=1)
+        self.widgets['History'] = HistoryFrame(self.right_nb, padding=1)
         # --- --- --- python console
         self.widgets['Console'] = ConsoleFrame(self.right_nb,
                                                history=self.widgets['History'].history,

@@ -35,14 +35,13 @@ from pygments import lex
 from pygments.lexers import Python3Lexer
 import jedi
 
-from pytkeditorlib.utils.constants import get_screen, load_style, CONFIG, SERVER_CERT, \
-    CLIENT_CERT
+from pytkeditorlib.utils.constants import get_screen, SERVER_CERT, CLIENT_CERT
 from pytkeditorlib.dialogs import askyesno, CompListbox, Tooltip
 from pytkeditorlib.gui_utils import AutoHideScrollbar
-from .base_widget import BaseWidget
+from .base_widget import BaseWidget, RichText
 
 
-class TextConsole(tk.Text):
+class TextConsole(RichText):
     def __init__(self, master, history, **kw):
         kw.setdefault('width', 50)
         kw.setdefault('wrap', 'word')
@@ -54,12 +53,10 @@ class TextConsole(tk.Text):
         self._hist_item = self.history.get_length()
         self._hist_match = ''
 
-        self._syntax_highlighting_tags = []
-
         self._prompt1 = kw.pop('prompt1')
         self._prompt2 = kw.pop('prompt2')
 
-        tk.Text.__init__(self, master, **kw)
+        RichText.__init__(self, master, **kw)
 
         self._comp = CompListbox(self)
         self._comp.set_callback(self._comp_sel)
@@ -72,7 +69,7 @@ class TextConsole(tk.Text):
         self._init_shell()
 
         # --- initialization
-        self.update_style()
+        # self.update_style()
 
         self.insert('end', banner, 'banner')
         self.prompt()
@@ -153,28 +150,6 @@ class TextConsole(tk.Text):
         self._comp.withdraw()
         self.insert('insert', txt)
         self.parse()
-
-    def update_style(self):
-        FONT = (CONFIG.get("General", "fontfamily"),
-                CONFIG.getint("General", "fontsize"))
-        CONSOLE_BG, CONSOLE_HIGHLIGHT_BG, CONSOLE_SYNTAX_HIGHLIGHTING = load_style(CONFIG.get('Console', 'style'))
-        CONSOLE_FG = CONSOLE_SYNTAX_HIGHLIGHTING.get('Token.Name', {}).get('foreground', 'black')
-
-        self._syntax_highlighting_tags = list(CONSOLE_SYNTAX_HIGHLIGHTING.keys())
-        self.configure(fg=CONSOLE_FG, bg=CONSOLE_BG, font=FONT,
-                       selectbackground=CONSOLE_HIGHLIGHT_BG,
-                       inactiveselectbackground=CONSOLE_HIGHLIGHT_BG,
-                       insertbackground=CONSOLE_FG)
-        CONSOLE_SYNTAX_HIGHLIGHTING['Token.Generic.Prompt'].setdefault('foreground', CONSOLE_FG)
-        self.tag_configure('prompt', **CONSOLE_SYNTAX_HIGHLIGHTING['Token.Generic.Prompt'])
-        self.tag_configure('output', foreground=CONSOLE_FG)
-        # --- syntax highlighting
-        tag_props = {key: '' for key in self.tag_configure('sel')}
-        for tag, opts in CONSOLE_SYNTAX_HIGHLIGHTING.items():
-            props = tag_props.copy()
-            props.update(opts)
-            self.tag_configure(tag, **props)
-        self.tag_raise('prompt')
 
     def index_to_tuple(self, index):
         return tuple(map(int, self.index(index).split(".")))
@@ -589,3 +564,4 @@ class ConsoleFrame(BaseWidget):
         self.menu.add_command(label='Clear console', command=self.console.shell_clear)
         self.menu.add_command(label='Restart console', command=self.console.restart_shell)
 
+        self.update_style = self.console.update_style
