@@ -164,6 +164,18 @@ class WidgetNotebook(Notebook):
     def __init__(self, master, **kw):
         Notebook.__init__(self, master, tabmenu=False, closecommand=self.close, **kw)
         self.bind('<Destroy>', self._save_order)
+        self._manager = master
+
+    @property
+    def manager(self):
+        return self._manager
+
+    @manager.setter
+    def manager(self, new_manager):
+        if self._visible_tabs:
+            self._manager.forget(self)
+            new_manager.insert('end', self, weight=5)
+        self._manager = new_manager
 
     def _save_order(self, event):
         for i, tab in enumerate(self._visible_tabs):
@@ -178,11 +190,11 @@ class WidgetNotebook(Notebook):
     def hide(self, tabId):
         Notebook.hide(self, tabId)
         if not self._visible_tabs:
-            self.master.forget(self)
+            self.manager.forget(self)
 
     def add(self, child, **kw):
         if not self._visible_tabs:
-            self.master.insert('end', self, weight=5)
+            self.manager.insert('end', self, weight=5)
         Notebook.add(self, child, **kw)
 
     def close(self, tabId):

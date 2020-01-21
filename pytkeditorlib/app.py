@@ -68,6 +68,8 @@ class App(tk.Tk):
         self.menu_doc = tk.Menu(self.menu)
         self.menu_consoles = tk.Menu(self.menu)
         self.menu_view = tk.Menu(self.menu)
+        self.menu_widgets = tk.Menu(self.menu_view)
+        self.menu_layouts = tk.Menu(self.menu_view)
         self.menu_filetype = tk.Menu(self.menu_doc)
         self.menu_errors = LongMenu(self.menu_doc, 40)
 
@@ -92,13 +94,14 @@ class App(tk.Tk):
         self._init_kernel()
 
         # --- GUI elements
-        pane = ttk.PanedWindow(self, orient='horizontal')
+        self._horizontal_pane = ttk.PanedWindow(self, orient='horizontal')
+        self._vertical_pane = ttk.PanedWindow(self._horizontal_pane, orient='vertical')
         # --- --- code structure tree
-        self.codestruct = CodeStructure(pane)
+        self.codestruct = CodeStructure(self._horizontal_pane)
         # --- --- editor notebook
-        self.editor = EditorNotebook(pane, width=696)
+        self.editor = EditorNotebook(self._horizontal_pane, width=696)
         # --- --- right pane
-        self.right_nb = WidgetNotebook(pane)
+        self.right_nb = WidgetNotebook(self._horizontal_pane)
         widgets = ['Console', 'History', 'Help', 'File browser']
         widgets.sort(key=lambda w: CONFIG.getint(w, 'order', fallback=0))
         # --- --- --- command history
@@ -116,10 +119,15 @@ class App(tk.Tk):
         self.widgets['File browser'] = Filebrowser(self.right_nb, self.open_file)
 
         # ----- placement
-        pane.add(self.codestruct, weight=1)
-        pane.add(self.editor, weight=50)
-        # pane.add(self.right_nb, weight=5)
-        pane.pack(fill='both', expand=True, pady=(0, 4))
+        self._horizontal_pane.add(self.codestruct, weight=1)
+        layout = CONFIG.get('General', 'layout', fallback='horizontal')
+        if layout == 'horizontal':
+            self._horizontal_pane.add(self.editor, weight=50)
+        else:  # vertical
+            self._horizontal_pane.add(self._vertical_pane, weight=55)
+            self._vertical_pane.add(self.editor, weight=20)
+            self.right_nb.manager = self._vertical_pane
+        self._horizontal_pane.pack(fill='both', expand=True, pady=(0, 4))
         self.codestruct.visible.set(CONFIG.getboolean('Code structure', 'visible', fallback=True))
         for name in widgets:
             self.right_nb.add(self.widgets[name], text=name)
@@ -283,9 +291,14 @@ class App(tk.Tk):
                                            compound='left')
 
         # ------- view
-        self.menu_view.add_checkbutton(label='Code structure', variable=self.codestruct.visible)
+        self.menu_view.add_cascade(label='Panes', menu=self.menu_widgets,
+                                   image='img_menu_dummy', compound='left')
+        self.menu_view.add_cascade(label='Window layout', menu=self.menu_layouts,
+                                   image='img_menu_dummy', compound='left')
+        # ------- view --- widgets
+        self.menu_widgets.add_checkbutton(label='Code structure', variable=self.codestruct.visible)
         for name in widgets:
-            self.menu_view.add_checkbutton(label=name, variable=self.widgets[name].visible)
+            self.menu_widgets.add_checkbutton(label=name, variable=self.widgets[name].visible)
 
         self.menu.add_cascade(label='File', underline=0, menu=self.menu_file)
         self.menu.add_cascade(label='Edit', underline=0, menu=self.menu_edit)
@@ -295,6 +308,19 @@ class App(tk.Tk):
         self.menu.add_cascade(label='View', underline=0, menu=self.menu_view)
         self.menu.add_command(label='About', underline=0,
                               command=lambda: About(self))
+        # ------- view --- layouts
+        self.layout = tk.StringVar(self, layout)
+        self.menu_layouts.add_radiobutton(label='Horizontal split',
+                                          variable=self.layout,
+                                          value='horizontal',
+                                          command=self.change_layout,
+                                          image='img_view_horizontal', compound='left')
+
+        self.menu_layouts.add_radiobutton(label='Partial vertical split',
+                                          variable=self.layout,
+                                          command=self.change_layout,
+                                          value='vertical',
+                                          image='img_view_vertical', compound='left')
 
         self.configure(menu=self.menu)
 
@@ -540,7 +566,7 @@ class App(tk.Tk):
                                                       'border': '2',
                                                       'sticky': 'e'})]})]})])
         self.configure(bg=theme['bg'], padx=6, pady=2)
-        # --- menu
+        # --- menus
         self.menu.configure(bg=theme['bg'], fg=theme['fg'],
                             borderwidth=0, activeborderwidth=0,
                             activebackground=theme['selectbg'],
@@ -551,6 +577,8 @@ class App(tk.Tk):
                                selectcolor=theme['fg'])
         self.menu_file.configure(**submenu_options)
         self.menu_view.configure(**submenu_options)
+        self.menu_widgets.configure(**submenu_options)
+        self.menu_layouts.configure(**submenu_options)
         self.menu_recent_files.configure(**submenu_options)
         self.menu_edit.configure(**submenu_options)
         self.menu_errors.configure(**submenu_options)
@@ -705,6 +733,22 @@ class App(tk.Tk):
             showerror("Error", str(args[1]), err, True)
         else:
             self.destroy()
+
+    def change_layout(self):
+        layout = self.layout.get()
+        if CONFIG.get('General', 'layout', fallback='horizontal') == 'layout':
+            return  # no change
+        CONFIG.set('General', 'layout', layout)
+        save_config()
+        if layout == 'horizontal':
+            self._horizontal_pane.forget(self._vertical_pane)
+            self._horizontal_pane.insert('end', self.editor, weight=50)
+            self.right_nb.manager = self._horizontal_pane
+        else:  # 'vertical'
+            self._horizontal_pane.forget(self.editor)
+            self._vertical_pane.insert('end', self.editor, weight=20)
+            self._horizontal_pane.insert('end', self._vertical_pane, weight=55)
+            self.right_nb.manager = self._vertical_pane
 
     def config(self):
         c = Config(self)

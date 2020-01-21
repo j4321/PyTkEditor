@@ -151,6 +151,7 @@ if not CONFIG.read(PATH_CONFIG):
     CONFIG.set('General', 'fontsize', "10")
     CONFIG.set('General', 'opened_files', "")
     CONFIG.set('General', 'recent_files', "")
+    CONFIG.set('General', 'layout', "horizontal")
     CONFIG.add_section('Editor')
     CONFIG.set('Editor', 'style', "colorful")
     CONFIG.set('Editor', 'code_check', "True")

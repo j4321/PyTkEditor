@@ -40,12 +40,12 @@ class Tab(ttk.Frame):
                                    command=self.closecommand,
                                    class_='Notebook.Tab.Close',
                                    takefocus=False)
-        self.label.pack(side='left', padx=(6, 0))
+        self.label.pack(side='left', padx=(2, 0))
         if self._closebutton:
-            self.closebtn.pack(side='right', padx=(0, 6))
+            self.closebtn.pack(side='right', padx=(0, 2))
         self.update_idletasks()
-        self.configure(width=self.frame.winfo_reqwidth() + 6,
-                       height=self.frame.winfo_reqheight() + 6)
+        self.configure(width=self.frame.winfo_reqwidth() + 2,
+                       height=self.frame.winfo_reqheight() + 2)
         self.frame.place(bordermode='inside', anchor='nw', x=0, y=0,
                          relwidth=1, relheight=1)
         self.label.bind('<Configure>', self._resize)
@@ -61,8 +61,8 @@ class Tab(ttk.Frame):
             self.closecommand()
 
     def _resize(self, event):
-        self.configure(width=self.frame.winfo_reqwidth() + 6,
-                       height=self.frame.winfo_reqheight() + 6)
+        self.configure(width=self.frame.winfo_reqwidth() + 2,
+                       height=self.frame.winfo_reqheight() + 2)
 
     def closecommand(self):
         self._closecommand(self.tab_nb)
@@ -73,13 +73,13 @@ class Tab(ttk.Frame):
         self.frame.state(*args)
         self.closebtn.state(*args)
         if args and 'selected' in self.state():
-            self.configure(width=self.frame.winfo_reqwidth() + 6,
-                           height=self.frame.winfo_reqheight() + 6)
+            self.configure(width=self.frame.winfo_reqwidth() + 2,
+                           height=self.frame.winfo_reqheight() + 2)
             self.frame.place_configure(relheight=1.1)
         else:
             self.frame.place_configure(relheight=1)
-            self.configure(width=self.frame.winfo_reqwidth() + 6,
-                           height=self.frame.winfo_reqheight() + 6)
+            self.configure(width=self.frame.winfo_reqwidth() + 2,
+                           height=self.frame.winfo_reqheight() + 2)
         return res
 
     def bind(self, sequence=None, func=None, add=None):
@@ -99,8 +99,8 @@ class Tab(ttk.Frame):
             else:
                 self.closebtn.pack_forget()
             self.update_idletasks()
-            self.configure(width=self.frame.winfo_reqwidth() + 6,
-                           height=self.frame.winfo_reqheight() + 6)
+            self.configure(width=self.frame.winfo_reqwidth() + 2,
+                           height=self.frame.winfo_reqheight() + 2)
         if 'state' in kwargs:
             state = kwargs.pop('state')
             if state == 'normal':

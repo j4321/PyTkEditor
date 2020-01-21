@@ -158,7 +158,7 @@ class CodeStructure(Frame):
         self.menu = Menu(self)
         self.menu.add_command(label='Hide', command=lambda: self.visible.set(False))
 
-        self.filename = Label(self, padding=(4, 2), anchor='w')
+        self.filename = Label(self, padding=(4, 0), anchor='w')
         self.codetree = CodeTree(self)
         self._sx = AutoHideScrollbar(self, orient='horizontal', command=self.codetree.xview)
         self._sy = AutoHideScrollbar(self, orient='vertical', command=self.codetree.yview)
