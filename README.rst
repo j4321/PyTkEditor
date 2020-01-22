@@ -20,20 +20,19 @@ Quickstart
     - `docutils <https://pypi.org/project/docutils/>`_
     - `ewmh <https://pypi.org/project/ewmh/>`_
     - `jedi <https://pypi.org/project/jedi/>`_
+    - `pdfkit <https://pypi.org/project/pdfkit/>`_
     - `Pillow <https://pypi.org/project/Pillow/>`_
     - `pycodestyle <https://pypi.org/project/pycodestyle/>`_
+    - `pycups <https://pypi.org/project/pycups/>`_
     - `pyflakes <https://pypi.org/project/pyflakes/>`_
     - `pygments <https://pypi.org/project/pygments/>`_
     - `tkfilebrowser <https://pypi.org/project/tkfilebrowser/>`_
     - `tkcolorpicker <https://pypi.org/project/tkcolorpicker/>`_
     - `python-xlib <https://pypi.org/project/python-xlib/>`_
+    - `qtconsole <https://pypi.org/project/qtconsole/>`_ (optional: Execute in Jupyter QtConsole)
     
 **Install:**
 
-If you have Archlinux, you can use the PKGBUILD provided in the repository 
-to build *pytkeditor-git* from the master branch.
-
-Otherwise you can install *pytkeditor* with
 ::
 
     $ sudo python3 setup.py install
@@ -48,7 +47,7 @@ If PyTkEditor is installed:
 
 ::
 
-    $ pytkeditor
+    $ pytkeditor [ files ]
 
 or from the main menu *Development > PyTkEditor*.
     
@@ -56,5 +55,4 @@ Without installing:
 
 ::
 
-    $ python3 pytkeditor
-
+    $ python3 pytkeditor [ files ]
