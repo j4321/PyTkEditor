@@ -83,17 +83,26 @@ class PrintDialog(tk.Toplevel):
             self.printer.set('Print to file (PDF)')
         self.select_printer()
 
-        # --- Options
-        frame_options = ttk.Labelframe(self, text='Options:')
-        ttk.Label(frame_options, text='Paper size:').grid(row=0, column=0, sticky='e',
-                                                          padx=4, pady=4)
-        ttk.Label(frame_options, text='Layout:').grid(row=1, column=0, sticky='e',
-                                                      padx=4, pady=4)
-        ttk.Label(frame_options, text='Margins:').grid(row=2, column=0, sticky='ne',
+        # --- Page setup
+        frame_page = ttk.Labelframe(self, text='Page setup:')
+
+        self.paper_size = ttk.Combobox(frame_page, exportselection=False, state="readonly", values=PAPER_SIZES)
+        self.paper_size.set(PAPER_SIZES[0])
+        self.layout = ttk.Combobox(frame_page, exportselection=False, state="readonly", values=['Portrait', 'Landscape'])
+        self.layout.set('Portrait')
+        frame_margins = ttk.Frame(frame_page)
+
+        ttk.Label(frame_page, text='Paper size:').grid(row=0, column=0, sticky='e',
                                                        padx=4, pady=4)
+        ttk.Label(frame_page, text='Layout:').grid(row=1, column=0, sticky='e',
+                                                   padx=4, pady=4)
+        ttk.Label(frame_page, text='Margins:').grid(row=2, column=0, sticky='ne',
+                                                    padx=4, pady=4)
+        self.paper_size.grid(row=0, column=1, sticky='w', padx=4, pady=4)
+        self.layout.grid(row=1, column=1, sticky='w', padx=4, pady=4)
+        frame_margins.grid(row=2, column=1, sticky='w', padx=4, pady=4)
 
         # --- --- margins
-        frame_margins = ttk.Frame(frame_options)
         self.margins = {}
 
         r = 0
@@ -112,29 +121,34 @@ class PrintDialog(tk.Toplevel):
                 c = 0
                 r += 1
 
+        # --- Doc setup
+        frame_doc = ttk.Labelframe(self, text='Document setup:')
         self.display_linenos = tk.BooleanVar(self, True)
         self.display_title = tk.BooleanVar(self, True)
-        self.paper_size = ttk.Combobox(frame_options, exportselection=False, state="readonly", values=PAPER_SIZES)
-        self.paper_size.set(PAPER_SIZES[0])
-        self.layout = ttk.Combobox(frame_options, exportselection=False, state="readonly", values=['Portrait', 'Landscape'])
-        self.layout.set('Portrait')
 
-        self.paper_size.grid(row=0, column=1, sticky='w', padx=4, pady=4)
-        self.layout.grid(row=1, column=1, sticky='w', padx=4, pady=4)
-        frame_margins.grid(row=2, column=1, sticky='w', padx=4, pady=4)
-        ttk.Checkbutton(frame_options, variable=self.display_linenos,
-                        text='Display line numbers').grid(row=3, columnspan=2, sticky='w',
+        ttk.Checkbutton(frame_doc, variable=self.display_linenos,
+                        text='Display line numbers').grid(row=0, columnspan=4, sticky='w',
                                                           padx=4, pady=4)
-        ttk.Checkbutton(frame_options, variable=self.display_title,
-                        text='Display filename as title').grid(row=4, columnspan=2, sticky='w',
-                                                               padx=4, pady=4)
+        ttk.Checkbutton(frame_doc, variable=self.display_title,
+                        text='Display file name as title').grid(row=1, columnspan=4, sticky='w',
+                                                                padx=4, pady=4)
+        ttk.Label(frame_doc, text='Color mode:').grid(row=2, column=0, padx=4, pady=4)
+        self.color_mode = tk.StringVar(self, 'color')
+        ttk.Radiobutton(frame_doc, text='Color', variable=self.color_mode,
+                        value='color').grid(row=2, column=1, sticky='w', padx=4, pady=4)
+        ttk.Radiobutton(frame_doc, text='Grayscale', variable=self.color_mode,
+                        value='grayscale').grid(row=2, column=2, sticky='w', padx=4, pady=4)
+        ttk.Radiobutton(frame_doc, text='Black and white', variable=self.color_mode,
+                        value='bw').grid(row=2, column=3, sticky='w', padx=4, pady=4)
+
         # -- validation
         frame_btns = ttk.Frame(self)
         ttk.Button(frame_btns, text='Cancel', command=self.destroy).pack(side='left', padx=4, pady=4)
         ttk.Button(frame_btns, text='Print', command=self.print).pack(side='left', padx=4, pady=4)
 
         frame_printer.pack(side='top', fill='x', pady=4)
-        frame_options.pack(side='top', fill='x', pady=4)
+        frame_page.pack(side='top', fill='x', pady=4)
+        frame_doc.pack(side='top', fill='x', pady=4)
         frame_btns.pack(side='top', anchor='center')
         self.printer.bind("<<ComboboxSelected>>", self.select_printer)
         self.layout.bind("<<ComboboxSelected>>", self._clear_sel)
@@ -182,6 +196,11 @@ class PrintDialog(tk.Toplevel):
             except ValueError:
                 margin = 1
             print_options[f"margin-{side}"] = f"{margin}cm"
+        color_mode = self.color_mode.get()
+        if color_mode == 'bw':
+            print_options['style'] = 'bw'
+        elif color_mode == 'grayscale':
+            print_options['grayscale'] = ''
         if printer == 'Print to file (PDF)':
             filename = self.output.get()
             if os.path.exists(filename):
@@ -193,8 +212,10 @@ class PrintDialog(tk.Toplevel):
             if filename:
                 self.master.export_to_pdf(filename, **print_options)
         else:
-            filename = mkstemp(suffix=".pdf")
+            filename = mkstemp(suffix=".pdf")[1]
             self.master.export_to_pdf(filename, **print_options)
-            self.conn.printFile(printer, filename)
+            self.conn.printFile(printer, filename,
+                                f'PyTkEditor - {self.master.editor.filename}',
+                                {})
             os.remove(filename)
         self.destroy()

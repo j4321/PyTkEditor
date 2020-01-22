@@ -178,8 +178,8 @@ class App(tk.Tk):
                                    image='img_export',
                                    compound='left')
         self.menu_file.add_command(label='Print', command=self.print,
-                                   image='img_print',
-                                   compound='left')
+                                   image='img_print', compound='left',
+                                   accelerator='Ctrl+Shift+P')
 
         self.menu_file.add_separator()
         self.menu_file.add_command(label='Close all files',
@@ -375,6 +375,7 @@ class App(tk.Tk):
         self.bind('<Control-Shift-W>', self.editor.closeall)
         self.bind('<Control-Shift-R>', self.search)
         self.bind('<Control-Shift-S>', self.saveall)
+        self.bind('<Control-Shift-P>', self.print)
         self.bind('<Control-Alt-s>', self.saveas)
         self.bind('<<CtrlReturn>>', self.run_cell)
         self.bind('<<ShiftReturn>>', self.run_cell_next)
@@ -955,9 +956,12 @@ class App(tk.Tk):
             self.save(tab=tab, update=True)
 
     # --- export / print
-    def _to_html(self, title=True, linenos=True):
-        style = CONFIG.get('Editor', 'style')
-        code = self.editor.get(False)
+    def _to_html(self, title=True, linenos=True, style=None):
+        if linenos:
+            linenos = 'inline'
+        if style is None:
+            style = CONFIG.get('Editor', 'style')
+        code = self.editor.get(strip=False)
         if title:
             title = self.editor.filename
         else:
@@ -978,7 +982,7 @@ class App(tk.Tk):
         with open(filename, 'w') as file:
             file.write(self._to_html(title, linenos))
 
-    def export_to_pdf(self, filename=None, title=True, linenos=True, **kw):
+    def export_to_pdf(self, filename=None, title=True, linenos=True, style=None, **kw):
         if filename is None:
             filename = asksaveasfilename(self, 'Export to pdf',
                                          defaultext='.pdf',
@@ -991,9 +995,10 @@ class App(tk.Tk):
         kw.setdefault('margin-bottom', '1cm')
         kw.setdefault('margin-left', '1cm')
         kw.setdefault('encoding', "UTF-8")
-        pdfkit.from_string(self._to_html(title, linenos), filename, options=kw)
+        content = self._to_html(title, linenos, style)
+        pdfkit.from_string(content, filename, options=kw)
 
-    def print(self):
+    def print(self, event=None):
         p = PrintDialog(self)
         self.wait_window(p)
 
