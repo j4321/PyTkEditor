@@ -85,6 +85,7 @@ class TextConsole(RichText):
         self.bind('<KeyPress>', self.on_key_press)
         self.bind('<KeyRelease>', self.on_key_release)
         self.bind('<Tab>', self.on_tab)
+        self.bind('<ISO_Left_Tab>', self.unindent)
         self.bind('<Down>', self.on_down)
         self.bind('<Up>', self.on_up)
         self.bind('<Return>', self.on_return)
@@ -378,6 +379,24 @@ class TextConsole(RichText):
                 self.insert('insert', '    ')
             else:
                 self._comp_display()
+        return "break"
+
+    def unindent(self, event=None):
+        self.edit_separator()
+        sel = self.tag_ranges('sel')
+        if sel:
+            start = str(self.index('sel.first'))
+            end = str(self.index('sel.last'))
+        else:
+            start = str(self.index('insert'))
+            end = str(self.index('insert'))
+        start_line = int(start.split('.')[0])
+        end_line = int(end.split('.')[0]) + 1
+        start_char = len(self._prompt1)
+        for line in range(start_line, end_line):
+            start = f"{line}.{start_char}"
+            if self.get(start, start + "+4c") == '    ':
+                self.delete(start, start + "+4c")
         return "break"
 
     def get_docstring(self, obj):
