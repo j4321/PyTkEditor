@@ -398,10 +398,10 @@ class Editor(ttk.Frame):
             for line in range(start_line, end_line):
                 self.text.insert('%i.0' % line, '    ')
         else:
-            txt = self.text.get('insert-1c')
+            txt = self.text.get('insert linestart', 'insert')
             if force_indent:
                 self.text.insert('insert linestart', self._get_indent())
-            elif not txt.isalnum() and txt not in ['.', '_']:
+            elif txt == ' ' * len(txt):
                 self.text.insert('insert', self._get_indent())
             else:
                 self._comp_display()

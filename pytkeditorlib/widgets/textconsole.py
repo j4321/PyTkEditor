@@ -373,8 +373,8 @@ class TextConsole(RichText):
             for line in range(start_line, end_line):
                 self.insert('%i.0' % line, '    ')
         else:
-            txt = self.get('insert-1c')
-            if not txt.isalnum() and txt not in ['.', '_']:
+            txt = self.get(f'insert linestart+{len(self._prompt1)}c', 'insert')
+            if txt == ' ' * len(txt):
                 self.insert('insert', '    ')
             else:
                 self._comp_display()
