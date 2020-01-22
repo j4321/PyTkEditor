@@ -77,7 +77,6 @@ class Config(tk.Toplevel):
         # --- syntax highlighting
         frame_s_h = ttk.Frame(self)
         styles = list(get_all_styles())
-        styles.extend(['perso', 'persolight'])
         styles.sort()
         self.editor_style = AutoCompleteCombobox(frame_s_h, values=styles)
         self.editor_style.insert(0, CONFIG.get('Editor', 'style'))

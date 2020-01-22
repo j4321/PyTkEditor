@@ -31,13 +31,16 @@ from getpass import getuser
 from datetime import datetime
 
 from ewmh import ewmh, EWMH
+import pdfkit
 from tkfilebrowser import askopenfilenames, asksaveasfilename
+from pygments import highlight
+from pygments.formatters import HtmlFormatter
 
 from pytkeditorlib.code_editor import EditorNotebook, CodeStructure
 from pytkeditorlib.utils.constants import IMAGES, CONFIG, save_config, IM_CLOSE
 from pytkeditorlib.utils import constants as cst
 from pytkeditorlib.utils.syntax_check import check_file
-from pytkeditorlib.dialogs import showerror, About, Config, SearchDialog
+from pytkeditorlib.dialogs import showerror, About, Config, SearchDialog, PrintDialog
 from pytkeditorlib.widgets import WidgetNotebook, Help, HistoryFrame, ConsoleFrame, Filebrowser
 from pytkeditorlib.gui_utils import LongMenu
 
@@ -168,6 +171,14 @@ class App(tk.Tk):
         self.menu_file.add_command(label='Save all', command=self.saveall,
                                    image=self._images['saveall'],
                                    accelerator='Ctrl+Shift+S', compound='left')
+        self.menu_file.add_separator()
+        self.menu_file.add_command(label='Export to html', command=self.export_to_html,
+                                   image='img_export',
+                                   compound='left')
+        self.menu_file.add_command(label='Print', command=self.print,
+                                   image='img_print',
+                                   compound='left')
+
         self.menu_file.add_separator()
         self.menu_file.add_command(label='Close all files', image=self._im_close,
                                    command=self.editor.closeall, compound='left')
@@ -381,7 +392,6 @@ class App(tk.Tk):
         signal.signal(signal.SIGUSR1, self._signal_open_files)
         signal.signal(signal.SIGUSR2, self._signal_exec_jupyter)
 
-
     @staticmethod
     def _select_all(event):
         """Select all entry content."""
@@ -450,11 +460,15 @@ class App(tk.Tk):
         style.configure('TFrame', **style_config)
         style.configure('TSeparator', **style_config)
         style.configure('TLabel', **style_config)
+        style.configure('TLabelframe', **style_config)
+        style.configure('TLabelframe.Label', **style_config)
         style.configure('Sash', **style_config)
         style.configure('TPanedwindow', **style_config)
         style.configure('TScrollbar', **style_config)
         style.map('TFrame', **style_map)
         style.map('TLabel', **style_map)
+        style.map('TLabelframe', **style_map)
+        style.map('TLabelframe.Label', **style_map)
         style.map('Sash', **style_map)
         style.map('TScrollbar', **style_map)
         style.map('TPanedwindow', **style_map)
@@ -474,7 +488,10 @@ class App(tk.Tk):
         style.map('TCheckbutton', **button_style_map)
         style.map('TRadiobutton', **button_style_map)
         style.map('TEntry', **button_style_map)
-        style.map('TCombobox', **button_style_map)
+        combo_map = button_style_map.copy()
+        combo_map["fieldbackground"].extend([('readonly', theme["bg"]),
+                                             ('readonly', 'focus', theme["bg"])])
+        style.map('TCombobox', **combo_map)
         style.map('TNotebook', **button_style_map)
         style.map('TNotebook.Tab', **button_style_map)
         style.map('Treeview', **button_style_map)
@@ -923,6 +940,48 @@ class App(tk.Tk):
     def saveall(self, event=None):
         for tab in self.editor.tabs():
             self.save(tab=tab, update=True)
+
+    def _to_html(self, title=True, linenos=True):
+        style = CONFIG.get('Editor', 'style')
+        code = self.editor.get(False)
+        if title:
+            title = self.editor.filename
+        else:
+            title = ''
+        formatter = HtmlFormatter(linenos=linenos, full=True, style=style,
+                                  title=title)
+        return highlight(code, cst.PYTHON_LEX, formatter)
+
+    def export_to_html(self, filename=None, title=True, linenos=True):
+        if filename is None:
+            filename = asksaveasfilename(self, 'Export to html',
+                                         defaultext='.html',
+                                         filetypes=[('HTML', '*.html'),
+                                                    ('All files', '*')])
+        if not filename:
+            return
+
+        with open(filename, 'w') as file:
+            file.write(self._to_html(title, linenos))
+
+    def export_to_pdf(self, filename=None, title=True, linenos=True, **kw):
+        if filename is None:
+            filename = asksaveasfilename(self, 'Export to pdf',
+                                         defaultext='.pdf',
+                                         filetypes=[('PDF', '*.pdf'),
+                                                    ('All files', '*')])
+        if not filename:
+            return
+        kw.setdefault('margin-top', '1cm')
+        kw.setdefault('margin-right', '1cm')
+        kw.setdefault('margin-bottom', '1cm')
+        kw.setdefault('margin-left', '1cm')
+        kw.setdefault('encoding', "UTF-8")
+        pdfkit.from_string(self._to_html(title, linenos), filename, options=kw)
+
+    def print(self):
+        p = PrintDialog(self)
+        self.wait_window(p)
 
     # --- run
     def run(self, event=None):
