@@ -28,7 +28,7 @@ from tkinter import ttk
 from tkinter.font import Font
 
 from pytkeditorlib.dialogs import showerror, showinfo, \
-    TooltipTextWrapper, Tooltip, CompListbox
+    TooltipTextWrapper, Tooltip, CompListbox, ColorPicker
 from pytkeditorlib.gui_utils import AutoHideScrollbar
 from pytkeditorlib.utils.constants import get_screen, load_style, PYTHON_LEX, CONFIG, \
     valide_entree_nb, IMAGES
@@ -195,6 +195,7 @@ class Editor(ttk.Frame):
         self.text.bind("<Control-a>", self.select_all)
         self.text.bind("<Control-u>", self.upper_case)
         self.text.bind("<Control-Shift-U>", self.lower_case)
+        self.text.bind("<Control-Shift-C>", self.choose_color)
         self.text.bind("<Control-Return>", self.on_ctrl_return)
         self.text.bind("<Return>", self.on_return)
         self.text.bind("<BackSpace>", self.on_backspace)
@@ -979,6 +980,16 @@ class Editor(ttk.Frame):
         self.text.insert(index, text)
         self.update_nb_line()
         self.parse_all()
+
+    def choose_color(self, event=None):
+
+        def insert(event):
+            color = picker.get_color()
+            if color:
+                self.insert("insert", color, True)
+
+        picker = ColorPicker(color=self.get_selection(), parent=self)
+        picker.bind("<<ColorSelected>>", insert)
 
     # --- view
     def see(self, index):

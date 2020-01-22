@@ -238,6 +238,7 @@ class App(tk.Tk):
         self.menu_edit.add_separator()
         self.menu_edit.add_command(label='Color chooser',
                                    command=self.editor.choose_color,
+                                   accelerator="Ctrl+Shift+C",
                                    image=self._images['color'],
                                    compound='left')
         self.menu_edit.add_separator()
@@ -356,7 +357,7 @@ class App(tk.Tk):
         self.bind('<Control-Shift-R>', self.search)
         self.bind('<Control-Shift-S>', self.saveall)
         self.bind('<Control-Alt-s>', self.saveas)
-        self.editor.bind('<<CtrlReturn>>', lambda e: self.console.execute(self.editor.get_cell()))
+        self.bind('<<CtrlReturn>>', lambda e: self.console.execute(self.editor.get_cell()))
         self.bind('<F5>', self.run)
         self.bind('<F9>', self.run_selection)
         if cst.JUPYTER:

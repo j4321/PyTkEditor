@@ -32,7 +32,7 @@ from tkfilebrowser import asksaveasfilename
 
 from pytkeditorlib.gui_utils import AutoCompleteEntryListbox
 from pytkeditorlib.dialogs import askyesnocancel, askyesno, showerror, \
-    ColorPicker, TooltipNotebookWrapper
+    TooltipNotebookWrapper
 from pytkeditorlib.gui_utils import Notebook
 from .editor import Editor
 
@@ -252,16 +252,10 @@ class EditorNotebook(Notebook):
             self._tabs[self.current_tab].duplicate_lines()
 
     def choose_color(self):
+        print(self.focus_get())
         tab = self.current_tab
         if tab >= 0:
-
-            def insert(event):
-                color = picker.get_color()
-                if color:
-                    self._tabs[self.current_tab].insert("insert", color, True)
-
-            picker = ColorPicker(color=self._tabs[self.current_tab].get_selection(), parent=self)
-            picker.bind("<<ColorSelected>>", insert)
+            self._tabs[self.current_tab].choose_color()
 
     def get_docstring(self, obj):
         if self.current_tab >= 0:
