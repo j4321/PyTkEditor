@@ -22,13 +22,16 @@ Code editor text widget
 """
 import jedi
 import re
+from glob import glob
+from os.path import sep
 from pygments import lex
 import tkinter as tk
 from tkinter import ttk
 from tkinter.font import Font
 
+from pytkeditorlib.dialogs.complistbox import PathCompletion, CompListbox
 from pytkeditorlib.dialogs import showerror, showinfo, \
-    TooltipTextWrapper, Tooltip, CompListbox, ColorPicker
+    TooltipTextWrapper, Tooltip, ColorPicker
 from pytkeditorlib.gui_utils import AutoHideScrollbar
 from pytkeditorlib.utils.constants import get_screen, load_style, PYTHON_LEX, CONFIG, \
     valide_entree_nb, IMAGES
@@ -41,6 +44,9 @@ class Editor(ttk.Frame):
 
         self.columnconfigure(2, weight=1)
         self.rowconfigure(0, weight=1)
+
+        # regexp
+        self._re_paths = re.compile(rf'("|\')(\{sep}\w+)+\{sep}?$')
 
         self._filetype = filetype
 
@@ -690,11 +696,24 @@ class Editor(ttk.Frame):
         index = self.text.index('insert wordend')
         if index[-2:] != '.0':
             self.text.mark_set('insert', 'insert-1c wordend')
-        row, col = str(self.text.index('insert')).split('.')
-        script = jedi.Script(self.text.get('1.0', 'end'), int(row), int(col), self.file)
-        # script = jedi.Script(self.text.get('1.0', 'insert'), int(row), int(col), self.file)
 
-        comp = script.completions()
+        # --- path autocompletion
+        line = self.text.get('insert linestart', 'insert')
+        match_path = self._re_paths.search(line)
+        comp = []
+        if match_path:
+            before_completion = match_path.group()[1:]
+            paths = glob(before_completion + '*')
+            if len(paths) == 1 and paths[0] == before_completion:
+                return
+            comp = [PathCompletion(before_completion, path) for path in paths]
+
+        # --- jedi code autocompletion
+        if not comp:
+            row, col = str(self.text.index('insert')).split('.')
+            script = jedi.Script(self.text.get('1.0', 'end'), int(row), int(col), self.file)
+
+            comp = script.completions()
         self._comp.withdraw()
         if len(comp) == 1:
             self.text.insert('insert', comp[0].complete)

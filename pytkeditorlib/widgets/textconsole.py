@@ -25,7 +25,8 @@ import tkinter as tk
 import sys
 import re
 from os import kill, remove
-from os.path import join, dirname
+from os.path import join, dirname, sep
+from glob import glob
 import socket
 import ssl
 from subprocess import Popen
@@ -35,8 +36,9 @@ from pygments import lex
 from pygments.lexers import Python3Lexer
 import jedi
 
+from pytkeditorlib.dialogs.complistbox import CompListbox, PathCompletion
 from pytkeditorlib.utils.constants import get_screen, SERVER_CERT, CLIENT_CERT
-from pytkeditorlib.dialogs import askyesno, CompListbox, Tooltip
+from pytkeditorlib.dialogs import askyesno, Tooltip
 from pytkeditorlib.gui_utils import AutoHideScrollbar
 from .base_widget import BaseWidget, RichText
 
@@ -59,6 +61,9 @@ class TextConsole(RichText):
         self._prompt2 = kw.pop('prompt2')
 
         RichText.__init__(self, master, **kw)
+
+        # regexp
+        self._re_paths = re.compile(rf'("|\')(\{sep}\w+)+\{sep}?$')
 
         self._comp = CompListbox(self)
         self._comp.set_callback(self._comp_sel)
@@ -174,15 +179,6 @@ class TextConsole(RichText):
         self.parse()
 
     def _jedi_script(self):
-
-        index = self.index('insert wordend')
-        if index[-2:] != '.0':
-            line = self.get('insert wordstart', 'insert wordend')
-            i = len(line) - 1
-            while i > -1 and line[i] in [')', ']', '}']:
-                i -= 1
-            self.mark_set('insert', 'insert wordstart +%ic' % (i + 1))
-
         lines = self.get('insert linestart + %ic' % len(self._prompt1), 'end').rstrip('\n')
 
         session_code = '\n\n'.join(self.history.get_session_hist()) + '\n\n'
@@ -220,9 +216,22 @@ class TextConsole(RichText):
 
     def _comp_display(self):
         self._comp.withdraw()
-        script = self._jedi_script()
+        index = self.index('insert wordend')
+        if index[-2:] != '.0':
+            self.mark_set('insert', 'insert-1c wordend')
+        # --- path autocompletion
+        line = self.get('insert linestart', 'insert')
+        match_path = self._re_paths.search(line)
+        comp = []
+        if match_path:
+            before_completion = match_path.group()[1:]
+            paths = glob(before_completion + '*')
+            comp = [PathCompletion(before_completion, path) for path in paths]
 
-        comp = script.completions()
+        # --- jedi code autocompletion
+        if not comp:
+            script = self._jedi_script()
+            comp = script.completions()
 
         if len(comp) == 1:
             self.insert('insert', comp[0].complete)
