@@ -334,6 +334,8 @@ class Notebook(ttk.Frame):
         self._y = event.y_root   # current y mouse position on screen
         self._distance_to_dragged_border = widget.winfo_rootx() - event.x_root
         widget.bind_all('<Motion>', self._on_drag)
+        widget.bind_all('<Escape>', self._on_click)
+        widget.bind_all('<ButtonRelease-1>', self._on_click)
 
     def _on_drag(self, event):
         self._dragged_tab.place_configure(x=self._dragged_tab.winfo_x() + event.x_root + self._dx)
@@ -372,6 +374,8 @@ class Notebook(ttk.Frame):
         """Stop dragging."""
         if self._dragged_tab:
             self._dragged_tab.unbind_all('<Motion>')
+            self._dragged_tab.unbind_all('<Escape>')
+            self._dragged_tab.unbind_all('<<ButtonRelease-1>>')
             self._dragged_tab.grid(**self._dummy_frame.grid_info())
             self._dragged_tab = None
             self._dummy_frame.grid_forget()
