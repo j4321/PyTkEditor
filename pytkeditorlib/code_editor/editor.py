@@ -105,6 +105,7 @@ class Editor(ttk.Frame):
         self.entry_search.bind('<Return>', self.search)
         self.entry_search.bind('<Escape>', lambda e: self.frame_search.grid_remove())
         self.entry_search.bind('<Control-r>', self.replace)
+        self.entry_search.bind('<Control-f>', self.find)
         self.entry_replace = ttk.Entry(self.frame_search)
         self.entry_replace.bind('<Control-f>', self.find)
         self.entry_replace.bind('<Escape>', lambda e: self.frame_search.grid_remove())
@@ -197,6 +198,7 @@ class Editor(ttk.Frame):
         self.text.bind("<Control-Shift-U>", self.lower_case)
         self.text.bind("<Control-Shift-C>", self.choose_color)
         self.text.bind("<Control-Return>", self.on_ctrl_return)
+        self.text.bind("<Shift-Return>", self.on_shift_return)
         self.text.bind("<Return>", self.on_return)
         self.text.bind("<BackSpace>", self.on_backspace)
         self.text.bind("<Tab>", self.on_tab)
@@ -409,6 +411,12 @@ class Editor(ttk.Frame):
         self.text.tag_remove('highlight', '1.0', 'end')
         self.text.edit_separator()
         self.master.event_generate('<<CtrlReturn>>')
+        return 'break'
+
+    def on_shift_return(self, event):
+        self.text.tag_remove('highlight', '1.0', 'end')
+        self.text.edit_separator()
+        self.master.event_generate('<<ShiftReturn>>')
         return 'break'
 
     def on_return(self, event):
@@ -963,6 +971,26 @@ class Editor(ttk.Frame):
             return res[-1]
         else:
             return None
+
+    def get_cell(self, goto_next=False):
+        line = int(str(self.text.index('insert')).split('.')[0])
+        if not self.cells:
+            return ''
+        i = 0
+        while i < len(self.cells) and self.cells[i] < line:
+            i += 1
+        if i == len(self.cells):
+            start = '%i.0' % self.cells[-1]
+            end = self.text.index('end')
+        elif i > 0:
+            start = '%i.0' % self.cells[i - 1]
+            end = '%i.0' % self.cells[i]
+        else:
+            start = '1.0'
+            end = '%i.0' % self.cells[i]
+        if goto_next:
+            self.text.mark_set('insert', f"{end} + 1 lines")
+        return self.text.get(start, end)
 
     # --- text edit
     def delete(self, index1, index2=None):

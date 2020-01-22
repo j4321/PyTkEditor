@@ -55,7 +55,7 @@ REPORT_URL = "https://gitlab.com/j_4321/{}/issues".format(APP_NAME)
 
 class MyLexer(Python3Lexer):
     tokens = Python3Lexer.tokens.copy()
-    tokens['root'].insert(5, (r'^# *In\[.*\].*$', Comment.Cell))
+    tokens['root'].insert(5, (r'^# *(In\[.*\]|%%).*$', Comment.Cell))
 
 
 PYTHON_LEX = MyLexer()
@@ -173,6 +173,9 @@ if not CONFIG.read(PATH_CONFIG):
     CONFIG.set('File browser', 'filename_filter', "README, INSTALL, LICENSE, CHANGELOG, *.npy, *.npz, *.csv, *.txt, *.jpg, *.png, *.gif, *.tif, *.pkl, *.pickle, *.json, *.py, *.ipynb, *.txt, *.rst, *.md, *.dat, *.pdf, *.png, *.svg, *.eps")
     CONFIG.set('File browser', 'visible', "True")
     CONFIG.set('File browser', 'order', "3")
+    CONFIG.add_section('Run')
+    CONFIG.set('Run', 'console', "external")
+    CONFIG.set('Run', 'external_interactive', "True")
     CONFIG.add_section('Dark Theme')
     CONFIG.set('Dark Theme', 'bg', '#454545')
     CONFIG.set('Dark Theme', 'activebg', '#525252')

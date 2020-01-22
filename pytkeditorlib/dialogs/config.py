@@ -27,7 +27,7 @@ from tkinter import font
 
 from pygments.styles import get_all_styles
 
-from pytkeditorlib.utils.constants import CONFIG, save_config, PATH_TEMPLATE
+from pytkeditorlib.utils.constants import CONFIG, save_config, PATH_TEMPLATE, JUPYTER
 from pytkeditorlib.gui_utils import AutoCompleteCombobox
 
 
@@ -126,6 +126,35 @@ class Config(tk.Toplevel):
         self.history_size.insert(0, CONFIG.get('History', 'max_size', fallback='10000'))
         self.history_size.grid(row=1, column=1, sticky='ew', padx=4, pady=4)
 
+        # --- Run
+        frame_run = ttk.Frame(self)
+        frame_run.columnconfigure(1, weight=1)
+        ttk.Label(frame_run, text='Run',
+                  font=('TkDefaultFont', 10, 'bold')).grid(row=0, columnspan=2,
+                                                           sticky='w', pady=4)
+        self.run_console = tk.StringVar(self, CONFIG.get('Run', 'console'))
+        ttk.Label(frame_run, text='Execute in:').grid(row=1, column=0,
+                                                      padx=4, pady=4, sticky='w')
+        ttk.Radiobutton(frame_run, text='external terminal', value='external',
+                        command=self._run_setting,
+                        variable=self.run_console).grid(row=1, column=1, padx=4,
+                                                        pady=4, sticky='w')
+        ttk.Radiobutton(frame_run, text='embedded console', value='console',
+                        command=self._run_setting,
+                        variable=self.run_console).grid(row=2, column=1, padx=4,
+                                                        pady=4, sticky='w')
+        if JUPYTER:
+            ttk.Radiobutton(frame_run, text='Jupyter QtConsole', value='qtconsole',
+                            command=self._run_setting,
+                            variable=self.run_console).grid(row=3, column=1, padx=4,
+                                                            pady=4, sticky='w')
+        self.external_interactive = ttk.Checkbutton(frame_run,
+                                                    text='Interact with the Python console after execution')
+
+        self.external_interactive.grid(row=4, columnspan=2, padx=4, pady=4, sticky='w')
+        self.external_interactive.state(['!alternate',
+                                         '!' * (self.run_console.get() == 'external') + 'disabled',
+                                         '!' * (not CONFIG.getboolean('Run', 'external_interactive')) + 'selected'])
         # --- ok / cancel buttons
         frame_btn = ttk.Frame(self)
         ttk.Button(frame_btn, text='Ok', command=self.validate).pack(side='left', padx=4)
@@ -139,7 +168,15 @@ class Config(tk.Toplevel):
         frame_check.pack(side='top', fill='x')
         ttk.Separator(self, orient='horizontal').pack(side='top', fill='x', pady=8)
         frame_history.pack(side='top', fill='x')
+        ttk.Separator(self, orient='horizontal').pack(side='top', fill='x', pady=8)
+        frame_run.pack(side='top', fill='x')
         frame_btn.pack(side='top', pady=8)
+
+    def _run_setting(self):
+        if self.run_console.get() == 'external':
+            self.external_interactive.state(['!disabled'])
+        else:
+            self.external_interactive.state(['disabled'])
 
     def edit_template(self):
         self.master.open(PATH_TEMPLATE)
@@ -165,14 +202,10 @@ class Config(tk.Toplevel):
         if cstyle:
             CONFIG.set('Console', 'style', cstyle)
         # --- code checking
-        if 'selected' in self.code_check.state():
-            CONFIG.set('Editor', 'code_check', 'True')
-        else:
-            CONFIG.set('Editor', 'code_check', 'False')
-        if 'selected' in self.style_check.state():
-            CONFIG.set('Editor', 'style_check', 'True')
-        else:
-            CONFIG.set('Editor', 'style_check', 'False')
+        CONFIG.set('Editor', 'code_check',
+                   str('selected' in self.code_check.state()))
+        CONFIG.set('Editor', 'style_check',
+                   str('selected' in self.style_check.state()))
         # --- history
         try:
             size = int(self.history_size.get())
@@ -181,5 +214,9 @@ class Config(tk.Toplevel):
             pass
         else:
             CONFIG.set('History', 'max_size', str(size))
+        # --- run
+        CONFIG.set('Run', 'console', self.run_console.get())
+        CONFIG.set('Run', 'external_interactive',
+                   str('selected' in self.external_interactive.state()))
         save_config()
         self.destroy()

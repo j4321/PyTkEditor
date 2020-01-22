@@ -349,25 +349,11 @@ class EditorNotebook(Notebook):
         else:
             return ''
 
-    def get_cell(self):
+    def get_cell(self, goto_next=False):
         if self._current_tab >= 0:
-            editor = self._tabs[self._current_tab]
-            line = int(str(editor.text.index('insert')).split('.')[0])
-            if not editor.cells:
-                return ''
-            i = 0
-            while i < len(editor.cells) and editor.cells[i] < line:
-                i += 1
-            if i == len(editor.cells):
-                start = '%i.0' % editor.cells[-1]
-                end = editor.text.index('end')
-            elif i > 0:
-                start = '%i.0' % editor.cells[i - 1]
-                end = '%i.0' % editor.cells[i]
-            else:
-                start = '1.0'
-                end = '%i.0' % editor.cells[i]
-            return editor.text.get(start, end)
+            return self._tabs[self._current_tab].get_cell(goto_next)
+        else:
+            return ''
 
     def get_last_closed(self):
         if self.last_closed:
@@ -488,6 +474,14 @@ class EditorNotebook(Notebook):
             self._tabs[self.current_tab].goto_item(*args)
 
     # --- misc
+    def run(self, interactive=True):
+        """Run file in external console"""
+        if self.current_tab >= 0:
+            file = self.files[self.current_tab]
+            if file:
+                filename = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'utils', 'console.py')
+                Popen(['xfce4-terminal', '-e', f'python {filename} {file} {interactive}'])
+
     def new(self, file=None):
         if file is None:
             new_files = [-1]
@@ -545,13 +539,6 @@ class EditorNotebook(Notebook):
         c.listbox.bind('<Return>', ok)
         c.bind('<<ItemSelect>>', sel)
         c.focus_set()
-
-    def run(self):
-        if self.current_tab >= 0:
-            file = self.files[self.current_tab]
-            if file:
-                filename = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'utils', 'console.py')
-                Popen(['xfce4-terminal', '-e', 'python {} {}'.format(filename, file)])
 
     def choose_color(self):
         tab = self.current_tab

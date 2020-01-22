@@ -61,19 +61,14 @@ class CodeTree(Treeview):
     def __init__(self, master):
         Treeview.__init__(self, master, show='tree', selectmode='none',
                           style='flat.Treeview', padding=4)
-        self._img_class = PhotoImage(file=IMAGES['c'], master=self)
-        self._img_fct = PhotoImage(file=IMAGES['f'], master=self)
-        self._img_hfct = PhotoImage(file=IMAGES['hf'], master=self)
-        self._img_sep = PhotoImage(file=IMAGES['sep'], master=self)
-        self._img_cell = PhotoImage(file=IMAGES['cell'], master=self)
 
         self.font = Font(self, font="TkDefaultFont 9")
 
-        self.tag_configure('class', image=self._img_class)
-        self.tag_configure('def', image=self._img_fct)
-        self.tag_configure('_def', image=self._img_hfct)
-        self.tag_configure('#', image=self._img_sep)
-        self.tag_configure('cell', image=self._img_cell)
+        self.tag_configure('class', image='img_c')
+        self.tag_configure('def', image='img_f')
+        self.tag_configure('_def', image="img_hf")
+        self.tag_configure('#', image='img_sep')
+        self.tag_configure('cell', image='img_cell')
         self.callback = None
         self.cells = []
 
@@ -124,13 +119,22 @@ class CodeTree(Treeview):
                     indent = token.start[1]
                     name = token.string[1:]
                     add = True
-                elif re.match(r'#( )*In\[.*\]', token.string):
-                    res = re.match(r'#( )*In', token.string)
-                    obj_type = 'cell'
-                    indent = token.start[1]
-                    name = token.string[len(res.group()):].strip()
-                    add = True
-                    self.cells.append(token.start[0])
+                else:
+                    match = re.match(r'^# *In(\[.*\].*)$', token.string)
+                    if match:
+                        obj_type = 'cell'
+                        indent = token.start[1]
+                        name = match.groups()[0].strip()
+                        add = True
+                        self.cells.append(token.start[0])
+                    else:
+                        match = re.match(r'^#%% (.*)$', token.string)
+                        if match:
+                            obj_type = 'cell'
+                            indent = token.start[1]
+                            name = match.groups()[0].strip()
+                            add = True
+                            self.cells.append(token.start[0])
 
             if add:
                 tree_index += 1

@@ -37,7 +37,7 @@ sys.path.insert(0, '')
 """
 
 
-def copen(filename=None):
+def copen(filename=None, interactive='True'):
     """Opens interactive console and execute the content of filename"""
     context = globals().copy()
     readline.set_completer(rlcompleter.Completer(context).complete)
@@ -48,8 +48,13 @@ def copen(filename=None):
             cmds = f.read()
         shell.runcode(START.format(path=os.path.dirname(filename)))
         shell.runcode(cmds)
-    shell.interact(banner='')
+    if interactive == 'True':
+        shell.interact(banner='')
+    else:
+        txt = 'Press return to close window'
+        print(f'\n{"-" * len(txt)}\n{txt}')
+        input('')
 
 
 if __name__ == '__main__':
-    copen(argv[1])
+    copen(*argv[1:])
