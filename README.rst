@@ -1,5 +1,5 @@
 PyTkEditor
-==========
+========
 Copyright 2018-2019 Juliette Monsel <j_4321 at protonmail dot com>
 
 Python3 IDE written with Tkinter for Linux.

@@ -21,7 +21,7 @@ depends=('tk'
          'python-pycups'
          'python-pycodestyle')      
 optdepends=('python-qtconsole: Run code in Jupyter QtConsole')
-source=("${pkgname}::git+https://gitlab.com/j_4321/PyTkEditor")
+source=("${pkgname}::git+https://gitlab.com/j_4321/PyTkEditor#branch=dev")
 sha512sums=('SKIP')
 
 pkgver() {
