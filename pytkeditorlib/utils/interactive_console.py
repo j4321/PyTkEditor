@@ -30,6 +30,7 @@ import sys
 import signal
 import tkinter
 import time
+from os import chdir, getcwd
 from tempfile import mkstemp
 
 from constants import CLIENT_CERT, SERVER_CERT
@@ -52,6 +53,9 @@ class SocketConsole(InteractiveConsole):
         self.stderr = StringIO()
         self.locals['exit'] = self._exit
         self.locals['quit'] = self._exit
+        self.locals['_set_cwd'] = chdir
+        self.locals['_get_cwd'] = getcwd
+        self.locals['_cwd'] = getcwd()
         self._initial_locals = self.locals.copy()
         signal.signal(signal.SIGINT, self.interrupt)
         context = ssl.create_default_context(ssl.Purpose.SERVER_AUTH, cafile=SERVER_CERT)
@@ -103,12 +107,12 @@ class SocketConsole(InteractiveConsole):
         return False
 
     def send_cmd(self, line):
-        msg = 'False, %r, "", True' % (line + '\n')
+        msg = 'False, {!r}, "", True, {!r}'.format(line + '\n', self.locals["_cwd"])
         if len(msg) > 16300:
             fileno, filename = mkstemp(text=True)
             with open(filename, 'w') as tmpfile:
                 tmpfile.write(msg)
-                msg = 'False, %r, "Too long", True' % (filename)
+                msg = f'False, {filename!r}, "Too long", True, {self.locals["_cwd"]!r}'
         self.socket.send(msg.encode())
 
     def interact(self):
@@ -127,14 +131,15 @@ class SocketConsole(InteractiveConsole):
                     except KeyboardInterrupt:
                         self.write('KeyboardInterrupt\n')
                         res = False
+                self.push('_cwd = _get_cwd()')
                 # output = self.stdout.getvalue()
                 err = self.stderr.getvalue()
-                msg = '%s, %r, %r, %s' % (res, '', err, False)
+                msg = f'{res}, "", {err!r}, False, {self.locals["_cwd"]!r}'
                 if len(msg) > 16300:
                     fileno, filename = mkstemp(text=True)
                     with open(filename, 'w') as tmpfile:
                         tmpfile.write(msg)
-                    msg = '%s, %r, "Too long"' % (res, filename)
+                    msg = f'{res}, {filename!r}, "Too long", True, {self.locals["_cwd"]!r}'
                 self.socket.send(msg.encode())
                 self.stdout.close()
                 self.stderr.close()

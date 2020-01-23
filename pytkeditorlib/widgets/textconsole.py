@@ -24,7 +24,7 @@ Python console text widget
 import tkinter as tk
 import sys
 import re
-from os import kill, remove
+from os import kill, remove, getcwd, chdir
 from os.path import join, dirname, sep
 from glob import glob
 import socket
@@ -41,6 +41,14 @@ from pytkeditorlib.utils.constants import get_screen, SERVER_CERT, CLIENT_CERT
 from pytkeditorlib.dialogs import askyesno, Tooltip
 from pytkeditorlib.gui_utils import AutoHideScrollbar
 from .base_widget import BaseWidget, RichText
+
+
+def glob_rel(pattern, locdir):
+    cwd = getcwd()
+    chdir(locdir)
+    paths = glob(pattern)
+    chdir(cwd)
+    return paths
 
 
 class TextConsole(RichText):
@@ -62,8 +70,11 @@ class TextConsole(RichText):
 
         RichText.__init__(self, master, **kw)
 
-        # regexp
-        self._re_paths = re.compile(rf'("|\')(\{sep}\w+)+\{sep}?$')
+        self._cwd = getcwd()
+
+        # --- regexp
+        self._re_abspaths = re.compile(rf'("|\')(\{sep}\w+)+\{sep}?$')
+        self._re_relpaths = re.compile(rf'("|\')\w+(\{sep}\w+)*\{sep}?$')
 
         self._comp = CompListbox(self)
         self._comp.set_callback(self._comp_sel)
@@ -219,19 +230,28 @@ class TextConsole(RichText):
         index = self.index('insert wordend')
         if index[-2:] != '.0':
             self.mark_set('insert', 'insert-1c wordend')
+        comp = []
+        jedi_comp = False
         # --- path autocompletion
         line = self.get('insert linestart', 'insert')
-        match_path = self._re_paths.search(line)
-        comp = []
+        # absolute paths
+        match_path = self._re_abspaths.search(line)
         if match_path:
             before_completion = match_path.group()[1:]
             paths = glob(before_completion + '*')
             comp = [PathCompletion(before_completion, path) for path in paths]
-
-        # --- jedi code autocompletion
+        # relative paths
         if not comp:
+            match_path = self._re_relpaths.search(line)
+            if match_path:
+                before_completion = match_path.group()[1:]
+                paths = glob_rel(before_completion + '*', self._cwd)
+                comp = [PathCompletion(before_completion, path) for path in paths]
+                jedi_comp = sep not in before_completion
+        # --- jedi code autocompletion
+        if not comp or jedi_comp:
             script = self._jedi_script()
-            comp = script.completions()
+            comp.extend(script.completions())
 
         if len(comp) == 1:
             self.insert('insert', comp[0].complete)
@@ -538,6 +558,26 @@ class TextConsole(RichText):
         else:
             return None
 
+    # --- working dir
+    def get_console_wdir(self):
+        print(self._cwd)
+
+    def set_console_wdir(self, path):
+        """Set console working directory to path."""
+
+        def check():
+            try:
+                # retrieve the output so that it does not interfere with other commands
+                self.shell_client.recv(65536).decode()
+            except socket.error:
+                self.after(10, check)
+            else:
+                self.configure(state='normal')
+
+        self.shell_client.send(f"_set_cwd('{path}')".encode())
+        self.configure(state='disabled')
+        self.after(1, check)
+
     # --- execute
     def execute(self, cmd):
         self.delete('input', 'end')
@@ -582,14 +622,14 @@ class TextConsole(RichText):
         else:
             if not cmd:
                 return
-            res, output, err, wait = eval(cmd)
+            res, output, err, wait, cwd = eval(cmd)
 
             if err == "Too long":
                 filename = output
                 with open(filename) as tmpfile:
-                    res, output, err, wait = eval(tmpfile.read())
+                    res, output, err, wait, cwd = eval(tmpfile.read())
                 remove(filename)
-
+            self._cwd = cwd
             if wait:
                 if output.strip():
                     self.configure(state='normal')
@@ -692,5 +732,6 @@ class ConsoleFrame(BaseWidget):
         self.menu = tk.Menu(self)
         self.menu.add_command(label='Clear console', command=self.console.shell_clear)
         self.menu.add_command(label='Restart console', command=self.console.restart_shell)
+        self.menu.add_command(label='Get cwd', command=self.console.get_console_wdir)
 
         self.update_style = self.console.update_style
