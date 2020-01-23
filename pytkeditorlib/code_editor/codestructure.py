@@ -20,8 +20,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 GUI widget to display the code structure
 """
-from tkinter import PhotoImage, BooleanVar, Menu, TclError
-from tkinter.ttk import Treeview, Frame, Label
+from tkinter import BooleanVar, TclError
+from tkinter.ttk import Treeview, Frame, Label, Button
 from tkinter.font import Font
 import tokenize
 from io import BytesIO
@@ -29,7 +29,7 @@ import re
 import logging
 
 from pytkeditorlib.gui_utils import AutoHideScrollbar, AutoCompleteCombobox2
-from pytkeditorlib.utils.constants import IMAGES, CONFIG
+from pytkeditorlib.utils.constants import CONFIG
 
 
 class Tree:
@@ -159,10 +159,12 @@ class CodeStructure(Frame):
         self.visible = BooleanVar(self)
         self.visible.trace_add('write', self._visibility_trace)
 
-        self.menu = Menu(self)
-        self.menu.add_command(label='Hide', command=lambda: self.visible.set(False))
+        header = Frame(self)
+        Button(header, style='close.TButton', padding=0,
+               command=lambda: self.visible.set(False)).pack(side='right')
+        self.filename = Label(header, padding=(4, 0), anchor='w')
+        self.filename.pack(side='left')
 
-        self.filename = Label(self, padding=(4, 0), anchor='w')
         self.codetree = CodeTree(self)
         self._sx = AutoHideScrollbar(self, orient='horizontal', command=self.codetree.xview)
         self._sy = AutoHideScrollbar(self, orient='vertical', command=self.codetree.yview)
@@ -176,7 +178,7 @@ class CodeStructure(Frame):
         self.codetree.configure(xscrollcommand=self._sx.set,
                                 yscrollcommand=self._sy.set)
 
-        self.filename.grid(row=0, column=0, sticky='we')
+        header.grid(row=0, columnspan=2, sticky='we')
         self.codetree.grid(row=1, column=0, sticky='ewns')
         self._sx.grid(row=2, column=0, sticky='ew')
         self._sy.grid(row=1, column=1, sticky='ns')
@@ -189,13 +191,8 @@ class CodeStructure(Frame):
         self.goto_entry.bind('<<ComboboxSelected>>', self.goto)
         self.goto_entry.bind('<Key>', self._reset_goto)
 
-        self.filename.bind('<ButtonRelease-3>', self._show_menu)
-
     def _reset_goto(self, event):
         self._goto_index = 0
-
-    def _show_menu(self, event):
-        self.menu.tk_popup(event.x_root, event.y_root)
 
     def _visibility_trace(self, *args):
         visible = self.visible.get()

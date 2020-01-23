@@ -37,12 +37,12 @@ class Tab(ttk.Frame):
         self.label = ttk.Label(self.frame, style='Notebook.Tab.Label', **kwargs,
                                anchor='center', takefocus=False)
         self.closebtn = ttk.Button(self.frame, style='Notebook.Tab.Close',
-                                   command=self.closecommand,
+                                   command=self.closecommand, padding=0,
                                    class_='Notebook.Tab.Close',
                                    takefocus=False)
         self.label.pack(side='left', padx=(2, 0))
         if self._closebutton:
-            self.closebtn.pack(side='right', padx=(0, 2))
+            self.closebtn.pack(side='right', padx=(0, 2), pady=(1, 0))
         self.update_idletasks()
         self.configure(width=self.frame.winfo_reqwidth() + 2,
                        height=self.frame.winfo_reqheight() + 2)
