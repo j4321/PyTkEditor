@@ -35,6 +35,7 @@ import pdfkit
 from tkfilebrowser import askopenfilenames, asksaveasfilename
 from pygments import highlight
 from pygments.formatters import HtmlFormatter
+from PIL import Image, ImageTk
 
 from pytkeditorlib.code_editor import EditorNotebook
 from pytkeditorlib.utils.constants import IMAGES, CONFIG, IM_CLOSE
@@ -55,9 +56,10 @@ class App(tk.Tk):
         # --- images
         self._images = {name: tk.PhotoImage(f'img_{name}', file=IMAGES[name], master=self)
                         for name, path in IMAGES.items()}
-        self._images['menu_dummy'] = tk.PhotoImage('img_menu_dummy', width=18, height=18, master=self)
-        self._im_close = tk.PhotoImage(master=self)
-        self.iconphoto(True, self._images['icon'])
+        self._images['img_menu_dummy'] = tk.PhotoImage('img_menu_dummy', width=18, height=18, master=self)
+        self._im_close = tk.PhotoImage(name='img_close', master=self)
+        self._im_close_menu = ImageTk.PhotoImage(Image.new('RGBA', (18, 18)), name='img_close_menu', master=self)
+        self.iconphoto(True, 'img_icon')
 
         self.option_add('*Menu.borderWidth', 1)
         self.option_add('*Menu.activeBorderWidth', 0)
@@ -156,18 +158,18 @@ class App(tk.Tk):
                                    command=self.editor.file_switch,
                                    image='img_menu_dummy', compound='left')
 
-        self.menu_file.add_cascade(label='Recent files', image=self._images['recents'],
+        self.menu_file.add_cascade(label='Recent files', image='img_recents',
                                    menu=self.menu_recent_files, compound='left')
 
         self.menu_file.add_separator()
         self.menu_file.add_command(label='Save', command=self.save,
-                                   state='disabled', image=self._images['save'],
+                                   state='disabled', image='img_save',
                                    accelerator='Ctrl+S', compound='left')
         self.menu_file.add_command(label='Save as', command=self.saveas,
-                                   image=self._images['saveas'],
+                                   image='img_saveas',
                                    accelerator='Ctrl+Alt+S', compound='left')
         self.menu_file.add_command(label='Save all', command=self.saveall,
-                                   image=self._images['saveall'],
+                                   image='img_saveall',
                                    accelerator='Ctrl+Shift+S', compound='left')
         self.menu_file.add_separator()
         self.menu_file.add_command(label='Export to html', command=self.export_to_html,
@@ -179,31 +181,31 @@ class App(tk.Tk):
 
         self.menu_file.add_separator()
         self.menu_file.add_command(label='Close all files',
-                                   image=self._im_close, compound='left',
+                                   image=self._im_close_menu, compound='left',
                                    command=self.editor.closeall,
                                    accelerator='Ctrl+Shift+W')
         self.menu_file.add_command(label='Quit', command=self.quit,
-                                   image=self._images['quit'], compound='left')
+                                   image='img_quit', compound='left')
         # --- --- --- recent
         for f in self.recent_files:
             self.menu_recent_files.add_command(label=f,
                                                command=lambda file=f: self.open_file(file))
         # --- --- edit
         self.menu_edit.add_command(label='Undo', command=self.editor.undo,
-                                   image=self._images['undo'],
+                                   image='img_undo',
                                    accelerator='Ctrl+Z', compound='left')
         self.menu_edit.add_command(label='Redo', command=self.editor.redo,
-                                   image=self._images['redo'],
+                                   image='img_redo',
                                    accelerator='Ctrl+Y', compound='left')
         self.menu_edit.add_separator()
         self.menu_edit.add_command(label='Cut', command=self.editor.cut,
-                                   image=self._images['cut'],
+                                   image='img_cut',
                                    accelerator='Ctrl+X', compound='left')
         self.menu_edit.add_command(label='Copy', command=self.editor.copy,
-                                   image=self._images['copy'],
+                                   image='img_copy',
                                    accelerator='Ctrl+C', compound='left')
         self.menu_edit.add_command(label='Paste', command=self.editor.paste,
-                                   image=self._images['paste'],
+                                   image='img_paste',
                                    accelerator='Ctrl+V', compound='left')
         self.menu_edit.add_command(label='Select all', command=self.editor.select_all,
                                    image='img_menu_dummy',
@@ -224,11 +226,11 @@ class App(tk.Tk):
                                    accelerator='Ctrl+E', compound='left')
         self.menu_edit.add_command(label='Indent',
                                    command=self.editor.indent,
-                                   image=self._images['indent'],
+                                   image='img_indent',
                                    accelerator='Tab', compound='left')
         self.menu_edit.add_command(label='Dedent',
                                    command=self.editor.unindent,
-                                   image=self._images['dedent'],
+                                   image='img_dedent',
                                    accelerator='Shift+Tab', compound='left')
         self.menu_edit.add_separator()
         self.menu_edit.add_command(label='Upper case',
@@ -243,20 +245,20 @@ class App(tk.Tk):
         self.menu_edit.add_command(label='Color chooser',
                                    command=self.editor.choose_color,
                                    accelerator="Ctrl+Shift+C",
-                                   image=self._images['color'],
+                                   image='img_color',
                                    compound='left')
         self.menu_edit.add_separator()
         self.menu_edit.add_command(label='Settings', command=self.config,
-                                   compound='left', image=self._images['settings'])
+                                   compound='left', image='img_settings')
         # --- --- search
         menu_search.add_command(label='Find', command=self.editor.find,
                                 accelerator='Ctrl+F', compound='left',
-                                image=self._images['find'])
+                                image='img_find')
         menu_search.add_command(label='Replace', command=self.editor.replace,
                                 accelerator='Ctrl+R', compound='left',
-                                image=self._images['replace'])
+                                image='img_replace')
         menu_search.add_separator()
-        menu_search.add_command(label='Find & replace in session', image=self._images['replace'],
+        menu_search.add_command(label='Find & replace in session', image='img_replace',
                                 compound='left', command=self.search,
                                 accelerator='Ctrl+Shift+R',)
         menu_search.add_separator()
@@ -444,6 +446,11 @@ class App(tk.Tk):
         theme_name = CONFIG.get('General', 'theme')
         theme = dict(CONFIG.items('{} Theme'.format(theme_name.capitalize())))
         self._im_close.configure(file=IM_CLOSE.format(theme=theme_name))
+        img = Image.open(IM_CLOSE.format(theme=theme_name))
+        img2 = Image.new('RGBA', (18, 18))
+        d = (18 - img.size[0]) // 2
+        img2.paste(img, (d, d))
+        self._im_close_menu.paste(img2)
 
         # --- configuration dict
         button_style_config = {'bordercolor': theme['bordercolor'],

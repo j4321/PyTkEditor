@@ -160,10 +160,12 @@ class CodeStructure(BaseWidget):
         self._manager = manager
 
         header = Frame(self)
-        Button(header, style='close.TButton', padding=0,
-               command=lambda: self.visible.set(False)).pack(side='right')
-        self.filename = Label(header, padding=(4, 0), anchor='w')
-        self.filename.pack(side='left')
+        header.columnconfigure(0, weight=1)
+        self._close_btn = Button(header, style='close.TButton', padding=0,
+                                 command=lambda: self.visible.set(False))
+        self._close_btn.grid(row=0, column=1)
+        self.filename = Label(header, padding=(4, 0))
+        self.filename.grid(row=0, column=0, sticky='w')
 
         self.codetree = CodeTree(self)
         self._sx = AutoHideScrollbar(self, orient='horizontal', command=self.codetree.xview)
@@ -199,8 +201,10 @@ class CodeStructure(BaseWidget):
     def manager(self, new_manager):
         if CONFIG.get("General", "layout") in ["vertical", "horizontal2"]:
             self.configure(style='TFrame')
+            self._close_btn.grid_remove()
         else:
             self.configure(style='border.TFrame')
+            self._close_btn.grid()
         if self.visible.get():
             try:
                 self._manager.forget(self)
