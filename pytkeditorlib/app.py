@@ -97,7 +97,6 @@ class App(tk.Tk):
         self._setup_style()
 
         # --- jupyter kernel
-        self._kernel_manager = None
         self._qtconsole_process = None
         self._qtconsole_ready = False
         self._init_kernel()
@@ -1011,20 +1010,22 @@ class App(tk.Tk):
     # --- run
     def run(self, event=None):
         console = CONFIG.get("Run", "console")
-        if console == 'external':
-            if self.save():
+        if self.save():
+            if console == 'external':
                 self.editor.run(CONFIG.getboolean("Run", "external_interactive"))
-        else:
-            code = self.editor.get(strip=False)
-            if not code:
-                return
-            if console == "qtconsole":
-                if not cst.JUPYTER:
-                    showerror("Error", "The Jupyter QtConsole is not installed.")
-                    return
-                self.execute_in_jupyter(code=code)
             else:
-                self.console.execute(code)
+                tab = self.editor.current_tab
+                if tab < 0:
+                    return
+                file = self.editor.files[self.editor.current_tab]
+                wdir = os.path.dirname(file)
+                if console == "qtconsole":
+                    if not cst.JUPYTER:
+                        showerror("Error", "The Jupyter QtConsole is not installed.")
+                        return
+                    self.execute_in_jupyter(code="%cd {}\n%run {}".format(wdir, file))
+                else:
+                    self.console.execute(f"run({file!r})")
 
     def run_selection(self, event=None):
         code = self.editor.get_selection()

@@ -31,6 +31,7 @@ import signal
 import tkinter
 import time
 from os import chdir, getcwd
+from os.path import dirname
 from tempfile import mkstemp
 
 from constants import CLIENT_CERT, SERVER_CERT
@@ -56,6 +57,7 @@ class SocketConsole(InteractiveConsole):
         self.locals['_set_cwd'] = chdir
         self.locals['_get_cwd'] = getcwd
         self.locals['_cwd'] = getcwd()
+        self.locals['run'] = self.runfile
         self._initial_locals = self.locals.copy()
         signal.signal(signal.SIGINT, self.interrupt)
         context = ssl.create_default_context(ssl.Purpose.SERVER_AUTH, cafile=SERVER_CERT)
@@ -70,6 +72,14 @@ class SocketConsole(InteractiveConsole):
 
     def interrupt(self, *args):
         raise KeyboardInterrupt
+
+    def runfile(self, filename):
+        """Set working directory to filename's directory and run filename."""
+        wdir = dirname(filename)
+        with open(filename) as file:
+            code = file.read()
+        exec(f'chdir({wdir!r})', globals(), self.locals)
+        exec(code, globals(), self.locals)
 
     def _exit(self):
         self.resetbuffer()
