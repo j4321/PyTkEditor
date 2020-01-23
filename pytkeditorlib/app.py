@@ -365,6 +365,7 @@ class App(tk.Tk):
         self.editor.bind('<<Modified>>', lambda e: self._edit_modified())
         self.editor.bind('<<Reload>>', self.reload)
         self.editor.bind('<<Filebrowser>>', self.view_in_filebrowser)
+        self.editor.bind('<<SetConsoleWDir>>', self.set_console_wdir)
 
         self.bind_class('Text', '<Control-o>', lambda e: None)
         self.bind('<Control-Shift-T>', self.restore_last_closed)
@@ -819,6 +820,11 @@ class App(tk.Tk):
             fb.visible.set(True)
         else:
             self.right_nb.select(fb)
+
+    def set_console_wdir(self, event):
+        file = self.editor.files[self.editor.current_tab]
+        wdir = os.path.dirname(file)
+        self.console.set_console_wdir(wdir)
 
     # --- open
     def restore_last_closed(self, event=None):

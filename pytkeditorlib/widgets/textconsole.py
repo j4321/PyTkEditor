@@ -559,9 +559,6 @@ class TextConsole(RichText):
             return None
 
     # --- working dir
-    def get_console_wdir(self):
-        print(self._cwd)
-
     def set_console_wdir(self, path):
         """Set console working directory to path."""
 
@@ -569,6 +566,7 @@ class TextConsole(RichText):
             try:
                 # retrieve the output so that it does not interfere with other commands
                 self.shell_client.recv(65536).decode()
+                self._cwd = path
             except socket.error:
                 self.after(10, check)
             else:
@@ -732,6 +730,5 @@ class ConsoleFrame(BaseWidget):
         self.menu = tk.Menu(self)
         self.menu.add_command(label='Clear console', command=self.console.shell_clear)
         self.menu.add_command(label='Restart console', command=self.console.restart_shell)
-        self.menu.add_command(label='Get cwd', command=self.console.get_console_wdir)
 
         self.update_style = self.console.update_style

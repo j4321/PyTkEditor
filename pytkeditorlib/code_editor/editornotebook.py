@@ -47,6 +47,9 @@ class EditorNotebook(Notebook):
         self.menu = Menu(self, tearoff=False)
         self.menu.add_command(label='View in filebrowser',
                               command=self.view_in_filebrowser)
+        self.menu.add_command(label='Set Console working directory',
+                              command=self.set_console_wdir)
+        self.menu.add_separator()
         self.menu.add_command(label='Close all other tabs',
                               command=self.close_other_tabs)
         self.menu.add_command(label='Close tabs to the right',
@@ -246,6 +249,9 @@ class EditorNotebook(Notebook):
 
     def view_in_filebrowser(self):
         self.event_generate('<<Filebrowser>>')
+
+    def set_console_wdir(self):
+        self.event_generate('<<SetConsoleWDir>>')
 
     # --- formatting
     def toggle_comment(self):
