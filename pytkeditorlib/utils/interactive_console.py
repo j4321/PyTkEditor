@@ -36,6 +36,22 @@ from tempfile import mkstemp
 
 from constants import CLIENT_CERT, SERVER_CERT
 
+GUI = ['', 'tk']
+try:
+    from PyQt5.QtWidgets import QApplication
+except ImportError:
+    pass
+else:
+    GUI.append('qt')
+try:
+    import gi
+    gi.require_version('Gtk', '3.0')
+    from gi.repository import Gtk
+except ImportError:
+    pass
+else:
+    GUI.append('gtk')
+
 
 class Stdout(StringIO):
     def __init__(self, send_cmd, *args):
@@ -47,6 +63,9 @@ class Stdout(StringIO):
         self.send_cmd(line)
 
 class ConsoleMethods:
+    def __init__(self):
+        self.current_gui = ''
+
     def cd(self, path):
         chdir(path)
         print(getcwd())
@@ -57,6 +76,11 @@ class ConsoleMethods:
     def cat(self, file):
         with open(file) as f:
             print(f.read())
+
+    def gui(self, gui):
+        if gui not in GUI:
+            raise ValueError(f"should be in {', '.join(GUI)}")
+        self.current_gui = gui
 
 
 class SocketConsole(InteractiveConsole):
@@ -139,6 +163,19 @@ class SocketConsole(InteractiveConsole):
                 msg = f'False, {filename!r}, "Too long", True, {self.locals["_cwd"]!r}'
         self.socket.send(msg.encode())
 
+    def _gui_loop(self):
+        gui = self.locals['_console'].current_gui
+        if gui == 'tk':
+            if tkinter._default_root is not None:
+                tkinter._default_root.update()
+        elif gui == 'gtk':
+            while Gtk.events_pending():
+                Gtk.main_iteration()
+        elif gui == 'qt':
+            app = QApplication.instance()
+            if app:
+                app.processEvents()
+
     def interact(self):
         self.socket.setblocking(False)
         while True:
@@ -175,8 +212,7 @@ class SocketConsole(InteractiveConsole):
             except socket.error as e:
                 if e.errno != 2:
                     print('%r' % e, type(e), e)
-                if tkinter._default_root is not None:
-                    tkinter._default_root.update()
+                self._gui_loop()
                 time.sleep(0.05)
 
 

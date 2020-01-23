@@ -80,7 +80,8 @@ def cat():
         # --- regexp
         self._re_abspaths = re.compile(rf'(\{sep}\w+)+\{sep}?$')
         self._re_relpaths = re.compile(rf'\w+(\{sep}\w+)*\{sep}?$')
-        self._re_console_special = re.compile(r'^(cd|ls|cat) (.*)$')
+        self._re_console_special = re.compile(r'^(cd|ls|cat) ?(.*)$')
+        self._re_gui = re.compile(r'^%gui ?(.*)$')
         self._re_help = re.compile(r'^(.*)\?$')
         self._re_trailing_spaces = re.compile(r' *$', re.MULTILINE)
         self._re_prompt = re.compile(rf'^{re.escape(self._prompt2)}', re.MULTILINE)
@@ -606,7 +607,10 @@ def cat():
             code = self._re_prompt.sub('', code)
             match = self._re_console_special.search(code)
             if match:
-                cmd, path = match.groups()
+                gr = list(match.groups())
+                if len(gr) == 1:
+                    gr.append('')
+                cmd, path = gr
                 self.history.add_history(code)
                 self._hist_item = self.history.get_length()
                 code = f"_console.{cmd}({path!r})"
@@ -616,6 +620,18 @@ def cat():
                 self._hist_item = self.history.get_length()
                 code = f"help({code[:-1]})"
                 add_to_hist = False
+            else:
+                match = self._re_gui.match(code)
+                if match:
+                    value = match.groups()
+                    if value:
+                        value = value[0]
+                    else:
+                        value = ''
+                    self.history.add_history(code)
+                    self._hist_item = self.history.get_length()
+                    code = f"_console.gui({value!r})"
+                    add_to_hist = False
 
             self.insert('insert', '\n')
             try:
