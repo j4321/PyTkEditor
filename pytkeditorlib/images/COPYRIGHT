@@ -15,6 +15,7 @@ Copyright:
 License: GPL-3+
 
 Files:
+    edit.png
     run_cell.png
     run_cell_next.png
     run_selection.png

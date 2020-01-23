@@ -35,6 +35,7 @@ class Config(tk.Toplevel):
     def __init__(self, master):
         tk.Toplevel.__init__(self, master)
         self.transient(master)
+        self.resizable(False, False)
         self.grab_set()
         self.configure(padx=8, pady=4)
         self.title('PyTkEditor - Config')
@@ -45,17 +46,13 @@ class Config(tk.Toplevel):
                   font=('TkDefaultFont', 10, 'bold')).grid(row=0, columnspan=3,
                                                            sticky='w', pady=4)
         # --- --- theme
-        menu_theme = tk.Menu(frame_general, tearoff=False)
         self.theme = tk.StringVar(frame_general, CONFIG.get('General', 'theme'))
-        menu_theme.add_radiobutton(label='light', variable=self.theme,
-                                   value='light')
-        menu_theme.add_radiobutton(label='dark', variable=self.theme,
-                                   value='dark')
+        ctheme = ttk.Combobox(frame_general, textvariable=self.theme, state='readonly',
+                              values=['dark', 'light'], width=5)
         ttk.Label(frame_general, text='Theme:').grid(row=1, column=0, sticky='e',
                                                      padx=4, pady=4)
-        ttk.Menubutton(frame_general, menu=menu_theme, width=5,
-                       textvariable=self.theme).grid(row=1, column=1, padx=4,
-                                                     pady=4, sticky='w')
+        ctheme.grid(row=1, column=1, padx=4, pady=4, sticky='w')
+        ctheme.bind("<<ComboboxSelected>>", lambda e: ctheme.selection_clear())
         # --- --- font
         families = list(font.families())
         families.sort()
@@ -70,26 +67,39 @@ class Config(tk.Toplevel):
         self.family.grid(row=2, column=1, sticky='w', padx=4, pady=4)
         self.size.grid(row=2, column=2, sticky='w', padx=4, pady=4)
 
+        frame_general2 = ttk.Frame(frame_general)
+        frame_general2.grid(row=3, columnspan=3, sticky='w', padx=6, pady=4)
+        # --- --- comment marker
+        ttk.Label(frame_general2,
+                  text='Comment toggle marker:').grid(row=0, column=0, pady=4, sticky='e')
+        self.comment_marker = ttk.Entry(frame_general2, width=3)
+        self.comment_marker.insert(0, CONFIG.get("General", "comment_marker", fallback="~"))
+        self.comment_marker.grid(row=0, column=1, padx=4, pady=4, sticky='w')
+
         # --- --- new file template
-        ttk.Button(frame_general, text='Edit new file template',
-                   command=self.edit_template).grid(row=3, columnspan=3, sticky='w', padx=6, pady=4)
+        ttk.Label(frame_general2,
+                  text='Edit new file template').grid(row=1, column=0, sticky='e', pady=4)
+        ttk.Button(frame_general2, image='img_edit', padding=1,
+                   command=self.edit_template).grid(row=1, column=1, padx=4, pady=4, sticky='w')
+
 
         # --- syntax highlighting
         frame_s_h = ttk.Frame(self)
         styles = list(get_all_styles())
         styles.sort()
-        self.editor_style = AutoCompleteCombobox(frame_s_h, values=styles)
+        w = len(max(styles, key=lambda x: len(x)))
+        self.editor_style = AutoCompleteCombobox(frame_s_h, values=styles, width=w)
         self.editor_style.insert(0, CONFIG.get('Editor', 'style'))
-        self.console_style = AutoCompleteCombobox(frame_s_h, values=styles)
+        self.console_style = AutoCompleteCombobox(frame_s_h, values=styles, width=w)
         self.console_style.insert(0, CONFIG.get('Console', 'style'))
 
         ttk.Label(frame_s_h, text='Syntax Highlighting',
-                  font=('TkDefaultFont', 10, 'bold')).grid(row=0, columnspan=2,
+                  font=('TkDefaultFont', 10, 'bold')).grid(row=0, columnspan=4,
                                                            sticky='w', pady=4)
         ttk.Label(frame_s_h, text='Editor:').grid(row=1, column=0, sticky='e', padx=4, pady=4)
         self.editor_style.grid(row=1, column=1, sticky='w', padx=4, pady=4)
-        ttk.Label(frame_s_h, text='Console:').grid(row=2, column=0, sticky='e', padx=4, pady=4)
-        self.console_style.grid(row=2, column=1, sticky='w', padx=4, pady=4)
+        ttk.Label(frame_s_h, text='Console:').grid(row=1, column=2, sticky='e', padx=4, pady=4)
+        self.console_style.grid(row=1, column=3, sticky='w', padx=4, pady=4)
 
         # --- code checking
         frame_check = ttk.Frame(self)
@@ -122,9 +132,9 @@ class Config(tk.Toplevel):
         ttk.Label(frame_history,
                   text='Maximum size (truncated when quitting):').grid(row=1, column=0, sticky='e',
                                                                        padx=4, pady=4)
-        self.history_size = ttk.Entry(frame_history)
+        self.history_size = ttk.Entry(frame_history, width=6)
         self.history_size.insert(0, CONFIG.get('History', 'max_size', fallback='10000'))
-        self.history_size.grid(row=1, column=1, sticky='ew', padx=4, pady=4)
+        self.history_size.grid(row=1, column=1, sticky='w', padx=4, pady=4)
 
         # --- Run
         frame_run = ttk.Frame(self)
@@ -194,6 +204,7 @@ class Config(tk.Toplevel):
             pass
         else:
             CONFIG.set('General', 'fontsize', str(size))
+        CONFIG.set('General', 'comment_marker', self.comment_marker.get())
         # --- syntax highlighting
         estyle = self.editor_style.get()
         if estyle:

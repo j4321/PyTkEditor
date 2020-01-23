@@ -47,8 +47,12 @@ class Editor(ttk.Frame):
         self.columnconfigure(2, weight=1)
         self.rowconfigure(0, weight=1)
 
-        # regexp
+        # --- regexp
         self._re_paths = re.compile(rf'("|\')(\{sep}\w+)+\{sep}?$')
+        self._re_empty = re.compile(r'^ *$')
+        self._re_indent = re.compile(r'^( *)')
+        self._re_tab = re.compile(r' {4}$')
+        self._re_colon = re.compile(r':( *)$')
 
         self._filetype = filetype
 
@@ -65,6 +69,7 @@ class Editor(ttk.Frame):
 
         self.cells = []
 
+        # --- GUI elements
         self._comp = CompListbox(self)
         self._comp.set_callback(self._comp_sel)
 
@@ -148,7 +153,7 @@ class Editor(ttk.Frame):
                    command=self.hide_search,
                    style='close.TButton').pack(side='left')
         ttk.Label(frame_find, text='Find:').pack(side='right')
-        # ------- placement
+        # --- --- placement
         ttk.Frame(self.frame_search, style='separator.TFrame',
                   height=1).grid(row=0, column=0, columnspan=3, sticky='ew')
         frame_find.grid(row=1, column=0, padx=2, pady=4, sticky='ew')
@@ -355,12 +360,15 @@ class Editor(ttk.Frame):
             index = self.text.index('insert linestart')
             self.text.delete('insert linestart', 'insert lineend')
 
+        marker = CONFIG.get('General', 'comment_marker', fallback='~')
+        re_comment = re.compile(rf'^( *)#{re.escape(marker)}(.*)')
         for i, line in enumerate(lines):
-            res = re.match(r'^( )*# ', line)
+            res = re_comment.match(line)
             if res:
-                lines[i] = res.group()[:-2] + line[len(res.group()):]
-            elif not re.match(r'^( )*$', line):
-                lines[i] = re.match(r'( )*', line).group() + '# ' + line.lstrip(' ')
+                lines[i] = "{}{}".format(*res.groups())
+            elif not self._re_empty.match(line):
+                index = self._re_indent.match(line).end()
+                lines[i] = line[:index] + f'#{marker}' + line[index:]
         txt = '\n'.join(lines)
         self.text.insert(index, txt)
         self.parse(txt, index)
@@ -440,11 +448,12 @@ class Editor(ttk.Frame):
         index = self.text.index('insert linestart')
         t = self.text.get("insert linestart", "insert")
         self.parse(t, index)
-        indent = re.match(r'( )*', t).group()
-        colon = re.search(r':( )*$', t)
+        indent = self._re_indent.match(t).group()
+        colon = self._re_colon.search(t)
         if colon:
+            nb_spaces = len(colon.groups()[0])
             if len(colon.group()) > 1:
-                self.text.delete('insert-%ic' % (len(colon.group()) - 1), 'insert')
+                self.text.delete(f'insert-{nb_spaces}c', 'insert')
             indent = indent + '    '
 
         self.text.insert('insert', '\n' + indent)
@@ -464,7 +473,7 @@ class Editor(ttk.Frame):
         else:
             text = txt.get('insert-1c', 'insert+1c')
             linestart = txt.get('insert linestart', 'insert')
-            if re.search(r'    $', linestart):
+            if self._re_tab.search(linestart):
                 txt.delete('insert-4c', 'insert')
             elif text in ["()", "[]", "{}"]:
                 txt.delete('insert-1c', 'insert+1c')
@@ -948,7 +957,7 @@ class Editor(ttk.Frame):
             index = self.text.index('insert')
             txt = txt.splitlines()
             for i, line in enumerate(txt):
-                txt[i] = line[:re.search(r'( )*$', line).span()[0]]
+                txt[i] = line.rstrip(' ')
             txt = '\n'.join(txt)
             self.text.delete('1.0', 'end')
             self.text.insert('1.0', txt)
@@ -970,10 +979,10 @@ class Editor(ttk.Frame):
         line_nb -= 1
         prev_line = self.text.get('%i.0' % line_nb, '%i.end' % line_nb)
         line = self.text.get('insert linestart', 'insert lineend')
-        res = re.match(r'( )*', line)
-        if res.span()[-1] < col:
+        res = self._re_indent.match(line)
+        if res.end() < col:
             return '    '
-        indent_prev = len(re.match(r'( )*', prev_line).group())
+        indent_prev = len(self._re_indent.match(prev_line).group())
         indent = len(res.group())
         if indent < indent_prev:
             return ' ' * (indent_prev - indent)
