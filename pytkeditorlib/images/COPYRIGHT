@@ -1,4 +1,4 @@
-Files: 
+Files:
     c.png
     cell.png
     close_dark.png
@@ -6,11 +6,29 @@ Files:
     f.png
     hf.png
     sep.png
+    view_horizontal.png
+    view_horizontal.png
 Copyright:
     2018 Juliette Monsel <j_4321@protonmail.com>
 License: GPL-3+
 
-Files: 
+Files:
+    run_cell.png
+    run_cell_next.png
+    run_selection.png
+    properties.png
+    up.png
+    indent.png
+    dedent.png
+    right.png
+    color.png
+    copy.png
+    highlight.png
+    cut.png
+    paste.png
+    left.png
+    print.png
+    export.png
     error.png
     file.png
     find.png
@@ -37,9 +55,35 @@ License: GPL-3+
 Files: icon.png
 Copyright:
     2018 Juliette Monsel <j_4321@protonmail.com>
-    based on an icon (Text-x-generic, in the public domain) from the 
-    Tango projetct <http://tango.freedesktop.org> and the Python logo 
+    based on an icon (Text-x-generic, in the public domain) from the
+    Tango projetct <http://tango.freedesktop.org> and the Python logo
     by The people from the Tango! project <http://tango.freedesktop.org>,
     licensed under CC BY-SA 3.0.
-License:
-    CC BY-SA 3.0
+License: CC BY-SA 3.0
+
+
+Files:
+    qtconsole.png
+Copyright:
+    2015-2020 Jupyter Development Team
+    2020 Juliette Monsel <j_4321@protonmail.com>
+License: GPL-3+
+
+Files:
+    qtconsole_start.png
+Copyright:
+    2007-2013 elementary LLC <https://github.com/elementary>
+    2015-2020 Jupyter Development Team
+    2020 Juliette Monsel <j_4321@protonmail.com>
+License: GPL-3+
+
+Files:
+    JupyterConsole.svg
+Copyright:
+    2020 Juliette Monsel <j_4321@protonmail.com>
+    based on an icon (Text-x-generic, in the public domain) from the
+    Tango projetct <http://tango.freedesktop.org>, the Python logo
+    by The people from the Tango! project <http://tango.freedesktop.org>,
+    licensed under CC BY-SA 3.0 and Jupyter Qtconsole's icon (originally under
+    the BSD-3-clause license, copyright 2015-2020 Jupyter Development Team).
+License: CC BY-SA 3.0
