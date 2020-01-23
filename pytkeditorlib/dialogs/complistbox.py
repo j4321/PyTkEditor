@@ -22,24 +22,8 @@ Code completion listbox
 """
 import tkinter as tk
 from tkinter import ttk
-from os.path import basename, sep, isdir
 
 from pytkeditorlib.gui_utils import AutoHideScrollbar
-
-
-class PathCompletion:
-    def __init__(self, before_completion, after_completion):
-        """
-        Completion object for paths.
-
-        Arguments:
-            * before_completion: path before completion
-            * after_completion: path after completion
-        """
-        self.complete = after_completion[len(before_completion):] + sep * isdir(after_completion)
-        if after_completion[-1] == sep:
-            after_completion = after_completion[:-1]
-        self.name = basename(after_completion)
 
 
 class CompListbox(tk.Toplevel):

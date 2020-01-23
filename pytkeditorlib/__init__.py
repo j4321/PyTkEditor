@@ -1,1 +1,2 @@
-__version__ = "1.0.0a0"
+from .utils import __version__
+from .app import App

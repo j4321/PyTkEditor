@@ -27,7 +27,7 @@ from tkinter import font
 
 from pygments.styles import get_all_styles
 
-from pytkeditorlib.utils.constants import CONFIG, save_config, PATH_TEMPLATE, JUPYTER
+from pytkeditorlib.utils.constants import CONFIG, PATH_TEMPLATE, JUPYTER
 from pytkeditorlib.gui_utils import AutoCompleteCombobox
 
 
@@ -218,5 +218,5 @@ class Config(tk.Toplevel):
         CONFIG.set('Run', 'console', self.run_console.get())
         CONFIG.set('Run', 'external_interactive',
                    str('selected' in self.external_interactive.state()))
-        save_config()
+        CONFIG.save()
         self.destroy()

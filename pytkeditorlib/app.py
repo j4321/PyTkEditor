@@ -37,7 +37,7 @@ from pygments import highlight
 from pygments.formatters import HtmlFormatter
 
 from pytkeditorlib.code_editor import EditorNotebook, CodeStructure
-from pytkeditorlib.utils.constants import IMAGES, CONFIG, save_config, IM_CLOSE
+from pytkeditorlib.utils.constants import IMAGES, CONFIG, IM_CLOSE
 from pytkeditorlib.utils import constants as cst
 from pytkeditorlib.utils.syntax_check import check_file
 from pytkeditorlib.dialogs import showerror, About, Config, SearchDialog, PrintDialog
@@ -769,7 +769,7 @@ class App(tk.Tk):
         if CONFIG.get('General', 'layout', fallback='horizontal') == 'layout':
             return  # no change
         CONFIG.set('General', 'layout', layout)
-        save_config()
+        CONFIG.save()
         if layout == 'horizontal':
             self._horizontal_pane.forget(self._vertical_pane)
             self._horizontal_pane.insert('end', self.editor, weight=50)
@@ -791,7 +791,7 @@ class App(tk.Tk):
     def quit(self):
         files = ', '.join(self.editor.get_open_files())
         CONFIG.set('General', 'opened_files', files)
-        save_config()
+        CONFIG.save()
         res = self.editor.closeall()
         if res:
             self.destroy()
@@ -893,7 +893,7 @@ class App(tk.Tk):
                 self.editor.goto_start()
                 self._update_recent_files(file)
                 CONFIG.set('General', 'recent_files', ', '.join(self.recent_files))
-                save_config()
+                CONFIG.save()
 
     def open(self, file=None):
         if file:

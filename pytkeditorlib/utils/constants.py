@@ -1,8 +1,7 @@
-#! /usr/bin/python3
 # -*- coding: utf-8 -*-
 """
 PyTkEditor - Python IDE
-Copyright 2018-2019 Juliette Monsel <j_4321 at protonmail dot com>
+Copyright 2018-2020 Juliette Monsel <j_4321 at protonmail dot com>
 
 PyTkEditor is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -18,20 +17,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
-The images in ICONS were taken from "icons.tcl":
-
-    A set of stock icons for use in Tk dialogs. The icons used here
-    were provided by the Tango Desktop project which provides a
-    unified set of high quality icons licensed under the
-    Creative Commons Attribution Share-Alike license
-    (http://creativecommons.org/licenses/by-sa/3.0/)
-
-    See http://tango.freedesktop.org/Tango_Desktop_Project
-
-    Copyright (c) 2009 Pat Thoyts <patthoyts@users.sourceforge.net>
-
-
-Constants and functions
+Constants
 """
 import os
 import configparser
@@ -219,48 +205,4 @@ def save_config():
         CONFIG.write(f)
 
 
-# --- style
-def load_style(stylename):
-    s = get_style_by_name(stylename)
-    style = s.list_styles()
-    style_dic = {}
-    FONT = (CONFIG.get("General", "fontfamily"),
-            CONFIG.getint("General", "fontsize"))
-    for token, opts in style:
-        name = str(token)
-        style_dic[name] = {}
-        fg = opts['color']
-        bg = opts['bgcolor']
-        if fg:
-            style_dic[name]['foreground'] = '#' + fg
-        if bg:
-            style_dic[name]['background'] = '#' + bg
-        font = FONT + tuple(key for key in ('bold', 'italic') if opts[key])
-        style_dic[name]['font'] = font
-        style_dic[name]['underline'] = opts['underline']
-    return s.background_color, s.highlight_color, style_dic
-
-
-# --- screen size
-def get_screen(x, y):
-    d = display.Display()
-    screens = query_screens(d).screens
-    monitors = [(m.x, m.y, m.x + m.width, m.y + m.height) for m in screens]
-    i = 0
-    while (i < len(monitors)
-           and not (monitors[i][0] <= x <= monitors[i][2]
-                    and monitors[i][1] <= y <= monitors[i][3])):
-        i += 1
-    if i == len(monitors):
-        raise ValueError("(%i, %i) is out of screen" % (x, y))
-    else:
-        return monitors[i]
-
-
-def valide_entree_nb(d, S):
-    """ commande de validation des champs devant contenir
-        seulement des chiffres """
-    if d == '1':
-        return S.isdigit()
-    else:
-        return True
+CONFIG.save = save_config

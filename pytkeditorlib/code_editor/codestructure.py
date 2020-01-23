@@ -29,7 +29,7 @@ import re
 import logging
 
 from pytkeditorlib.gui_utils import AutoHideScrollbar, AutoCompleteCombobox2
-from pytkeditorlib.utils.constants import IMAGES, CONFIG, save_config
+from pytkeditorlib.utils.constants import IMAGES, CONFIG
 
 
 class Tree:
@@ -204,7 +204,7 @@ class CodeStructure(Frame):
         else:
             self.master.forget(self)
         CONFIG.set('Code structure', 'visible', str(visible))
-        save_config()
+        CONFIG.save()
 
     def get_cells(self):
         return self.codetree.cells

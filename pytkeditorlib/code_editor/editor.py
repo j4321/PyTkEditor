@@ -1,3 +1,4 @@
+
 #! /usr/bin/python3
 # -*- coding: utf-8 -*-
 """
@@ -29,12 +30,13 @@ import tkinter as tk
 from tkinter import ttk
 from tkinter.font import Font
 
-from pytkeditorlib.dialogs.complistbox import PathCompletion, CompListbox
+from pytkeditorlib.dialogs.complistbox import CompListbox
 from pytkeditorlib.dialogs import showerror, showinfo, \
     TooltipTextWrapper, Tooltip, ColorPicker
 from pytkeditorlib.gui_utils import AutoHideScrollbar
-from pytkeditorlib.utils.constants import get_screen, load_style, PYTHON_LEX, CONFIG, \
-    valide_entree_nb, IMAGES
+from pytkeditorlib.utils.constants import PYTHON_LEX, CONFIG, IMAGES
+from pytkeditorlib.utils.functions import get_screen, load_style, valide_entree_nb, \
+    PathCompletion
 from .filebar import FileBar
 
 

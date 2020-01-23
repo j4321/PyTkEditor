@@ -23,7 +23,7 @@ Tooltips
 import tkinter as tk
 from tkinter import ttk
 
-from pytkeditorlib.utils.constants import get_screen
+from pytkeditorlib.utils.functions import get_screen
 
 
 class Tooltip(tk.Toplevel):

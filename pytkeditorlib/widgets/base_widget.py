@@ -26,7 +26,8 @@ from tkinter.ttk import Frame
 from tkcolorpicker.functions import rgb_to_hsv, hexa_to_rgb
 
 from pytkeditorlib.gui_utils import Notebook
-from pytkeditorlib.utils.constants import CONFIG, save_config, load_style
+from pytkeditorlib.utils.constants import CONFIG
+from pytkeditorlib.utils.functions import load_style
 
 
 class BaseWidget(Frame):
@@ -52,7 +53,7 @@ class BaseWidget(Frame):
         else:
             self.master.hide(self)
         CONFIG.set(self.name, 'visible', str(visible))
-        save_config()
+        CONFIG.save()
 
     def set_order(self, order):
         CONFIG.set(self.name, 'order', str(order))
@@ -180,7 +181,7 @@ class WidgetNotebook(Notebook):
     def _save_order(self, event):
         for i, tab in enumerate(self._visible_tabs):
             self._tabs[tab].set_order(i)
-        save_config()
+        CONFIG.save()
 
     def _popup_menu(self, event, tab):
         widget = self._tabs[tab]

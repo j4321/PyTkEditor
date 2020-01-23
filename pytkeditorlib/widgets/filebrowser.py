@@ -27,7 +27,7 @@ import os
 import re
 
 from pytkeditorlib.gui_utils import AutoHideScrollbar as Scrollbar
-from pytkeditorlib.utils.constants import CONFIG, save_config
+from pytkeditorlib.utils.constants import CONFIG
 from .base_widget import BaseWidget
 
 
@@ -108,7 +108,7 @@ class Filebrowser(BaseWidget):
 
         def ok(event=None):
             CONFIG.set('File browser', 'filename_filter', entry.get())
-            save_config()
+            CONFIG.save()
             self.load_filters()
             self.populate(self.filetree.get_children()[0], history=False)
             top.destroy()

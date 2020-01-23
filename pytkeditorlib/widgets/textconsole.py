@@ -36,8 +36,9 @@ from pygments import lex
 from pygments.lexers import Python3Lexer
 import jedi
 
-from pytkeditorlib.dialogs.complistbox import CompListbox, PathCompletion
-from pytkeditorlib.utils.constants import get_screen, SERVER_CERT, CLIENT_CERT
+from pytkeditorlib.dialogs.complistbox import CompListbox
+from pytkeditorlib.utils.constants import SERVER_CERT, CLIENT_CERT
+from pytkeditorlib.utils.functions import get_screen, PathCompletion
 from pytkeditorlib.dialogs import askyesno, Tooltip
 from pytkeditorlib.gui_utils import AutoHideScrollbar
 from .base_widget import BaseWidget, RichText

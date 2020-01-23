@@ -11,7 +11,7 @@ APP_NAME = "pytkeditor"
 with open('README.rst', encoding='utf-8') as f:
     long_description = f.read()
 
-with open("pytkeditorlib/__init__.py") as file:
+with open("pytkeditorlib/utils/version.py") as file:
     exec(file.read())
 
 images = [os.path.join("pytkeditorlib/images/", img) for img in os.listdir("pytkeditorlib/images/")]

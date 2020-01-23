@@ -25,7 +25,7 @@ import os
 import signal
 import traceback
 
-from pytkeditorlib.app import App
+from pytkeditorlib import App
 from pytkeditorlib.utils.constants import PIDFILE, OPENFILE_PATH
 from pytkeditorlib.dialogs import showerror
 
