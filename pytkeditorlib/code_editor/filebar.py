@@ -67,7 +67,10 @@ class FileBar(Canvas):
         height = self.winfo_height()
         deb, fin = self.widget.yview()
         size = (self.winfo_width(), int((fin - deb) * height))
-        self._highlight_img = self._highlight_img.resize(size)
+        try:
+            self._highlight_img = self._highlight_img.resize(size)
+        except ValueError:
+            return
         self._highlight_photoimg = ImageTk.PhotoImage(self._highlight_img, master=self)
         self.itemconfigure(self.highlight, image=self._highlight_photoimg)
         self.coords(self.highlight, 0, int(deb * height))

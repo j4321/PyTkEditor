@@ -36,12 +36,13 @@ from tkfilebrowser import askopenfilenames, asksaveasfilename
 from pygments import highlight
 from pygments.formatters import HtmlFormatter
 
-from pytkeditorlib.code_editor import EditorNotebook, CodeStructure
+from pytkeditorlib.code_editor import EditorNotebook
 from pytkeditorlib.utils.constants import IMAGES, CONFIG, IM_CLOSE
 from pytkeditorlib.utils import constants as cst
 from pytkeditorlib.utils.syntax_check import check_file
 from pytkeditorlib.dialogs import showerror, About, Config, SearchDialog, PrintDialog
-from pytkeditorlib.widgets import WidgetNotebook, Help, HistoryFrame, ConsoleFrame, Filebrowser
+from pytkeditorlib.widgets import WidgetNotebook, Help, HistoryFrame, \
+    ConsoleFrame, Filebrowser, CodeStructure
 from pytkeditorlib.gui_utils import LongMenu
 
 
@@ -104,14 +105,14 @@ class App(tk.Tk):
         # --- GUI elements
         self._horizontal_pane = ttk.PanedWindow(self, orient='horizontal')
         self._vertical_pane = ttk.PanedWindow(self._horizontal_pane, orient='vertical')
-        # --- --- code structure tree
-        self.codestruct = CodeStructure(self._horizontal_pane)
         # --- --- editor notebook
         self.editor = EditorNotebook(self._horizontal_pane, width=696)
         # --- --- right pane
         self.right_nb = WidgetNotebook(self._horizontal_pane)
-        widgets = ['Console', 'History', 'Help', 'File browser']
+        widgets = ['Code structure', 'Console', 'History', 'Help', 'File browser']
         widgets.sort(key=lambda w: CONFIG.getint(w, 'order', fallback=0))
+        # --- --- code structure tree
+        self.codestruct = CodeStructure(self._horizontal_pane, self.right_nb)
         # --- --- --- command history
         self.widgets['History'] = HistoryFrame(self.right_nb, padding=1)
         # --- --- --- python console
@@ -127,18 +128,14 @@ class App(tk.Tk):
         self.widgets['File browser'] = Filebrowser(self.right_nb, self.open_file)
 
         # ----- placement
-        self._horizontal_pane.add(self.codestruct, weight=1)
-        layout = CONFIG.get('General', 'layout', fallback='horizontal')
-        if layout == 'horizontal':
-            self._horizontal_pane.add(self.editor, weight=50)
-        else:  # vertical
-            self._horizontal_pane.add(self._vertical_pane, weight=55)
-            self._vertical_pane.add(self.editor, weight=20)
-            self.right_nb.manager = self._vertical_pane
         self._horizontal_pane.pack(fill='both', expand=True, pady=(0, 4))
-        self.codestruct.visible.set(CONFIG.getboolean('Code structure', 'visible', fallback=True))
         for name in widgets:
-            self.right_nb.add(self.widgets[name], text=name)
+            self.right_nb.add(self.widgets.get(name, self.codestruct), text=name)
+        self.layout = tk.StringVar(self, CONFIG.get("General", "layout", fallback='horizontal'))
+        if self.layout.get() in ['horizontal', 'pvertical']:
+            self.right_nb.forget(self.codestruct)
+        self.change_layout(True)
+        self.codestruct.visible.set(CONFIG.getboolean('Code structure', 'visible', fallback=True))
         for name, widget in self.widgets.items():
             widget.visible.set(CONFIG.getboolean(name, 'visible', fallback=True))
         self.right_nb.select_first_tab()
@@ -324,9 +321,10 @@ class App(tk.Tk):
         menu_view.add_cascade(label='Window layout', menu=menu_layouts,
                               image='img_menu_dummy', compound='left')
         # --- --- --- widgets
-        menu_widgets.add_checkbutton(label='Code structure', variable=self.codestruct.visible)
-        for name in widgets:
-            menu_widgets.add_checkbutton(label=name, variable=self.widgets[name].visible)
+        # menu_widgets.add_checkbutton(label='Code structure', variable=self.codestruct.visible)
+        for name in sorted(widgets):
+            menu_widgets.add_checkbutton(label=name,
+                                         variable=self.widgets.get(name, self.codestruct).visible)
 
         self.menu.add_cascade(label='File', underline=0, menu=self.menu_file)
         self.menu.add_cascade(label='Edit', underline=0, menu=self.menu_edit)
@@ -338,18 +336,26 @@ class App(tk.Tk):
         self.menu.add_command(label='About', underline=0,
                               command=lambda: About(self))
         # --- --- --- layouts
-        self.layout = tk.StringVar(self, layout)
         menu_layouts.add_radiobutton(label='Horizontal split',
-                                          variable=self.layout,
-                                          value='horizontal',
-                                          command=self.change_layout,
-                                          image='img_view_horizontal', compound='left')
-
+                                     variable=self.layout,
+                                     value='horizontal',
+                                     command=self.change_layout,
+                                     image='img_view_horizontal', compound='left')
+        menu_layouts.add_radiobutton(label='Horizontal split 2',
+                                      variable=self.layout,
+                                      value='horizontal2',
+                                      command=self.change_layout,
+                                      image='img_view_horizontal2', compound='left')
+        menu_layouts.add_radiobutton(label='Vertical split',
+                                      variable=self.layout,
+                                      command=self.change_layout,
+                                      value='vertical',
+                                      image='img_view_vertical', compound='left')
         menu_layouts.add_radiobutton(label='Partial vertical split',
-                                          variable=self.layout,
-                                          command=self.change_layout,
-                                          value='vertical',
-                                          image='img_view_vertical', compound='left')
+                                     variable=self.layout,
+                                     command=self.change_layout,
+                                     value='pvertical',
+                                     image='img_view_pvertical', compound='left')
 
         self.configure(menu=self.menu)
 
@@ -395,6 +401,8 @@ class App(tk.Tk):
             e.display.flush()
         except ewmh.display.error.BadWindow:
             pass
+        self.update_idletasks()
+        self.change_layout(True)
 
         # --- restore opened files
         ofiles = CONFIG.get('General', 'opened_files').split(', ')
@@ -764,21 +772,85 @@ class App(tk.Tk):
         else:
             self.destroy()
 
-    def change_layout(self):
+    def save_layout(self):
+        layout = CONFIG.get('General', 'layout', fallback='horizontal')
+        old = CONFIG.get("Layout", layout).split()
+        if layout == 'horizontal':
+            w = self._horizontal_pane.winfo_width()
+            if len(self._horizontal_pane.panes()) == 3:
+                pos = ['%.3f' % (self._horizontal_pane.sashpos(0)/w),
+                       '%.3f' % (self._horizontal_pane.sashpos(1)/w)]
+            else:
+                pos = [old[0], '%.3f' % (self._horizontal_pane.sashpos(0)/w)]
+            CONFIG.set("Layout", layout, "{} {}".format(*pos))
+        elif layout == 'horizontal2':
+            w = self._horizontal_pane.winfo_width()
+            CONFIG.set("Layout", layout, '%.3f' % (self._horizontal_pane.sashpos(0)/w))
+        elif layout == 'vertical':
+            h = self._vertical_pane.winfo_height()
+            CONFIG.set("Layout", layout, '%.3f' % (self._vertical_pane.sashpos(0)/h))
+        else:
+            w = self._horizontal_pane.winfo_width()
+            h = self._vertical_pane.winfo_height()
+            if len(self._horizontal_pane.panes()) == 2:
+                pos = ['%.3f' % (self._horizontal_pane.sashpos(0)/w)]
+            else:
+                pos = [old[0]]
+            pos.append('%.3f' % (self._vertical_pane.sashpos(0)/h))
+            CONFIG.set("Layout", layout, "{} {}".format(*pos))
+        CONFIG.save()
+
+    def change_layout(self, force=False):
         layout = self.layout.get()
-        if CONFIG.get('General', 'layout', fallback='horizontal') == 'layout':
+        if not force and CONFIG.get('General', 'layout', fallback='horizontal') == layout:
             return  # no change
+        if not force:
+            self.save_layout()
+
         CONFIG.set('General', 'layout', layout)
         CONFIG.save()
+        sashpos = [float(p) for p in CONFIG.get("Layout", layout).split()]
+        for pane in self._vertical_pane.panes():
+            self._vertical_pane.forget(pane)
+        for pane in self._horizontal_pane.panes():
+            self._horizontal_pane.forget(pane)
         if layout == 'horizontal':
-            self._horizontal_pane.forget(self._vertical_pane)
-            self._horizontal_pane.insert('end', self.editor, weight=50)
+            self._horizontal_pane.insert('end', self.editor, weight=4)
             self.right_nb.manager = self._horizontal_pane
-        else:  # 'vertical'
-            self._horizontal_pane.forget(self.editor)
-            self._vertical_pane.insert('end', self.editor, weight=20)
-            self._horizontal_pane.insert('end', self._vertical_pane, weight=55)
+            self.codestruct.manager = self._horizontal_pane
+            self.update_idletasks()
+            w = self._horizontal_pane.winfo_width()
+            if len(self._horizontal_pane.panes()) == 3:
+                self._horizontal_pane.sashpos(0, int(sashpos[0] * w))
+                self._horizontal_pane.sashpos(1, int(sashpos[1] * w))
+            else:
+                self._horizontal_pane.sashpos(0, int(sashpos[1] * w))
+        elif layout == 'horizontal2':
+            self._horizontal_pane.insert('end', self.editor, weight=4)
+            self.right_nb.manager = self._horizontal_pane
+            self.codestruct.manager = self.right_nb
+            self.update_idletasks()
+            w = self._horizontal_pane.winfo_width()
+            self._horizontal_pane.sashpos(0, int(sashpos[0] * w))
+        elif layout == 'vertical':
+            self._vertical_pane.insert('end', self.editor, weight=3)
+            self._horizontal_pane.insert('end', self._vertical_pane, weight=1)
             self.right_nb.manager = self._vertical_pane
+            self.codestruct.manager = self.right_nb
+            self.update_idletasks()
+            h = self._vertical_pane.winfo_height()
+            self._vertical_pane.sashpos(0, int(sashpos[0] * h))
+        else:  # 'pvertical'
+            self._vertical_pane.insert('end', self.editor, weight=3)
+            self._horizontal_pane.insert('end', self._vertical_pane, weight=5)
+            self.right_nb.manager = self._vertical_pane
+            self.codestruct.manager = self._horizontal_pane
+            self.update_idletasks()
+            w = self._horizontal_pane.winfo_width()
+            if len(self._horizontal_pane.panes()) == 2:
+                self._horizontal_pane.sashpos(0, int(sashpos[0] * w))
+            h = self._vertical_pane.winfo_height()
+            self._vertical_pane.sashpos(0, int(sashpos[1] * h))
 
     def config(self):
         c = Config(self)
@@ -794,6 +866,7 @@ class App(tk.Tk):
         CONFIG.save()
         res = self.editor.closeall()
         if res:
+            self.save_layout()
             self.destroy()
 
     def new(self, event=None):

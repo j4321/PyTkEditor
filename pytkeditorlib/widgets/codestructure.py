@@ -20,7 +20,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 GUI widget to display the code structure
 """
-from tkinter import BooleanVar, TclError
+from tkinter import TclError
 from tkinter.ttk import Treeview, Frame, Label, Button
 from tkinter.font import Font
 import tokenize
@@ -30,6 +30,7 @@ import logging
 
 from pytkeditorlib.gui_utils import AutoHideScrollbar, AutoCompleteCombobox2
 from pytkeditorlib.utils.constants import CONFIG
+from .base_widget import BaseWidget
 
 
 class Tree:
@@ -150,14 +151,13 @@ class CodeTree(Treeview):
         return names
 
 
-class CodeStructure(Frame):
-    def __init__(self, master):
-        Frame.__init__(self, master, style='border.TFrame', padding=2)
+class CodeStructure(BaseWidget):
+    def __init__(self, master, manager):
+        BaseWidget.__init__(self, master, 'Code structure', style='border.TFrame')
         self.rowconfigure(1, weight=1)
         self.columnconfigure(0, weight=1)
 
-        self.visible = BooleanVar(self)
-        self.visible.trace_add('write', self._visibility_trace)
+        self._manager = manager
 
         header = Frame(self)
         Button(header, style='close.TButton', padding=0,
@@ -191,15 +191,62 @@ class CodeStructure(Frame):
         self.goto_entry.bind('<<ComboboxSelected>>', self.goto)
         self.goto_entry.bind('<Key>', self._reset_goto)
 
+    @property
+    def manager(self):
+        return self._manager
+
+    @manager.setter
+    def manager(self, new_manager):
+        if CONFIG.get("General", "layout") in ["vertical", "horizontal2"]:
+            self.configure(style='TFrame')
+        else:
+            self.configure(style='border.TFrame')
+        if self.visible.get():
+            try:
+                self._manager.forget(self)
+            except TclError:
+                pass
+            self._manager = new_manager
+            self.show()
+        else:
+            self._manager = new_manager
+
     def _reset_goto(self, event):
         self._goto_index = 0
+
+    def hide(self):
+        try:
+            layout = CONFIG.get("General", "layout")
+            if layout in ["vertical", "horizontal2"]:
+                self.manager.hide(self)
+            else:
+                # save layout
+                old = CONFIG.get("Layout", layout).split()
+                w = self.master.winfo_width()
+                pos = '%.3f' % (self.master.sashpos(0)/w)
+                CONFIG.set("Layout", layout, f"{pos} {old[1]}")
+                CONFIG.save()
+                self.manager.forget(self)
+        except TclError:
+            pass
+
+    def show(self):
+        layout = CONFIG.get("General", "layout")
+        if layout in ["vertical", "horizontal2"]:
+            self.manager.add(self, text=self.name)
+            self.manager.select(self)
+        else:
+            self.manager.insert(0, self, weight=1)
+            w = self.master.winfo_width()
+            pos = int(float(CONFIG.get("Layout", layout).split()[0]) * w)
+            self.master.sashpos(0, pos)
 
     def _visibility_trace(self, *args):
         visible = self.visible.get()
         if visible:
-            self.master.insert(0, self, weight=1)
+            self.show()
         else:
-            self.master.forget(self)
+            self.hide()
         CONFIG.set('Code structure', 'visible', str(visible))
         CONFIG.save()
 

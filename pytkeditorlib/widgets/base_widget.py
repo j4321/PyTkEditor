@@ -18,9 +18,9 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
-Base widget
+Base widgets
 """
-from tkinter import BooleanVar, Text
+from tkinter import BooleanVar, Text, TclError
 from tkinter.ttk import Frame
 
 from tkcolorpicker.functions import rgb_to_hsv, hexa_to_rgb
@@ -174,8 +174,11 @@ class WidgetNotebook(Notebook):
     @manager.setter
     def manager(self, new_manager):
         if self._visible_tabs:
-            self._manager.forget(self)
-            new_manager.insert('end', self, weight=5)
+            try:
+                self._manager.forget(self)
+            except TclError:
+                pass
+            new_manager.insert('end', self, weight=2)
         self._manager = new_manager
 
     def _save_order(self, event):
@@ -195,8 +198,8 @@ class WidgetNotebook(Notebook):
 
     def add(self, child, **kw):
         if not self._visible_tabs:
-            self.manager.insert('end', self, weight=5)
-        Notebook.add(self, child, **kw)
+            self.manager.insert('end', self, weight=1)
+        return Notebook.add(self, child, **kw)
 
     def close(self, tabId):
         tab = self.index(tabId)

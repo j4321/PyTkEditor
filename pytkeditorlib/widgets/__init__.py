@@ -22,4 +22,5 @@ from .filebrowser import Filebrowser
 from .help import Help
 from .history import HistoryFrame
 from .textconsole import ConsoleFrame
+from .codestructure import CodeStructure
 from .base_widget import WidgetNotebook

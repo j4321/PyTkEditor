@@ -557,14 +557,14 @@ class Notebook(ttk.Frame):
 
         For keyword options, see add method.
         """
-        existing = str(widget) in self._indexes
+        # existing = str(widget) in self._indexes
         index = self.add(widget, **kwargs)
         if where == 'end':
-            if not existing:
-                return
-        where = self.index(where)
+            where = len(self._visible_tabs)
+        print(self._visible_tabs)
         self._visible_tabs.remove(index)
         self._visible_tabs.insert(where, index)
+        print(self._visible_tabs)
         for i in range(where, len(self._visible_tabs)):
             ind = self._visible_tabs[i]
             self._tab_labels[ind].grid_configure(column=i)

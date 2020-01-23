@@ -26,11 +26,8 @@ from logging.handlers import TimedRotatingFileHandler
 
 import warnings
 from jedi import settings
-from pygments.styles import get_style_by_name
 from pygments.lexers import Python3Lexer
 from pygments.token import Comment
-from Xlib import display
-from Xlib.ext.xinerama import query_screens
 
 settings.case_insensitive_completion = False
 os.environ['PYFLAKES_BUILTINS'] = '_'
@@ -138,6 +135,11 @@ if not CONFIG.read(PATH_CONFIG):
     CONFIG.set('General', 'opened_files', "")
     CONFIG.set('General', 'recent_files', "")
     CONFIG.set('General', 'layout', "horizontal")
+    CONFIG.add_section('Layout')
+    CONFIG.set('Layout', 'horizontal', "0.16 0.65")
+    CONFIG.set('Layout', 'horizontal2', "0.65")
+    CONFIG.set('Layout', 'vertical', "0.65")
+    CONFIG.set('Layout', 'pvertical', "0.16 0.6")
     CONFIG.add_section('Editor')
     CONFIG.set('Editor', 'style', "colorful")
     CONFIG.set('Editor', 'code_check', "True")
