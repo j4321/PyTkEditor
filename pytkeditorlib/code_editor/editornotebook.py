@@ -425,20 +425,23 @@ class EditorNotebook(Notebook):
         if not self.files[tab]:
             res = self.saveas(tab)
         else:
-            file = self.files[tab]
-            try:
-                with open(file, 'w') as f:
-                    f.write(self.get(tab))
-            except PermissionError as e:
-                showerror("Error", f"PermissionError: {e.strerror}: {file}", parent=self)
-            self._files_mtime[file] = os.stat(file).st_mtime
-            try:
-                self._is_modified[file].clear()
-                self._is_deleted[file].clear()
-            except KeyError:
-                self._start_watching(file)
-            res = True
-            self._files_check_deletion[file] = True
+            if self.edit_modified(tab=tab):
+                file = self.files[tab]
+                try:
+                    with open(file, 'w') as f:
+                        f.write(self.get(tab))
+                except PermissionError as e:
+                    showerror("Error", f"PermissionError: {e.strerror}: {file}", parent=self)
+                self._files_mtime[file] = os.stat(file).st_mtime
+                try:
+                    self._is_modified[file].clear()
+                    self._is_deleted[file].clear()
+                except KeyError:
+                    self._start_watching(file)
+                res = True
+                self._files_check_deletion[file] = True
+            else:
+                res = True
         return res
 
     def saveas(self, tab=None, name=None):
