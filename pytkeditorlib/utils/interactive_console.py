@@ -30,7 +30,7 @@ import sys
 import signal
 import tkinter
 import time
-from os import chdir, getcwd
+from os import chdir, getcwd, listdir
 from os.path import dirname
 from tempfile import mkstemp
 
@@ -46,14 +46,28 @@ class Stdout(StringIO):
         StringIO.write(self, line)
         self.send_cmd(line)
 
+class ConsoleMethods:
+    def cd(self, path):
+        chdir(path)
+        print(getcwd())
+
+    def ls(self, path):
+        print(*listdir(path))
+
+    def cat(self, file):
+        with open(file) as f:
+            print(f.read())
+
 
 class SocketConsole(InteractiveConsole):
     def __init__(self, hostname, port, locals=None, filename='<console>'):
         InteractiveConsole.__init__(self, locals, filename)
         self.stdout = Stdout(self.send_cmd)
         self.stderr = StringIO()
+
         self.locals['exit'] = self._exit
         self.locals['quit'] = self._exit
+        self.locals['_console'] = ConsoleMethods()
         self.locals['_set_cwd'] = chdir
         self.locals['_get_cwd'] = getcwd
         self.locals['_cwd'] = getcwd()

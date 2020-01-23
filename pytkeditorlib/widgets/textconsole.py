@@ -24,7 +24,7 @@ Python console text widget
 import tkinter as tk
 import sys
 import re
-from os import kill, remove, getcwd, chdir
+from os import kill, remove, getcwd
 from os.path import join, dirname, sep
 from glob import glob
 import socket
@@ -38,21 +38,25 @@ import jedi
 
 from pytkeditorlib.dialogs.complistbox import CompListbox
 from pytkeditorlib.utils.constants import SERVER_CERT, CLIENT_CERT
-from pytkeditorlib.utils.functions import get_screen, PathCompletion
+from pytkeditorlib.utils.functions import get_screen, PathCompletion, glob_rel
 from pytkeditorlib.dialogs import askyesno, Tooltip
 from pytkeditorlib.gui_utils import AutoHideScrollbar
 from .base_widget import BaseWidget, RichText
 
 
-def glob_rel(pattern, locdir):
-    cwd = getcwd()
-    chdir(locdir)
-    paths = glob(pattern)
-    chdir(cwd)
-    return paths
-
-
 class TextConsole(RichText):
+    dummy_jedi_defs = """
+def cd():
+    pass
+
+def ls():
+    pass
+
+def cat():
+    pass
+
+"""
+
     def __init__(self, master, history, **kw):
         kw.setdefault('width', 50)
         kw.setdefault('wrap', 'word')
@@ -74,8 +78,12 @@ class TextConsole(RichText):
         self._cwd = getcwd()
 
         # --- regexp
-        self._re_abspaths = re.compile(rf'("|\')(\{sep}\w+)+\{sep}?$')
-        self._re_relpaths = re.compile(rf'("|\')\w+(\{sep}\w+)*\{sep}?$')
+        self._re_abspaths = re.compile(rf'(\{sep}\w+)+\{sep}?$')
+        self._re_relpaths = re.compile(rf'\w+(\{sep}\w+)*\{sep}?$')
+        self._re_console_special = re.compile(r'^(cd|ls|cat) (.*)$')
+        self._re_help = re.compile(r'^(.*)\?$')
+        self._re_trailing_spaces = re.compile(r' *$', re.MULTILINE)
+        self._re_prompt = re.compile(rf'^{re.escape(self._prompt2)}', re.MULTILINE)
 
         self._comp = CompListbox(self)
         self._comp.set_callback(self._comp_sel)
@@ -191,9 +199,10 @@ class TextConsole(RichText):
         self.parse()
 
     def _jedi_script(self):
+
         lines = self.get('insert linestart + %ic' % len(self._prompt1), 'end').rstrip('\n')
 
-        session_code = '\n\n'.join(self.history.get_session_hist()) + '\n\n'
+        session_code = self.dummy_jedi_defs + '\n\n'.join(self.history.get_session_hist()) + '\n\n'
 
         offset = len(session_code.splitlines())
         r, c = self.index_to_tuple('insert')
@@ -238,14 +247,14 @@ class TextConsole(RichText):
         # absolute paths
         match_path = self._re_abspaths.search(line)
         if match_path:
-            before_completion = match_path.group()[1:]
+            before_completion = match_path.group()
             paths = glob(before_completion + '*')
             comp = [PathCompletion(before_completion, path) for path in paths]
         # relative paths
         if not comp:
             match_path = self._re_relpaths.search(line)
             if match_path:
-                before_completion = match_path.group()[1:]
+                before_completion = match_path.group()
                 paths = glob_rel(before_completion + '*', self._cwd)
                 comp = [PathCompletion(before_completion, path) for path in paths]
                 jedi_comp = sep not in before_completion
@@ -587,18 +596,30 @@ class TextConsole(RichText):
 
     def eval_current(self, auto_indent=False):
         index = self.index('input')
-        lines = self.get('input', 'insert lineend').splitlines()
+        code = self.get('input', 'insert lineend')
         self.mark_set('insert', 'insert lineend')
-        if lines:
-            lines = [lines[0].rstrip()] + [line[len(self._prompt2):].rstrip() for line in lines[1:]]
-            for i, l in enumerate(lines):
-                if l.endswith('?'):
-                    lines[i] = 'help(%s)' % l[:-1]
-            line = '\n'.join(lines)
+        if code:
+            add_to_hist = True
+            # remove trailing spaces
+            code = self._re_trailing_spaces.sub('', code)
+            # remove leading prompts
+            code = self._re_prompt.sub('', code)
+            match = self._re_console_special.search(code)
+            if match:
+                cmd, path = match.groups()
+                self.history.add_history(code)
+                self._hist_item = self.history.get_length()
+                code = f"_console.{cmd}({path!r})"
+                add_to_hist = False
+            elif self._re_help.match(code):
+                self.history.add_history(code)
+                self._hist_item = self.history.get_length()
+                code = f"help({code[:-1]})"
+                add_to_hist = False
 
             self.insert('insert', '\n')
             try:
-                self.shell_client.send(line.encode())
+                self.shell_client.send(code.encode())
                 self.configure(state='disabled')
             except SystemExit:
                 self.history.new_session()
@@ -608,16 +629,16 @@ class TextConsole(RichText):
                 print(e)
                 return
 
-            self.after(1, self._check_result, auto_indent, lines, index)
+            self.after(1, self._check_result, auto_indent, code, index, add_to_hist)
         else:
             self.insert('insert', '\n')
             self.prompt()
 
-    def _check_result(self, auto_indent, lines, index):
+    def _check_result(self, auto_indent, code, index, add_to_hist=True):
         try:
             cmd = self.shell_client.recv(65536).decode()
         except socket.error:
-            self.after(10, self._check_result, auto_indent, lines, index)
+            self.after(10, self._check_result, auto_indent, code, index, add_to_hist)
         else:
             if not cmd:
                 return
@@ -636,7 +657,7 @@ class TextConsole(RichText):
                     self.mark_set('input', 'end')
                     self.see('end')
                 self.configure(state='disabled')
-                self.after(1, self._check_result, auto_indent, lines, index)
+                self.after(1, self._check_result, auto_indent, code, index, add_to_hist)
                 return
 
             self.configure(state='normal')
@@ -652,7 +673,8 @@ class TextConsole(RichText):
             if not res and self.compare('insert linestart', '>', 'insert'):
                 self.insert('insert', '\n')
             self.prompt(res)
-            if auto_indent and lines:
+            if auto_indent and code:
+                lines = code.splitlines()
                 indent = re.search(r'^( )*', lines[-1]).group()
                 line = lines[-1].strip()
                 if line and line[-1] == ':':
@@ -662,8 +684,9 @@ class TextConsole(RichText):
             if res:
                 self.mark_set('input', index)
             elif lines:
-                self.history.add_history('\n'.join(lines))
-                self._hist_item = self.history.get_length()
+                if add_to_hist:
+                    self.history.add_history(code)
+                    self._hist_item = self.history.get_length()
 
     # --- brackets
     def auto_close(self, event):

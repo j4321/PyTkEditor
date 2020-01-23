@@ -19,7 +19,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 Functions
 """
-import os
+from os import getcwd, chdir
 from os.path import sep, isdir, basename
 from glob import glob
 
@@ -92,12 +92,9 @@ class PathCompletion:
         self.name = basename(after_completion)
 
 
-def glob_rel(pattern, locdir=None):
-    if locdir is None:
-        return glob(pattern)
-    else:
-        cwd = os.getcwd()
-        os.chdir(locdir)
-        res = glob(pattern)
-        os.chdir(cwd)
-        return res
+def glob_rel(pattern, locdir):
+    cwd = getcwd()
+    chdir(locdir)
+    paths = glob(pattern)
+    chdir(cwd)
+    return paths
