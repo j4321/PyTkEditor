@@ -367,8 +367,7 @@ class Editor(ttk.Frame):
             if res:
                 lines[i] = "{}{}".format(*res.groups())
             elif not self._re_empty.match(line):
-                index = self._re_indent.match(line).end()
-                lines[i] = line[:index] + f'#{marker}' + line[index:]
+                lines[i] = self._re_indent.sub(rf"\1#{marker}", line)
         txt = '\n'.join(lines)
         self.text.insert(index, txt)
         self.parse(txt, index)
