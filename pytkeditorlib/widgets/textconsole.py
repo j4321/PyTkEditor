@@ -38,24 +38,15 @@ import jedi
 
 from pytkeditorlib.dialogs.complistbox import CompListbox
 from pytkeditorlib.utils.constants import SERVER_CERT, CLIENT_CERT
-from pytkeditorlib.utils.functions import get_screen, PathCompletion, glob_rel
+from pytkeditorlib.utils.functions import get_screen, PathCompletion, glob_rel, magic_complete
 from pytkeditorlib.dialogs import askyesno, Tooltip
 from pytkeditorlib.gui_utils import AutoHideScrollbar
 from .base_widget import BaseWidget, RichText
 
 
 class TextConsole(RichText):
-    dummy_jedi_defs = """
-def cd():
-    pass
-
-def ls():
-    pass
-
-def cat():
-    pass
-
-"""
+    magic_commands = ['run', 'gui', 'pylab']
+    external_commands = ['ls', 'cat']
 
     def __init__(self, master, history, **kw):
         kw.setdefault('width', 50)
@@ -81,13 +72,15 @@ def cat():
         self._re_abspaths = re.compile(rf'(~\w*)?(\{sep}\w+)+\{sep}?$')
         self._re_relpaths = re.compile(rf'\w+(\{sep}\w+)*\{sep}?$')
         self._re_console_cd = re.compile(r'^cd ?(.*)$')
-        self._re_console_external = re.compile(r'^(ls|cat) ?(.*)$')
-        self._re_console_gui = re.compile(r'^%gui ?(.*)$')
+        self._re_console_external = re.compile(rf'^({"|".join(self.external_commands)}) ?(.*)$')
+        self._re_console_magic = re.compile(rf'^%({"|".join(self.magic_commands)}) ?(.*)$')
         self._re_help = re.compile(r'^(.*)\?$')
         self._re_expanduser = re.compile(r'(~\w*)')
         self._re_trailing_spaces = re.compile(r' *$', re.MULTILINE)
         self._re_prompt = re.compile(rf'^{re.escape(self._prompt2)}?', re.MULTILINE)
 
+
+        self._jedi_comp_extra = '\ndef cd():\n    pass\n...\ndef ls():\n    pass\n...\ndef cat():\n    pass\n...\n'
         self._comp = CompListbox(self)
         self._comp.set_callback(self._comp_sel)
 
@@ -205,7 +198,7 @@ def cat():
 
         lines = self.get('insert linestart + %ic' % len(self._prompt1), 'end').rstrip('\n')
 
-        session_code = self.dummy_jedi_defs + '\n\n'.join(self.history.get_session_hist()) + '\n\n'
+        session_code = self._jedi_comp_extra + '\n\n'.join(self.history.get_session_hist()) + '\n\n'
 
         offset = len(session_code.splitlines())
         r, c = self.index_to_tuple('insert')
@@ -243,30 +236,32 @@ def cat():
         index = self.index('insert wordend')
         if index[-2:] != '.0':
             self.mark_set('insert', 'insert-1c wordend')
-        comp = []
         jedi_comp = False
-        # --- path autocompletion
         line = self.get('insert linestart', 'insert')
-        # absolute paths
-        match_path = self._re_abspaths.search(line)
-        if match_path:
-            before_completion = match_path.group()
-            if '~' in before_completion:
-                before_completion = expanduser(before_completion)
-            paths = glob(before_completion + '*')
-            comp = [PathCompletion(before_completion, path) for path in paths]
-        # relative paths
+        # --- magic command
+        comp = magic_complete(line.split()[-1], self.magic_commands)
         if not comp:
-            match_path = self._re_relpaths.search(line)
+            # --- path autocompletion
+            # absolute paths
+            match_path = self._re_abspaths.search(line)
             if match_path:
                 before_completion = match_path.group()
-                paths = glob_rel(before_completion + '*', self._cwd)
+                if '~' in before_completion:
+                    before_completion = expanduser(before_completion)
+                paths = glob(before_completion + '*')
                 comp = [PathCompletion(before_completion, path) for path in paths]
-                jedi_comp = sep not in before_completion
-        # --- jedi code autocompletion
-        if not comp or jedi_comp:
-            script = self._jedi_script()
-            comp.extend(script.completions())
+            # relative paths
+            if not comp:
+                match_path = self._re_relpaths.search(line)
+                if match_path:
+                    before_completion = match_path.group()
+                    paths = glob_rel(before_completion + '*', self._cwd)
+                    comp = [PathCompletion(before_completion, path) for path in paths]
+                    jedi_comp = sep not in before_completion
+            # --- jedi code autocompletion
+            if not comp or jedi_comp:
+                script = self._jedi_script()
+                comp.extend(script.completions())
 
         if len(comp) == 1:
             self.insert('insert', comp[0].complete)
@@ -610,6 +605,7 @@ def cat():
             code = self._re_trailing_spaces.sub('', code)
             # remove leading prompts
             code = self._re_prompt.sub('', code)
+            code = code.rstrip()
             match = self._re_console_external.search(code)
             if match:
                 self.history.add_history(code)
@@ -619,31 +615,37 @@ def cat():
                     p = m.group()
                     start, end = m.span()
                     code = code[:start] + expanduser(p) + code[end:]
+                if match.groups()[1] == '?':
+                    code = f"{code[:-1]} --help"
                 code = f"_console.external({code!r})"
-                add_to_hist = False
-            elif self._re_help.match(code):
-                self.history.add_history(code)
-                self._hist_item = self.history.get_length()
-                code = f"help({code[:-1]})"
                 add_to_hist = False
             else:
                 match = self._re_console_cd.search(code)
                 if match:
                     self.history.add_history(code)
                     self._hist_item = self.history.get_length()
-                    code = f"_console.cd({match.groups()[0]!r})"
+                    if code == 'cd?':
+                        code = "print(_console.cd.__doc__)"
+                    else:
+                        code = f"_console.cd({match.groups()[0]!r})"
                     add_to_hist = False
                 else:
-                    match = self._re_console_gui.match(code)
+                    match = self._re_console_magic.match(code)
                     if match:
-                        value = match.groups()
-                        if value:
-                            value = value[0]
-                        else:
-                            value = ''
                         self.history.add_history(code)
                         self._hist_item = self.history.get_length()
-                        code = f"_console.gui({value!r})"
+                        cmd, arg = match.groups()
+                        if arg == '?':
+                            code = f"_console.print_doc(_console.{cmd})"
+                        else:
+                            if cmd == 'pylab':
+                                self._jedi_comp_extra += '\nimport numpy\nimport matplotlib\nfrom matplotlib import pyplot as plt\nnp = numpy\n'
+                            code = f"_console.{cmd}({arg!r})"
+                        add_to_hist = False
+                    elif self._re_help.match(code):
+                        self.history.add_history(code)
+                        self._hist_item = self.history.get_length()
+                        code = f"help({code[:-1]})"
                         add_to_hist = False
 
             self.insert('insert', '\n')

@@ -76,7 +76,29 @@ def valide_entree_nb(d, S):
     else:
         return True
 
-# --- path autocompletion
+
+# --- autocompletion
+
+class CompletionObj:
+    """Dummy completion object for compatibility with jedi output."""
+
+    def __init__(self, name, complete):
+        self.name = name
+        self.complete = complete
+
+
+def magic_complete(string, cmd_list):
+    if not string or not string[0] == '%':
+        return []
+    comp = []
+    string = string[1:]
+    l = len(string)
+    for cmd in cmd_list:
+        if cmd.startswith(string):
+            comp.append(CompletionObj('%' + cmd, cmd[l:]))
+    return comp
+
+
 class PathCompletion:
     def __init__(self, before_completion, after_completion):
         """

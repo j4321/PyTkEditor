@@ -34,6 +34,7 @@ from os import chdir, getcwd
 from os.path import dirname, expanduser
 from tempfile import mkstemp
 from subprocess import run
+from textwrap import dedent
 
 from constants import CLIENT_CERT, SERVER_CERT
 
@@ -64,8 +65,13 @@ class Stdout(StringIO):
         self.send_cmd(line)
 
 class ConsoleMethods:
-    def __init__(self):
+    def __init__(self, locals):
         self.current_gui = ''
+        self.locals = locals
+
+    @staticmethod
+    def print_doc(obj):
+        print(dedent(obj.__doc__))
 
     def external(self, cmd):
         cmd = cmd.split()
@@ -77,10 +83,60 @@ class ConsoleMethods:
             print(output.stdout.decode())
 
     def cd(self, path):
+        "Change the current working directory."
         if '~' in path:
             path = expanduser(path)
         chdir(path)
         print(getcwd())
+
+    def pylab(self, gui=''):
+        """
+        Load numpy and matplotlib interactively.
+
+        Set matplotlib backend to the one corresponding to gui (tk, qt, gtk)
+        if provided and start the gui event loop.
+
+        The following imports are made:
+
+            import numpy
+            import matplotlib
+            from matplotlib import pyplot as plt
+            np = numpy
+        """
+        import numpy
+        import matplotlib
+
+        if gui not in GUI:
+            raise ValueError(f"should be in {', '.join(GUI)}")
+        if gui == 'tk':
+            matplotlib_backend = 'TkAgg'
+        elif gui == 'qt':
+            matplotlib_backend = 'Qt5Agg'
+        elif gui == 'gtk':
+            matplotlib_backend = 'Gtk3Agg'
+        else:
+            matplotlib_backend = None
+        if gui:
+            self.current_gui = gui
+
+        if matplotlib_backend is not None:
+            matplotlib.use(matplotlib_backend)
+
+        from matplotlib import pyplot as plt
+        plt.interactive(True)
+
+        self.locals['numpy'] = numpy
+        self.locals['matplotlib'] = matplotlib
+        self.locals['plt'] = plt
+        self.locals['np'] = numpy
+
+    def run(self, filename):
+        """Set working directory to filename's directory and run filename."""
+        wdir = dirname(filename)
+        with open(filename) as file:
+            code = file.read()
+        exec(f'chdir({wdir!r})', globals(), self.locals)
+        exec(code, globals(), self.locals)
 
     def gui(self, gui):
         """
@@ -104,13 +160,13 @@ class SocketConsole(InteractiveConsole):
         self.stdout = Stdout(self.send_cmd)
         self.stderr = StringIO()
 
+        cm = ConsoleMethods(self.locals)
         self.locals['exit'] = self._exit
         self.locals['quit'] = self._exit
-        self.locals['_console'] = ConsoleMethods()
+        self.locals['_console'] = cm
         self.locals['_set_cwd'] = chdir
         self.locals['_get_cwd'] = getcwd
         self.locals['_cwd'] = getcwd()
-        self.locals['run'] = self.runfile
         self._initial_locals = self.locals.copy()
         signal.signal(signal.SIGINT, self.interrupt)
         context = ssl.create_default_context(ssl.Purpose.SERVER_AUTH, cafile=SERVER_CERT)
@@ -125,14 +181,6 @@ class SocketConsole(InteractiveConsole):
 
     def interrupt(self, *args):
         raise KeyboardInterrupt
-
-    def runfile(self, filename):
-        """Set working directory to filename's directory and run filename."""
-        wdir = dirname(filename)
-        with open(filename) as file:
-            code = file.read()
-        exec(f'chdir({wdir!r})', globals(), self.locals)
-        exec(code, globals(), self.locals)
 
     def _exit(self):
         self.resetbuffer()
@@ -207,7 +255,8 @@ class SocketConsole(InteractiveConsole):
                     except KeyboardInterrupt:
                         self.write('KeyboardInterrupt\n')
                         res = False
-                self.push('_cwd = _get_cwd()')
+                if not res:
+                    self.push('_cwd = _get_cwd()')
                 err = self.stderr.getvalue()
                 msg = f'{res}, "", {err!r}, False, {self.locals["_cwd"]!r}'
                 if len(msg) > 16300:

@@ -1105,7 +1105,7 @@ class App(tk.Tk):
                         return
                     self.execute_in_jupyter(code="%cd {}\n%run {}".format(wdir, file))
                 else:
-                    self.console.execute(f"run({file!r})")
+                    self.console.execute(f"%run {file}")
 
     def run_selection(self, event=None):
         code = self.editor.get_selection()
