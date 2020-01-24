@@ -86,7 +86,7 @@ def cat():
         self._re_help = re.compile(r'^(.*)\?$')
         self._re_expanduser = re.compile(r'(~\w*)')
         self._re_trailing_spaces = re.compile(r' *$', re.MULTILINE)
-        self._re_prompt = re.compile(rf'^{re.escape(self._prompt2)}', re.MULTILINE)
+        self._re_prompt = re.compile(rf'^{re.escape(self._prompt2)}?', re.MULTILINE)
 
         self._comp = CompListbox(self)
         self._comp.set_callback(self._comp_sel)
