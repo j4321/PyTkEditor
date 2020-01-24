@@ -71,9 +71,9 @@ class TextConsole(RichText):
         # --- regexp
         self._re_abspaths = re.compile(rf'(~\w*)?(\{sep}\w+)+\{sep}?$')
         self._re_relpaths = re.compile(rf'\w+(\{sep}\w+)*\{sep}?$')
-        self._re_console_cd = re.compile(r'^cd ?(.*)$')
-        self._re_console_external = re.compile(rf'^({"|".join(self.external_commands)}) ?(.*)$')
-        self._re_console_magic = re.compile(rf'^%({"|".join(self.magic_commands)}) ?(.*)$')
+        self._re_console_cd = re.compile(r'^cd ?(.*)\n*$')
+        self._re_console_external = re.compile(rf'^({"|".join(self.external_commands)}) ?(.*)\n*$')
+        self._re_console_magic = re.compile(rf'^%({"|".join(self.magic_commands)}) ?(.*)\n*$')
         self._re_help = re.compile(r'^(.*)\?$')
         self._re_expanduser = re.compile(r'(~\w*)')
         self._re_trailing_spaces = re.compile(r' *$', re.MULTILINE)
@@ -605,7 +605,6 @@ class TextConsole(RichText):
             code = self._re_trailing_spaces.sub('', code)
             # remove leading prompts
             code = self._re_prompt.sub('', code)
-            code = code.rstrip()
             match = self._re_console_external.search(code)
             if match:
                 self.history.add_history(code)
@@ -704,7 +703,7 @@ class TextConsole(RichText):
             if not res and self.compare('insert linestart', '>', 'insert'):
                 self.insert('insert', '\n')
             self.prompt(res)
-            if auto_indent and code:
+            if res and auto_indent and code:
                 lines = code.splitlines()
                 indent = re.search(r'^( )*', lines[-1]).group()
                 line = lines[-1].strip()
