@@ -30,9 +30,10 @@ import sys
 import signal
 import tkinter
 import time
-from os import chdir, getcwd, listdir
-from os.path import dirname
+from os import chdir, getcwd
+from os.path import dirname, expanduser
 from tempfile import mkstemp
+from subprocess import run
 
 from constants import CLIENT_CERT, SERVER_CERT
 
@@ -66,18 +67,32 @@ class ConsoleMethods:
     def __init__(self):
         self.current_gui = ''
 
+    def external(self, cmd):
+        cmd = cmd.split()
+        output = run(cmd, capture_output=True)
+        err = output.stderr.decode()
+        if err:
+            print(err)
+        else:
+            print(output.stdout.decode())
+
     def cd(self, path):
+        if '~' in path:
+            path = expanduser(path)
         chdir(path)
         print(getcwd())
 
-    def ls(self, path):
-        print(*listdir(path))
-
-    def cat(self, file):
-        with open(file) as f:
-            print(f.read())
-
     def gui(self, gui):
+        """
+        Enable or disable the console GUI event loop integration.
+
+        The following GUI toolkits are supported: Tkinter, GTK 3, PyQt5
+
+            %gui tk   - enable Tkinter event loop integration
+            %gui qt   - enable PyQt5 event loop integration
+            %gui gtk  - enable GTK 3 event loop integration
+            %gui      - disable event loop integration
+        """
         if gui not in GUI:
             raise ValueError(f"should be in {', '.join(GUI)}")
         self.current_gui = gui
@@ -193,7 +208,6 @@ class SocketConsole(InteractiveConsole):
                         self.write('KeyboardInterrupt\n')
                         res = False
                 self.push('_cwd = _get_cwd()')
-                # output = self.stdout.getvalue()
                 err = self.stderr.getvalue()
                 msg = f'{res}, "", {err!r}, False, {self.locals["_cwd"]!r}'
                 if len(msg) > 16300:

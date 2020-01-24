@@ -25,7 +25,7 @@ import tkinter as tk
 import sys
 import re
 from os import kill, remove, getcwd
-from os.path import join, dirname, sep
+from os.path import join, dirname, sep, expanduser
 from glob import glob
 import socket
 import ssl
@@ -78,11 +78,13 @@ def cat():
         self._cwd = getcwd()
 
         # --- regexp
-        self._re_abspaths = re.compile(rf'(\{sep}\w+)+\{sep}?$')
+        self._re_abspaths = re.compile(rf'(~\w*)?(\{sep}\w+)+\{sep}?$')
         self._re_relpaths = re.compile(rf'\w+(\{sep}\w+)*\{sep}?$')
-        self._re_console_special = re.compile(r'^(cd|ls|cat) ?(.*)$')
-        self._re_gui = re.compile(r'^%gui ?(.*)$')
+        self._re_console_cd = re.compile(r'^cd ?(.*)$')
+        self._re_console_external = re.compile(r'^(ls|cat) ?(.*)$')
+        self._re_console_gui = re.compile(r'^%gui ?(.*)$')
         self._re_help = re.compile(r'^(.*)\?$')
+        self._re_expanduser = re.compile(r'(~\w*)')
         self._re_trailing_spaces = re.compile(r' *$', re.MULTILINE)
         self._re_prompt = re.compile(rf'^{re.escape(self._prompt2)}', re.MULTILINE)
 
@@ -249,6 +251,8 @@ def cat():
         match_path = self._re_abspaths.search(line)
         if match_path:
             before_completion = match_path.group()
+            if '~' in before_completion:
+                before_completion = expanduser(before_completion)
             paths = glob(before_completion + '*')
             comp = [PathCompletion(before_completion, path) for path in paths]
         # relative paths
@@ -455,8 +459,9 @@ def cat():
             end = str(self.index('sel.last'))
             start_line = int(start.split('.')[0])
             end_line = int(end.split('.')[0]) + 1
+            char = len(self._prompt1)
             for line in range(start_line, end_line):
-                self.insert('%i.0' % line, '    ')
+                self.insert(f'{line}.{char}', '    ')
         else:
             txt = self.get(f'insert linestart+{len(self._prompt1)}c', 'insert')
             if txt == ' ' * len(txt):
@@ -605,15 +610,16 @@ def cat():
             code = self._re_trailing_spaces.sub('', code)
             # remove leading prompts
             code = self._re_prompt.sub('', code)
-            match = self._re_console_special.search(code)
+            match = self._re_console_external.search(code)
             if match:
-                gr = list(match.groups())
-                if len(gr) == 1:
-                    gr.append('')
-                cmd, path = gr
                 self.history.add_history(code)
                 self._hist_item = self.history.get_length()
-                code = f"_console.{cmd}({path!r})"
+                exp_match = tuple(self._re_expanduser.finditer(code))
+                for m in reversed(exp_match):
+                    p = m.group()
+                    start, end = m.span()
+                    code = code[:start] + expanduser(p) + code[end:]
+                code = f"_console.external({code!r})"
                 add_to_hist = False
             elif self._re_help.match(code):
                 self.history.add_history(code)
@@ -621,17 +627,24 @@ def cat():
                 code = f"help({code[:-1]})"
                 add_to_hist = False
             else:
-                match = self._re_gui.match(code)
+                match = self._re_console_cd.search(code)
                 if match:
-                    value = match.groups()
-                    if value:
-                        value = value[0]
-                    else:
-                        value = ''
                     self.history.add_history(code)
                     self._hist_item = self.history.get_length()
-                    code = f"_console.gui({value!r})"
+                    code = f"_console.cd({match.groups()[0]!r})"
                     add_to_hist = False
+                else:
+                    match = self._re_console_gui.match(code)
+                    if match:
+                        value = match.groups()
+                        if value:
+                            value = value[0]
+                        else:
+                            value = ''
+                        self.history.add_history(code)
+                        self._hist_item = self.history.get_length()
+                        code = f"_console.gui({value!r})"
+                        add_to_hist = False
 
             self.insert('insert', '\n')
             try:
@@ -699,7 +712,7 @@ def cat():
             self.see('end')
             if res:
                 self.mark_set('input', index)
-            elif lines:
+            elif code:
                 if add_to_hist:
                     self.history.add_history(code)
                     self._hist_item = self.history.get_length()
