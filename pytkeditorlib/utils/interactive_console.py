@@ -68,6 +68,7 @@ class ConsoleMethods:
     def __init__(self, locals):
         self.current_gui = ''
         self.locals = locals
+        sys.path.insert(0, '.')
 
     @staticmethod
     def print_doc(obj):
