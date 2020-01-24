@@ -75,12 +75,12 @@ class ConsoleMethods:
 
     def external(self, cmd):
         cmd = cmd.split()
-        output = run(cmd, capture_output=True)
-        err = output.stderr.decode()
+        res = run(cmd, capture_output=True)
+        err = res.stderr.decode()
         if err:
             print(err)
         else:
-            print(output.stdout.decode())
+            print(res.stdout.decode())
 
     def cd(self, path):
         "Change the current working directory."
@@ -164,7 +164,6 @@ class SocketConsole(InteractiveConsole):
         self.locals['exit'] = self._exit
         self.locals['quit'] = self._exit
         self.locals['_console'] = cm
-        self.locals['_set_cwd'] = chdir
         self.locals['_get_cwd'] = getcwd
         self.locals['_cwd'] = getcwd()
         self._initial_locals = self.locals.copy()

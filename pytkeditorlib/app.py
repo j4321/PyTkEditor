@@ -902,8 +902,7 @@ class App(tk.Tk):
 
     def set_console_wdir(self, event):
         file = self.editor.files[self.editor.current_tab]
-        wdir = os.path.dirname(file)
-        self.console.set_console_wdir(wdir)
+        self.console.execute(f"cd {os.path.dirname(file)}")
 
     # --- open
     def restore_last_closed(self, event=None):

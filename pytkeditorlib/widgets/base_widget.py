@@ -27,7 +27,7 @@ from tkcolorpicker.functions import rgb_to_hsv, hexa_to_rgb
 
 from pytkeditorlib.gui_utils import Notebook
 from pytkeditorlib.utils.constants import CONFIG
-from pytkeditorlib.utils.functions import load_style
+from pytkeditorlib.utils.functions import load_style, ANSI_COLORS_DARK, ANSI_COLORS_LIGHT
 
 
 class BaseWidget(Frame):
@@ -107,8 +107,21 @@ class RichText(Text):
         self.tag_configure('output', foreground=CONSOLE_FG)
         self.tag_configure('highlight_find', background=CONSOLE_HIGHLIGHT_BG)
         self.tag_configure('highlight', background=CONSOLE_HIGHLIGHT_BG)
+        # --- ansi tags
+        self.tag_configure('foreground default', foreground='')
+        self.tag_configure('background default', background='')
+        self.tag_configure('underline', underline=True)
+        self.tag_configure('overstrike', overstrike=True)
+        for c in ANSI_COLORS_LIGHT:
+            self.tag_configure('foreground ' + c, foreground=c)
+            self.tag_configure('background ' + c, background=c)
+        for c in ANSI_COLORS_DARK:
+            self.tag_configure('foreground ' + c, foreground=c)
+            self.tag_configure('background ' + c, background=c)
+        self.tag_configure('bold', font=FONT + ('bold',))
+        self.tag_configure('italic', font=FONT + ('italic',))
+
         self.tag_raise('sel')
-        self.tag_raise('prompt')
 
     def _clear_highlight(self, event=None):
         self.tag_remove('highlight', '1.0', 'end')

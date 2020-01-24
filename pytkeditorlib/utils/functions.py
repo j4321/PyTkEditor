@@ -22,6 +22,7 @@ Functions
 from os import getcwd, chdir
 from os.path import sep, isdir, basename
 from glob import glob
+import re
 
 from pygments.styles import get_style_by_name
 from Xlib import display
@@ -120,3 +121,67 @@ def glob_rel(pattern, locdir):
     paths = glob(pattern)
     chdir(cwd)
     return paths
+
+
+# --- ANSI format parser
+ANSI_COLORS_DARK = ['black', 'red', 'green', 'yellow', 'royal blue', 'magenta',
+                    'cyan', 'light gray']
+ANSI_COLORS_LIGHT = ['dark gray', 'tomato', 'light green', 'light goldenrod', 'light blue',
+                     'pink', 'light cyan', 'white']
+ANSI_FORMAT = {0: 'reset',
+               1: 'bold',
+               3: 'italic',
+               4: 'underline',
+               9: 'overstrike',
+               #~21: 'reset bold',
+               #~23: 'reset italic',
+               #~24: 'reset underline',
+               #~29: 'reset overstrike',
+               39: 'foreground default',
+               49: 'background default'}
+
+for i in range(8):
+    ANSI_FORMAT[30 + i] = 'foreground ' + ANSI_COLORS_DARK[i]
+    ANSI_FORMAT[90 + i] = 'foreground ' + ANSI_COLORS_LIGHT[i]
+    ANSI_FORMAT[40 + i] = 'background ' + ANSI_COLORS_DARK[i]
+    ANSI_FORMAT[100 + i] = 'background ' + ANSI_COLORS_LIGHT[i]
+
+
+ANSI_REGEXP = re.compile(r"\x1b\[((\d+;)*\d+)m")
+
+
+def parse_ansi(text, line_offset=1):
+    """
+    Parse ANSI formatting in text.
+
+    Return a dictionary of tag ranges (for a tkinter Text widget)
+    and the text stripped from the ANSI escape sequences.
+    """
+    res = []
+    lines = text.splitlines()
+    for l, line in enumerate(lines, line_offset):
+        delta = 0
+        for match in ANSI_REGEXP.finditer(line):
+            codes = [int(c) for c in match.groups()[0].split(';')]
+            start, end = match.span()
+            res.append(((l, start - delta), codes))
+            delta += end - start
+    stripped_text = ANSI_REGEXP.sub('', text)
+    tag_ranges = {}
+    opened_tags = []
+    for pos, codes in res:
+        for code in codes:
+            if code == 0:
+                for tag in opened_tags:
+                    tag_ranges[tag].append('%i.%i' % pos)
+                opened_tags.clear()
+            else:
+                tag = ANSI_FORMAT[code]
+                if tag not in tag_ranges:
+                    tag_ranges[tag] = []
+                tag_ranges[tag].append('%i.%i' % pos)
+                opened_tags.append(tag)
+    for tag in opened_tags:
+        tag_ranges[tag].append('end')
+
+    return tag_ranges, stripped_text

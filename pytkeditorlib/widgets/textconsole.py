@@ -38,7 +38,9 @@ import jedi
 
 from pytkeditorlib.dialogs.complistbox import CompListbox
 from pytkeditorlib.utils.constants import SERVER_CERT, CLIENT_CERT
-from pytkeditorlib.utils.functions import get_screen, PathCompletion, glob_rel, magic_complete
+from pytkeditorlib.utils.functions import get_screen, PathCompletion, glob_rel,\
+    magic_complete, parse_ansi
+
 from pytkeditorlib.dialogs import askyesno, Tooltip
 from pytkeditorlib.gui_utils import AutoHideScrollbar
 from .base_widget import BaseWidget, RichText
@@ -569,24 +571,6 @@ class TextConsole(RichText):
         else:
             return None
 
-    # --- working dir
-    def set_console_wdir(self, path):
-        """Set console working directory to path."""
-
-        def check():
-            try:
-                # retrieve the output so that it does not interfere with other commands
-                self.shell_client.recv(65536).decode()
-                self._cwd = path
-            except socket.error:
-                self.after(10, check)
-            else:
-                self.configure(state='normal')
-
-        self.shell_client.send(f"_set_cwd('{path}')".encode())
-        self.configure(state='disabled')
-        self.after(1, check)
-
     # --- execute
     def execute(self, cmd):
         self.delete('input', 'end')
@@ -683,7 +667,14 @@ class TextConsole(RichText):
             if wait:
                 if output.strip():
                     self.configure(state='normal')
-                    self.insert('end', output, 'output')
+                    if '\x1b' in output: # ansi formatting
+                        offset = int(self.index('end').split('.')[0]) - 1
+                        tag_ranges, text = parse_ansi(output, offset)
+                        self.insert('end', text, 'output')
+                        for tag, r in tag_ranges.items():
+                            self.tag_add(tag, *r)
+                    else:
+                        self.insert('end', output, 'output')
                     self.mark_set('input', 'end')
                     self.see('end')
                 self.configure(state='disabled')
