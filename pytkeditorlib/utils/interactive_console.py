@@ -36,7 +36,7 @@ from tempfile import mkstemp
 from subprocess import run
 from textwrap import dedent
 
-from constants import CLIENT_CERT, SERVER_CERT
+from constants import CLIENT_CERT, SERVER_CERT, CONSOLE_HELP
 
 GUI = ['', 'tk']
 try:
@@ -65,14 +65,18 @@ class Stdout(StringIO):
         self.send_cmd(line)
 
 class ConsoleMethods:
+
     def __init__(self, locals):
         self.current_gui = ''
         self.locals = locals
         sys.path.insert(0, '.')
 
     @staticmethod
-    def print_doc(obj):
-        print(dedent(obj.__doc__))
+    def print_doc(obj=None):
+        if obj is None:
+            print(CONSOLE_HELP)
+        else:
+            print(dedent(obj.__doc__))
 
     def external(self, cmd):
         cmd = cmd.split()
@@ -89,6 +93,24 @@ class ConsoleMethods:
             path = expanduser(path)
         chdir(path)
         print(getcwd())
+
+    # --- magic commands
+    def magic(self, arg):
+        """
+        Console magic commands
+        ======================
+
+        * %magic: Show this message.
+
+        * %pylab [gui]: Load numpy and matplotlib interactively. Use gui, if
+                        provided, as matplotlib backend.
+
+        * %run filename: Set working directory to filename's directory and run filename.
+
+        * %gui [gui]: Enable or disable the console GUI event loop integration.
+                      Available GUIs are tk (Tkinter), gtk (GTK+) and qt (PyQt5).
+        """
+        print(dedent(self.magic.__doc__))
 
     def pylab(self, gui=''):
         """

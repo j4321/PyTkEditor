@@ -208,3 +208,39 @@ def save_config():
 
 
 CONFIG.save = save_config
+
+# --- console
+MAGIC_COMMANDS = ['run', 'gui', 'pylab', 'magic']
+EXTERNAL_COMMANDS = ['ls', 'cat', 'mv', 'rm', 'cp', 'mkdir']
+CONSOLE_HELP = f"""
+Interactive Python Console
+==========================
+
+Graphical python interpreter with special commands, command history,
+autocompletion and compatible with some shell commands.
+
+Features
+--------
+
+* Magic commands: a few magic commands, in the spirit of IPython, are
+  available, type %magic for details.
+
+* External shell commands: {', '.join(EXTERNAL_COMMANDS)}
+
+* Help on an object: type object? to print its docstring, or type object?? to
+  display the full help (equivalent to help(object)).
+
+* Autocompletion: hitting Tab will complete the text with available python
+  commands or variable names and show a list of possibility if there is an
+  ambiguity.
+
+* History: navigate in the command history by using the up and down arrow
+  keys, only the commands matching the text between the prompt and the
+  cursor will be shown. The history is persistent between sessions and its
+  length can be changed from PyTkEditor's settings.
+
+* Syntax highlighting of the input code, the style can be changed from
+  PyTkEditor's settings.
+
+* Auto-closing of brackets and quotes.
+"""

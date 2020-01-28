@@ -28,7 +28,7 @@ from pygments.styles import get_style_by_name
 from Xlib import display
 from Xlib.ext.xinerama import query_screens
 
-from .constants import CONFIG
+from .constants import CONFIG, MAGIC_COMMANDS
 
 
 # --- style
@@ -88,13 +88,13 @@ class CompletionObj:
         self.complete = complete
 
 
-def magic_complete(string, cmd_list):
+def magic_complete(string):
     if not string or not string[0] == '%':
         return []
     comp = []
     string = string[1:]
     l = len(string)
-    for cmd in cmd_list:
+    for cmd in MAGIC_COMMANDS:
         if cmd.startswith(string):
             comp.append(CompletionObj('%' + cmd, cmd[l:]))
     return comp

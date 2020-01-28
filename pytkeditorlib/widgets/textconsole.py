@@ -36,19 +36,16 @@ from pygments import lex
 from pygments.lexers import Python3Lexer
 import jedi
 
-from pytkeditorlib.dialogs.complistbox import CompListbox
-from pytkeditorlib.utils.constants import SERVER_CERT, CLIENT_CERT
-from pytkeditorlib.utils.functions import get_screen, PathCompletion, glob_rel,\
+from pytkeditorlib.utils.constants import SERVER_CERT, CLIENT_CERT, \
+    MAGIC_COMMANDS, EXTERNAL_COMMANDS
+from pytkeditorlib.utils.functions import get_screen, PathCompletion, glob_rel, \
     magic_complete, parse_ansi
-
-from pytkeditorlib.dialogs import askyesno, Tooltip
+from pytkeditorlib.dialogs import askyesno, Tooltip, CompListbox
 from pytkeditorlib.gui_utils import AutoHideScrollbar
 from .base_widget import BaseWidget, RichText
 
 
 class TextConsole(RichText):
-    magic_commands = ['run', 'gui', 'pylab']
-    external_commands = ['ls', 'cat']
 
     def __init__(self, master, history, **kw):
         kw.setdefault('width', 50)
@@ -74,15 +71,16 @@ class TextConsole(RichText):
         self._re_abspaths = re.compile(rf'(~\w*)?(\{sep}\w+)+\{sep}?$')
         self._re_relpaths = re.compile(rf'\w+(\{sep}\w+)*\{sep}?$')
         self._re_console_cd = re.compile(r'^cd ?(.*)\n*$')
-        self._re_console_external = re.compile(rf'^({"|".join(self.external_commands)}) ?(.*)\n*$')
-        self._re_console_magic = re.compile(rf'^%({"|".join(self.magic_commands)}) ?(.*)\n*$')
-        self._re_help = re.compile(r'^(.*)\?$')
+        self._re_console_external = re.compile(rf'^({"|".join(EXTERNAL_COMMANDS)}) ?(.*)\n*$')
+        self._re_console_magic = re.compile(rf'^%({"|".join(MAGIC_COMMANDS)}) ?(.*)\n*$')
+        self._re_help = re.compile(r'(\w*)(\?{1,2})$')
         self._re_expanduser = re.compile(r'(~\w*)')
         self._re_trailing_spaces = re.compile(r' *$', re.MULTILINE)
         self._re_prompt = re.compile(rf'^{re.escape(self._prompt2)}?', re.MULTILINE)
 
 
-        self._jedi_comp_extra = '\ndef cd():\n    pass\n...\ndef ls():\n    pass\n...\ndef cat():\n    pass\n...\n'
+        self._jedi_comp_extra = '\n'.join([f'\ndef {cmd}():\n    pass\n'
+                                           for cmd in EXTERNAL_COMMANDS])
         self._comp = CompListbox(self)
         self._comp.set_callback(self._comp_sel)
 
@@ -241,7 +239,7 @@ class TextConsole(RichText):
         jedi_comp = False
         line = self.get('insert linestart', 'insert')
         # --- magic command
-        comp = magic_complete(line.split()[-1], self.magic_commands)
+        comp = magic_complete(line.split()[-1])
         if not comp:
             # --- path autocompletion
             # absolute paths
@@ -598,7 +596,7 @@ class TextConsole(RichText):
                     p = m.group()
                     start, end = m.span()
                     code = code[:start] + expanduser(p) + code[end:]
-                if match.groups()[1] == '?':
+                if match.groups()[1] in ['?', '??']:
                     code = f"{code[:-1]} --help"
                 code = f"_console.external({code!r})"
                 add_to_hist = False
@@ -607,7 +605,7 @@ class TextConsole(RichText):
                 if match:
                     self.history.add_history(code)
                     self._hist_item = self.history.get_length()
-                    if code == 'cd?':
+                    if code in ['cd?', 'cd??']:
                         code = "print(_console.cd.__doc__)"
                     else:
                         code = f"_console.cd({match.groups()[0]!r})"
@@ -618,18 +616,27 @@ class TextConsole(RichText):
                         self.history.add_history(code)
                         self._hist_item = self.history.get_length()
                         cmd, arg = match.groups()
-                        if arg == '?':
+                        if arg in ['?', '??']:
                             code = f"_console.print_doc(_console.{cmd})"
                         else:
                             if cmd == 'pylab':
                                 self._jedi_comp_extra += '\nimport numpy\nimport matplotlib\nfrom matplotlib import pyplot as plt\nnp = numpy\n'
                             code = f"_console.{cmd}({arg!r})"
                         add_to_hist = False
-                    elif self._re_help.match(code):
-                        self.history.add_history(code)
-                        self._hist_item = self.history.get_length()
-                        code = f"help({code[:-1]})"
-                        add_to_hist = False
+                    else:
+                        match = self._re_help.search(code)
+                        if match:
+                            self.history.add_history(code)
+                            self._hist_item = self.history.get_length()
+                            obj, h = match.groups()
+                            if obj:
+                                if h == '?':
+                                    code = f"_console.print_doc({obj})"
+                                else:  # h == '??'
+                                    code = f"help({obj})"
+                            else:
+                                code = "_console.print_doc()"
+                            add_to_hist = False
 
             self.insert('insert', '\n')
             try:
