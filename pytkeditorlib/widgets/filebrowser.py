@@ -74,11 +74,12 @@ class Filebrowser(BaseWidget):
         self.filetree.tag_configure('folder', image='img_folder')
         self.filetree.tag_bind('file', '<Double-1>', self._on_db_click_file)
         self.filetree.tag_bind('folder', '<Double-1>', self._on_db_click_folder)
+        self.filetree.tag_bind('folder', '<<TreeviewOpen>>', self._on_folder_open)
 
         self.filetree.bind('<1>', self._on_click)
 
         # --- placement
-        frame_btn.grid(row=0, column=0, sticky='ew', pady=2)
+        frame_btn.grid(row=0, columnspan=2, sticky='ew', pady=2)
         self.filetree.grid(row=1, column=0, sticky='ewns')
         self._sx.grid(row=2, column=0, sticky='ew')
         self._sy.grid(row=1, column=1, sticky='ns')
@@ -167,7 +168,19 @@ class Filebrowser(BaseWidget):
     def _key_sort_files(item):
         return item.is_file(), item.name.lower()
 
-    def _rec_populate(self, path):
+    def _on_folder_open(self, event):
+        """Display folder content when opened by user."""
+        item = self.filetree.focus()
+        self.filetree.delete(*self.filetree.get_children(item))
+        self._lazy_populate(item)
+
+    def _lazy_populate(self, path):
+        """
+        Populate file tree of path only to the first level.
+
+        Add dummy items inside folders so that they can be expanded but
+        display their actual content only if the user opens them.
+        """
         try:
             content = sorted(os.scandir(path), key=self._key_sort_files)
         except PermissionError:
@@ -179,10 +192,9 @@ class Filebrowser(BaseWidget):
             if is_dir:
                 if not name[0] == '.':
                     self.filetree.insert(path, 'end', ipath, text=name, tags='folder')
-                    self._rec_populate(ipath)
+                    self.filetree.insert(ipath, 'end', text='')
             elif self.filter.search(name):
                 self.filetree.insert(path, 'end', ipath, text=name, tags='file')
-
 
     def populate(self, path, history=True, reset=False):
         self.configure(cursor='watch')
@@ -194,7 +206,7 @@ class Filebrowser(BaseWidget):
         p = os.path.abspath(path)
         self.filetree.insert('', 0, p, text=p, image='img_folder', open=True)
 
-        self._rec_populate(p)
+        self._lazy_populate(p)
 
         self.configure(cursor='')
         if reset:

@@ -371,8 +371,9 @@ class App(tk.Tk):
         self.editor.bind('<<FiletypeChanged>>', self._filetype_change)
         self.editor.bind('<<Modified>>', lambda e: self._edit_modified())
         self.editor.bind('<<Reload>>', self.reload)
-        self.editor.bind('<<Filebrowser>>', self.view_in_filebrowser)
         self.editor.bind('<<SetConsoleWDir>>', self.set_console_wdir)
+
+        self.widgets['File browser'].bind('<Map>', self.filebrowser_populate)
 
         self.bind_class('Text', '<Control-o>', lambda e: None)
         self.bind('<Control-Shift-T>', self.restore_last_closed)
@@ -891,18 +892,14 @@ class App(tk.Tk):
     def set_filetype(self):
         self.editor.set_filetype(self.filetype.get())
 
-    def view_in_filebrowser(self, event):
-        file = self.editor.files[self.editor.current_tab]
-        fb = self.widgets['File browser']
-        fb.populate(os.path.dirname(file))
-        if not fb.visible.get():
-            fb.visible.set(True)
-        else:
-            self.right_nb.select(fb)
+    def filebrowser_populate(self, event=None):
+        """Display console cwd in filebrowser."""
+        self.widgets['File browser'].populate(self.console.cwd)
 
     def set_console_wdir(self, event):
-        file = self.editor.files[self.editor.current_tab]
-        self.console.execute(f"cd {os.path.dirname(file)}")
+        path = os.path.dirname(self.editor.files[self.editor.current_tab])
+        self.console.execute(f"cd {path}")
+        self.widgets['File browser'].populate(path)
 
     # --- open
     def restore_last_closed(self, event=None):
@@ -961,7 +958,6 @@ class App(tk.Tk):
             self._update_recent_files(file)
         else:
             txt = self.load_file(file)
-            self.widgets['File browser'].populate(os.path.dirname(file), reset=True)
             if txt is not None:
                 self.editor.new(file)
                 self.editor.insert('1.0', txt)

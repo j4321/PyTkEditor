@@ -45,8 +45,6 @@ class EditorNotebook(Notebook):
         self.wrapper = TooltipNotebookWrapper(self)
         self.last_closed = []
         self.menu = Menu(self, tearoff=False)
-        self.menu.add_command(label='View in filebrowser',
-                              command=self.view_in_filebrowser)
         self.menu.add_command(label='Set Console working directory',
                               command=self.set_console_wdir)
         self.menu.add_separator()
@@ -246,9 +244,6 @@ class EditorNotebook(Notebook):
         if self.current_tab >= 0:
             self._tabs[self.current_tab].filetype = filetype
             self.event_generate('<<FiletypeChanged>>')
-
-    def view_in_filebrowser(self):
-        self.event_generate('<<Filebrowser>>')
 
     def set_console_wdir(self):
         self.event_generate('<<SetConsoleWDir>>')

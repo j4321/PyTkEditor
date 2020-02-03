@@ -55,17 +55,17 @@ class TextConsole(RichText):
         kw.setdefault('undo', True)
         kw.setdefault('autoseparators', False)
         banner = kw.pop('banner', f'Python {sys.version.splitlines()[0]}\n')
+        self._prompt1 = kw.pop('prompt1')
+        self._prompt2 = kw.pop('prompt2')
 
+        self.cwd = getcwd()  # console current working directory
+
+        # --- history
         self.history = history
         self._hist_item = self.history.get_length()
         self._hist_match = ''
 
-        self._prompt1 = kw.pop('prompt1')
-        self._prompt2 = kw.pop('prompt2')
-
         RichText.__init__(self, master, **kw)
-
-        self._cwd = getcwd()
 
         # --- regexp
         self._re_abspaths = re.compile(rf'(~\w*)?(\{sep}\w+)+\{sep}?$')
@@ -255,7 +255,7 @@ class TextConsole(RichText):
                 match_path = self._re_relpaths.search(line)
                 if match_path:
                     before_completion = match_path.group()
-                    paths = glob_rel(before_completion + '*', self._cwd)
+                    paths = glob_rel(before_completion + '*', self.cwd)
                     comp = [PathCompletion(before_completion, path) for path in paths]
                     jedi_comp = sep not in before_completion
             # --- jedi code autocompletion
@@ -670,7 +670,7 @@ class TextConsole(RichText):
                 with open(filename) as tmpfile:
                     res, output, err, wait, cwd = eval(tmpfile.read())
                 remove(filename)
-            self._cwd = cwd
+            self.cwd = cwd
             if wait:
                 if output.strip():
                     self.configure(state='normal')
