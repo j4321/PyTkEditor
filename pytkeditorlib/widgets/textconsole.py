@@ -79,8 +79,9 @@ class TextConsole(RichText):
         self._re_prompt = re.compile(rf'^{re.escape(self._prompt2)}?', re.MULTILINE)
 
 
-        self._jedi_comp_extra = '\n'.join([f'\ndef {cmd}():\n    pass\n'
-                                           for cmd in EXTERNAL_COMMANDS])
+        self._jedi_comp_external = '\n'.join([f'\ndef {cmd}():\n    pass\n'
+                                              for cmd in EXTERNAL_COMMANDS])
+        self._jedi_comp_extra = ''
         self._comp = CompListbox(self)
         self._comp.set_callback(self._comp_sel)
 
@@ -198,7 +199,7 @@ class TextConsole(RichText):
 
         lines = self.get('insert linestart + %ic' % len(self._prompt1), 'end').rstrip('\n')
 
-        session_code = self._jedi_comp_extra + '\n\n'.join(self.history.get_session_hist()) + '\n\n'
+        session_code = '\n\n'.join([self._jedi_comp_external, self._jedi_comp_extra] + self.history.get_session_hist()) + '\n\n'
 
         offset = len(session_code.splitlines())
         r, c = self.index_to_tuple('insert')
@@ -558,7 +559,7 @@ class TextConsole(RichText):
 
     # --- docstrings
     def get_docstring(self, obj):
-        session_code = '\n\n'.join(self.history.get_session_hist()) + '\n\n'
+        session_code = self._jedi_comp_extra + '\n\n'.join(self.history.get_session_hist()) + '\n\n'
         script = jedi.Script(session_code + obj,
                              len(session_code.splitlines()) + 1,
                              len(obj),

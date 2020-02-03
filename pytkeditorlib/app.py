@@ -362,6 +362,8 @@ class App(tk.Tk):
         self.configure(menu=self.menu)
 
         # --- bindings
+        self.bind_class('TCombobox', '<<ComboboxSelected>>',
+                        lambda e: e.widget.selection_clear(), True)
         self.bind_class('TEntry', '<Control-a>', self._select_all)
         self.bind_class('TCombobox', '<Control-a>', self._select_all)
         self.codestruct.bind('<<Populate>>', self._on_populate)

@@ -52,7 +52,6 @@ class Config(tk.Toplevel):
         ttk.Label(frame_general, text='Theme:').grid(row=1, column=0, sticky='e',
                                                      padx=4, pady=4)
         ctheme.grid(row=1, column=1, padx=4, pady=4, sticky='w')
-        ctheme.bind("<<ComboboxSelected>>", lambda e: ctheme.selection_clear())
         # --- --- font
         families = list(font.families())
         families.sort()
