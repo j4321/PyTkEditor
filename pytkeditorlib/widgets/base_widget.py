@@ -73,7 +73,7 @@ class RichText(Text):
         self.bind("<KeyRelease-Right>", self._find_matching_par)
         self.bind("<KeyRelease>", self._clear_highlight)
         self.bind("<FocusOut>", self._clear_highlight)
-        self.bind("<ButtonRelease>", self._clear_highlight)
+        self.bind("<ButtonPress>", self._clear_highlight)
         self.bind("<ButtonRelease-1>", self._find_matching_par)
 
     def update_style(self):
@@ -106,7 +106,8 @@ class RichText(Text):
         self.tag_configure('prompt', **CONSOLE_SYNTAX_HIGHLIGHTING['Token.Generic.Prompt'])
         self.tag_configure('output', foreground=CONSOLE_FG)
         self.tag_configure('highlight_find', background=CONSOLE_HIGHLIGHT_BG)
-        self.tag_configure('highlight', background=CONSOLE_HIGHLIGHT_BG)
+        self.tag_configure('highlight', foreground='#00B100', font=FONT + ('bold',))
+        self.tag_configure('highlight_error', foreground='#FF0000', font=FONT + ('bold',))
         # --- ansi tags
         self.tag_configure('foreground default', foreground='')
         self.tag_configure('background default', background='')
@@ -125,10 +126,10 @@ class RichText(Text):
 
     def _clear_highlight(self, event=None):
         self.tag_remove('highlight', '1.0', 'end')
+        self.tag_remove('highlight_error', '1.0', 'end')
 
     def _find_matching_par(self, event=None):
         """Highlight matching brackets."""
-        self.tag_remove('highlight', '1.0', 'end')
         char = self.get('insert-1c')
         if char in ['(', '{', '[']:
             return self._find_closing_par(char)
@@ -152,6 +153,7 @@ class RichText(Text):
             self.tag_add('highlight', index + '-1c')
             return True
         else:
+            self.tag_add('highlight_error', 'insert-1c')
             return False
 
     def _find_opening_par(self, char):
@@ -169,6 +171,7 @@ class RichText(Text):
             self.tag_add('highlight', index)
             return True
         else:
+            self.tag_add('highlight_error', 'insert-1c')
             return False
 
 

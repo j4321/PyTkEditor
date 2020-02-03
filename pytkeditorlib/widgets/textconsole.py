@@ -311,6 +311,7 @@ class TextConsole(RichText):
         self._tooltip.withdraw()
 
     def _on_press(self, event):
+        self._clear_highlight()
         self._comp.withdraw()
         self._tooltip.withdraw()
 
@@ -364,6 +365,7 @@ class TextConsole(RichText):
 
     def on_key_press(self, event):
         self._tooltip.withdraw()
+        self._clear_highlight()
         if 'Control' not in event.keysym:
             try:
                 self.tag_remove('sel', 'sel.first', 'input')
@@ -378,7 +380,6 @@ class TextConsole(RichText):
     def on_key_release(self, event):
         if self.compare('insert', '<', 'input') and event.keysym not in ['Left', 'Right']:
             self._hist_item = self.history.get_length()
-            self.tag_remove('highlight', '1.0', 'end')
             return 'break'
         elif self._comp.winfo_ismapped():
             if event.char.isalnum():
@@ -389,7 +390,6 @@ class TextConsole(RichText):
             if (event.char in [' ', ':', ',', ';', '(', '[', '{', ')', ']', '}']
                or event.keysym in ['BackSpace', 'Left', 'Right']):
                 self.edit_separator()
-            self.tag_remove('highlight', '1.0', 'end')
             self.parse()
 
     def on_up(self, event):
@@ -513,6 +513,7 @@ class TextConsole(RichText):
         return 'break'
 
     def on_backspace(self, event):
+        self._clear_highlight()
         if self.compare('insert', '<=', 'input'):
             self.mark_set('insert', 'input lineend')
             return 'break'
@@ -522,13 +523,27 @@ class TextConsole(RichText):
             self.delete('sel.first', 'sel.last')
         else:
             linestart = self.get('insert linestart', 'insert')
+            text = self.get('insert-1c', 'insert+1c')
             if re.search(r'    $', linestart):
                 self.delete('insert-4c', 'insert')
-            elif self.get('insert-2c', 'insert') in [c1 + c2 for c1, c2 in self._autoclose.items()]:
-                self.delete('insert-2c', 'insert')
+            elif text in ["()", "[]", "{}"]:
+                self.delete('insert-1c', 'insert+1c')
+            elif text in ["''"]:
+                if 'Token.Literal.String.Single' not in self.tag_names('insert-2c'):
+                    # avoid situation where deleting the 2nd quote in '<text>'' result in deletion of both the 2nd and 3rd quotes
+                    self.delete('insert-1c', 'insert+1c')
+                else:
+                    self.delete('insert-1c')
+            elif text in ['""']:
+                if 'Token.Literal.String.Double' not in self.tag_names('insert-2c'):
+                    # avoid situation where deleting the 2nd quote in "<text>"" result in deletion of both the 2nd and 3rd quotes
+                    self.delete('insert-1c', 'insert+1c')
+                else:
+                    self.delete('insert-1c')
             else:
                 self.delete('insert-1c')
         self.parse()
+        self._find_matching_par()
         return 'break'
 
     # --- insert
@@ -727,16 +742,17 @@ class TextConsole(RichText):
             self.tag_remove('sel', 'sel.first', 'sel.last')
             self.parse()
         else:
-            self.tag_remove('highlight', '1.0', 'end')
+            self._clear_highlight()
             self.insert('insert', event.char, ['Token.Punctuation', 'highlight'])
             if not self._find_matching_par():
+                self.tag_remove('highlight_error', 'insert-1c')
                 self.insert('insert', self._autoclose[event.char], ['Token.Punctuation', 'highlight'])
                 self.mark_set('insert', 'insert-1c')
         self.edit_separator()
         return 'break'
 
     def auto_close_string(self, event):
-        self.tag_remove('highlight', '1.0', 'end')
+        self._clear_highlight()
         sel = self.tag_ranges('sel')
         if sel:
             text = self.get('sel.first', 'sel.last')
@@ -758,7 +774,7 @@ class TextConsole(RichText):
         return 'break'
 
     def close_brackets(self, event):
-        self.tag_remove('highlight', '1.0', 'end')
+        self._clear_highlight()
         if self.get('insert') == event.char:
             self.mark_set('insert', 'insert+1c')
         else:

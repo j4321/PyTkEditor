@@ -252,17 +252,17 @@ class Editor(ttk.Frame):
 
     # --- keyboard bindings
     def _on_focusout(self, event):
-        self.text.tag_remove('highlight', '1.0', 'end')
+        self._clear_highlight()
         self._comp.withdraw()
         self._tooltip.withdraw()
 
     def _on_press(self, event):
-        self.text.tag_remove('highlight', '1.0', 'end')
+        self._clear_highlight()
         self._comp.withdraw()
         self._tooltip.withdraw()
 
     def _on_keypress(self, event):
-        self.text.tag_remove('highlight', '1.0', 'end')
+        self._clear_highlight()
         self._tooltip.withdraw()
 
     def _on_key_release_Left_Right(self, event):
@@ -302,7 +302,7 @@ class Editor(ttk.Frame):
             self._comp.sel_next()
             return "break"
         else:
-            self.text.tag_remove('highlight', '1.0', 'end')
+            self._clear_highlight()
             self.parse(self.text.get('insert linestart', 'insert lineend'), 'insert linestart')
 
     def on_up(self, event):
@@ -310,7 +310,7 @@ class Editor(ttk.Frame):
             self._comp.sel_prev()
             return "break"
         else:
-            self.text.tag_remove('highlight', '1.0', 'end')
+            self._clear_highlight()
             self.parse(self.text.get('insert linestart', 'insert lineend'), 'insert linestart')
 
     def on_key(self, event):
@@ -335,7 +335,7 @@ class Editor(ttk.Frame):
         return "break"
 
     def on_paste(self, event):
-        self.text.tag_remove('highlight', '1.0', 'end')
+        self._clear_highlight()
         self.text.edit_separator()
         self._paste = True
         sel = self.text.tag_ranges('sel')
@@ -398,7 +398,7 @@ class Editor(ttk.Frame):
         return "break"
 
     def on_tab(self, event=None, force_indent=False):
-        self.text.tag_remove('highlight', '1.0', 'end')
+        self._clear_highlight()
         if self._comp.winfo_ismapped():
             self._comp_sel()
             return "break"
@@ -423,19 +423,19 @@ class Editor(ttk.Frame):
         return "break"
 
     def on_ctrl_return(self, event):
-        self.text.tag_remove('highlight', '1.0', 'end')
+        self._clear_highlight()
         self.text.edit_separator()
         self.master.event_generate('<<CtrlReturn>>')
         return 'break'
 
     def on_shift_return(self, event):
-        self.text.tag_remove('highlight', '1.0', 'end')
+        self._clear_highlight()
         self.text.edit_separator()
         self.master.event_generate('<<ShiftReturn>>')
         return 'break'
 
     def on_return(self, event):
-        self.text.tag_remove('highlight', '1.0', 'end')
+        self._clear_highlight()
         self.text.edit_separator()
         if self._comp.winfo_ismapped():
             self._comp_sel()
@@ -463,7 +463,7 @@ class Editor(ttk.Frame):
         return "break"
 
     def on_backspace(self, event):
-        self.text.tag_remove('highlight', '1.0', 'end')
+        self._clear_highlight()
         self.text.edit_separator()
         txt = event.widget
         sel = self.text.tag_ranges('sel')
@@ -491,6 +491,7 @@ class Editor(ttk.Frame):
             else:
                 txt.delete('insert-1c')
         self.update_nb_line()
+        self._find_matching_par()
         return "break"
 
     def unindent(self, event=None):
@@ -554,8 +555,9 @@ class Editor(ttk.Frame):
             opts['selectbackground'] = selectbg
             opts['selectforeground'] = selectfg
             self.text.tag_configure(tag, **opts)
-        self.text.tag_configure('highlight', background=EDITOR_HIGHLIGHT_BG)
         self.text.tag_configure('highlight_find', background=EDITOR_HIGHLIGHT_BG)
+        self.text.tag_configure('highlight', foreground='#00B100', font=FONT + ('bold',))
+        self.text.tag_configure('highlight_error', foreground='#FF0000', font=FONT + ('bold',))
         self.text.tag_raise('sel')
 
     def parse(self, text, start):
@@ -583,6 +585,10 @@ class Editor(ttk.Frame):
         self.parse(self.text.get('1.0', 'end'), '1.0')
 
     # --- brackets
+    def _clear_highlight(self):
+        self.text.tag_remove('highlight', '1.0', 'end')
+        self.text.tag_remove('highlight_error', '1.0', 'end')
+
     def auto_close(self, event):
         sel = self.text.tag_ranges('sel')
         if sel:
@@ -594,16 +600,17 @@ class Editor(ttk.Frame):
             self.text.tag_remove('sel', 'sel.first', 'sel.last')
             self.parse(event.char + text + self._autoclose[event.char], index)
         else:
-            self.text.tag_remove('highlight', '1.0', 'end')
+            self._clear_highlight()
             self.text.insert('insert', event.char, ['Token.Punctuation', 'highlight'])
             if not self._find_matching_par():
+                self.text.tag_remove('highlight_error', 'insert-1c')
                 self.text.insert('insert', self._autoclose[event.char], ['Token.Punctuation', 'highlight'])
                 self.text.mark_set('insert', 'insert-1c')
         self.text.edit_separator()
         return 'break'
 
     def auto_close_string(self, event):
-        self.text.tag_remove('highlight', '1.0', 'end')
+        self._clear_highlight()
         sel = self.text.tag_ranges('sel')
         if sel:
             text = self.text.get('sel.first', 'sel.last')
@@ -625,7 +632,7 @@ class Editor(ttk.Frame):
         return 'break'
 
     def close_brackets(self, event):
-        self.text.tag_remove('highlight', '1.0', 'end')
+        self._clear_highlight()
         if self.text.get('insert') == event.char:
             self.text.mark_set('insert', 'insert+1c')
         else:
@@ -658,6 +665,7 @@ class Editor(ttk.Frame):
             self.text.tag_add('highlight', index + '-1c')
             return True
         else:
+            self.text.tag_add('highlight_error', 'insert-1c')
             return False
 
     def _find_opening_par(self, char):
@@ -675,6 +683,7 @@ class Editor(ttk.Frame):
             self.text.tag_add('highlight', index)
             return True
         else:
+            self.text.tag_add('highlight_error', 'insert-1c')
             return False
 
     # --- autocompletion and help tooltips
