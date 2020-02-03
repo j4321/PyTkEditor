@@ -33,7 +33,7 @@ from tkinter.font import Font
 from pytkeditorlib.dialogs.complistbox import CompListbox
 from pytkeditorlib.dialogs import showerror, showinfo, \
     TooltipTextWrapper, Tooltip, ColorPicker
-from pytkeditorlib.gui_utils import AutoHideScrollbar
+from pytkeditorlib.gui_utils import AutoHideScrollbar, EntryHistory
 from pytkeditorlib.utils.constants import PYTHON_LEX, CONFIG, IMAGES
 from pytkeditorlib.utils.functions import get_screen, load_style, valide_entree_nb, \
     PathCompletion
@@ -114,12 +114,12 @@ class Editor(ttk.Frame):
         self._highlighted = ''
         self.frame_search = ttk.Frame(self, padding=2)
         self.frame_search.columnconfigure(1, weight=1)
-        self.entry_search = ttk.Entry(self.frame_search)
+        self.entry_search = EntryHistory(self.frame_search)
         self.entry_search.bind('<Return>', self.search)
         self.entry_search.bind('<Escape>', lambda e: self.frame_search.grid_remove())
         self.entry_search.bind('<Control-r>', self.replace)
         self.entry_search.bind('<Control-f>', self.find)
-        self.entry_replace = ttk.Entry(self.frame_search)
+        self.entry_replace = EntryHistory(self.frame_search)
         self.entry_replace.bind('<Control-f>', self.find)
         self.entry_replace.bind('<Escape>', lambda e: self.frame_search.grid_remove())
         search_buttons = ttk.Frame(self.frame_search)
@@ -781,7 +781,9 @@ class Editor(ttk.Frame):
     def replace_sel(self, notify_no_match=True):
         self.text.edit_separator()
         pattern = self.entry_search.get()
+        self.entry_search.add_to_history(pattern)
         new_text = self.entry_replace.get()
+        self.entry_replace.add_to_history(new_text)
         sel = self.text.tag_ranges('sel')
         if not sel:
             self.search(notify_no_match=notify_no_match)
@@ -833,6 +835,7 @@ class Editor(ttk.Frame):
 
     def search(self, event=None, backwards=False, notify_no_match=True, **kw):
         pattern = self.entry_search.get()
+        self.entry_search.add_to_history(pattern)
         full_word = 'selected' in self.full_word.state()
         options = {'regexp': 'selected' in self.regexp.state(),
                    'nocase': 'selected' not in self.case_sensitive.state(),
@@ -865,6 +868,7 @@ class Editor(ttk.Frame):
     def highlight_all(self):
         if 'selected' in self._highlight_btn.state():
             pattern = self.entry_search.get()
+            self.entry_search.add_to_history(pattern)
 
             if not pattern:
                 self._highlight_btn.state(['!selected'])

@@ -24,7 +24,7 @@ import tkinter as tk
 from tkinter import ttk
 import re
 
-from pytkeditorlib.gui_utils import AutoHideScrollbar
+from pytkeditorlib.gui_utils import AutoHideScrollbar, EntryHistory
 
 
 class SearchDialog(tk.Toplevel):
@@ -35,7 +35,7 @@ class SearchDialog(tk.Toplevel):
         frame_find.columnconfigure(1, weight=1)
 
         # --- search entry
-        self.entry_search = ttk.Entry(frame_find, width=40)
+        self.entry_search = EntryHistory(frame_find, width=40)
         self.entry_search.insert(0, text)
         self.entry_search.bind('<Return>', self.find)
         ttk.Label(frame_find, text='Find: ').grid(row=0, column=0, pady=4)
@@ -75,7 +75,7 @@ class SearchDialog(tk.Toplevel):
         # --- replace
         replace_frame = ttk.Frame(self)
         ttk.Label(replace_frame, text="Replace by: ").pack(side="left")
-        self.entry_replace = ttk.Entry(replace_frame)
+        self.entry_replace = EntryHistory(replace_frame)
         self.entry_replace.pack(side="left", fill="x", expand=True)
         ttk.Button(replace_frame, text="Find & Replace all", padding=1,
                    command=self.replace).pack(side='left', padx=4)
@@ -102,6 +102,7 @@ class SearchDialog(tk.Toplevel):
     def find(self, event=None):
         self.results.delete(*self.results.get_children(''))
         pattern = self.entry_search.get()
+        self.entry_search.add_to_history(pattern)
         case_sensitive = self.case_sensitive.get()
         full_word = self.full_word.get()
         regexp = self.regexp.get()
@@ -131,6 +132,7 @@ class SearchDialog(tk.Toplevel):
     def replace(self):
         self.find()
         text = self.entry_replace.get()
+        self.entry_replace.add_to_history(text)
         files = self.results.get_children()
         replacements = {}
         for file in files:

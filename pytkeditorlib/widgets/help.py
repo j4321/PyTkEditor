@@ -31,6 +31,7 @@ from docutils.parsers.rst import Directive, directives
 from docutils.writers.html4css1 import Writer, HTMLTranslator
 
 from pytkeditorlib.utils.constants import TEMPLATE_PATH, CSS_PATH, CONFIG
+from pytkeditorlib.gui_utils import EntryHistory
 from .tkhtml import HtmlFrame
 from .base_widget import BaseWidget
 
@@ -143,7 +144,7 @@ class Help(BaseWidget):
         self.source = ttk.Combobox(top_bar, width=7, textvariable=self._source,
                                    values=['Console', 'Editor'],
                                    state='readonly')
-        self.entry = ttk.Combobox(top_bar, width=15)
+        self.entry = EntryHistory(top_bar, width=15)
         self.entry.bind('<Return>', self.show_help)
         self.entry.bind('<<ComboboxSelected>>', self.show_help)
         ttk.Label(top_bar, text='Source').pack(side='left', padx=4, pady=4)
@@ -175,7 +176,7 @@ class Help(BaseWidget):
             print(type(e), e)
             jedi_def = None
         if jedi_def:
-            self.entry['values'] = [obj] + list(self.entry['values'])
+            self.entry.add_to_history(obj)
             txt = get_docstring(jedi_def)
         else:
             txt = ''
