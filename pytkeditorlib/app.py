@@ -1104,18 +1104,39 @@ class App(tk.Tk):
                         return
                     self.execute_in_jupyter(code="%cd {}\n%run {}".format(wdir, file))
                 else:
+                    console = self.widgets['Console']
+                    if not console.visible.get():
+                        console.visible.set(True)
+                    else:
+                        self.right_nb.select(console)
                     self.console.execute(f"%run {file}")
 
     def run_selection(self, event=None):
         code = self.editor.get_selection()
         if code:
+            console = self.widgets['Console']
+            if not console.visible.get():
+                console.visible.set(True)
+            else:
+                self.right_nb.select(console)
             self.console.execute(code)
+        self.editor.focus_tab()
 
     def run_cell(self, event=None):
+        console = self.widgets['Console']
+        if not console.visible.get():
+            console.visible.set(True)
+        else:
+            self.right_nb.select(console)
         self.console.execute(self.editor.get_cell())
         self.editor.focus_tab()
 
     def run_cell_next(self, event=None):
+        console = self.widgets['Console']
+        if not console.visible.get():
+            console.visible.set(True)
+        else:
+            self.right_nb.select(console)
         self.console.execute(self.editor.get_cell(goto_next=True))
         self.editor.focus_tab()
 
