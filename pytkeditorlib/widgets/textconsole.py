@@ -73,7 +73,7 @@ class TextConsole(RichText):
         self._re_console_cd = re.compile(r'^cd ?(.*)\n*$')
         self._re_console_external = re.compile(rf'^({"|".join(EXTERNAL_COMMANDS)}) ?(.*)\n*$')
         self._re_console_magic = re.compile(rf'^%({"|".join(MAGIC_COMMANDS)}) ?(.*)\n*$')
-        self._re_help = re.compile(r'(\w*)(\?{1,2})$')
+        self._re_help = re.compile(r'([.\w]*)(\?{1,2})$')
         self._re_expanduser = re.compile(r'(~\w*)')
         self._re_trailing_spaces = re.compile(r' *$', re.MULTILINE)
         self._re_prompt = re.compile(rf'^{re.escape(self._prompt2)}?', re.MULTILINE)
