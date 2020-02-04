@@ -103,35 +103,40 @@ class EditorNotebook(Notebook):
 
     def _modif_poll(self):
         rev_files = {path: tab for tab, path in self.files.items()}
-        for file, modif, deletion in zip(self._is_modified.keys(), self._is_modified.values(), self._is_deleted.values()):
-            if modif.is_set():
-                logging.info(file + ' has been modified')
-                tab = rev_files[file]
-                self.edit_modified(True, tab=tab, generate=True)
-                self.update_idletasks()
-                rep = askyesno('Warning',
-                               '{} has been modified outside PyTkEditor. Do you want to reload it?'.format(file),
-                               icon='warning')
-                if rep:
-                    self.select(tab)
-                    self.event_generate('<<Reload>>')
-                self._files_mtime[file] = os.stat(file).st_mtime
-                modif.clear()
-            elif deletion.is_set():
-                logging.info(file + 'has been deleted')
-                if self._files_check_deletion[file]:
+        try:
+            for file, modif, deletion in zip(self._is_modified.keys(), self._is_modified.values(), self._is_deleted.values()):
+                if modif.is_set():
+                    logging.info(file + ' has been modified')
                     tab = rev_files[file]
                     self.edit_modified(True, tab=tab, generate=True)
                     self.update_idletasks()
                     rep = askyesno('Warning',
-                                   '{} has been deleted. Do you want to save it?'.format(file),
+                                   '{} has been modified outside PyTkEditor. Do you want to reload it?'.format(file),
                                    icon='warning')
                     if rep:
-                        self.save(tab=tab)
-                        self.edit_modified(False, tab=tab, generate=True)
-                    self._files_check_deletion[file] = rep
-                deletion.clear()
-        self._modif_polling_id = self.after(2000, self._modif_poll)
+                        self.select(tab)
+                        self.event_generate('<<Reload>>')
+                    self._files_mtime[file] = os.stat(file).st_mtime
+                    modif.clear()
+                elif deletion.is_set():
+                    logging.info(file + 'has been deleted')
+                    if self._files_check_deletion[file]:
+                        tab = rev_files[file]
+                        self.edit_modified(True, tab=tab, generate=True)
+                        self.update_idletasks()
+                        rep = askyesno('Warning',
+                                       '{} has been deleted. Do you want to save it?'.format(file),
+                                       icon='warning')
+                        if rep:
+                            self.save(tab=tab)
+                            self.edit_modified(False, tab=tab, generate=True)
+                        self._files_check_deletion[file] = rep
+                    deletion.clear()
+        except RuntimeError:
+            # files were closed at the same time
+            pass
+        finally:
+            self._modif_polling_id = self.after(2000, self._modif_poll)
 
     def _on_destroy(self, event):
         self.after_cancel(self._modif_polling_id)
