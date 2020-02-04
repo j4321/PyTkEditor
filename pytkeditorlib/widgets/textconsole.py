@@ -262,7 +262,11 @@ class TextConsole(RichText):
             # --- jedi code autocompletion
             if not comp or jedi_comp:
                 script = self._jedi_script()
-                comp.extend(script.completions())
+                try:
+                    comp.extend(script.completions())
+                except Exception:
+                    # jedi raised an exception
+                    pass
 
         if len(comp) == 1:
             self.insert('insert', comp[0].complete)

@@ -732,7 +732,11 @@ class Editor(ttk.Frame):
             row, col = str(self.text.index('insert')).split('.')
             script = jedi.Script(self.text.get('1.0', 'end'), int(row), int(col), self.file)
 
-            comp = script.completions()
+            try:
+                comp = script.completions()
+            except Exception:
+                # jedi raised an exception
+                return
         self._comp.withdraw()
         if len(comp) == 1:
             self.text.insert('insert', comp[0].complete)
