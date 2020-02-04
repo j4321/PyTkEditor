@@ -507,7 +507,14 @@ class TextConsole(RichText):
             self._comp_sel()
         else:
             self.parse()
-            self.eval_current(True)
+            if self.index('end-1c linestart') == self.index('input linestart'):
+                self.eval_current(True)
+            else:
+                text = self._re_prompt.sub('', self.get('insert', 'end')).strip()
+                if text:
+                    self.insert('insert', '\n' + self._prompt2, 'prompt')
+                else:
+                    self.eval_current(True)
             self.see('end')
         return 'break'
 
