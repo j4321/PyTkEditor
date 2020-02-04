@@ -25,13 +25,11 @@ import os
 import re
 from tkinter import Menu, Toplevel
 from subprocess import Popen
-from threading import Thread, Event
-from time import sleep
 
 from tkfilebrowser import asksaveasfilename
 
 from pytkeditorlib.gui_utils import AutoCompleteEntryListbox
-from pytkeditorlib.dialogs import askyesnocancel, askyesno, showerror, \
+from pytkeditorlib.dialogs import askyesnocancel, askoptions, showerror, \
     TooltipNotebookWrapper
 from pytkeditorlib.gui_utils import Notebook
 from .editor import Editor
@@ -55,91 +53,55 @@ class EditorNotebook(Notebook):
         self.menu.add_command(label='Close tabs to the left',
                               command=self.close_tabs_left)
 
-        self._files_mtime = {}  # file_path: mtime
+        self._files_mtime = {}           # file_path: mtime
         self._files_check_deletion = {}  # file_path: bool
-        self._modif_watchers = {}  # file_path: thread
-        self._is_modified = {}  # file_path: event
-        self._is_deleted = {}  # file_path: event
-        self._stop_thread = {}  # file_path: bool
-        self._modif_polling_id = self.after(10000, self._modif_poll)
-
-        self.bind('<Destroy>', self._on_destroy)
 
     def _popup_menu(self, event, tab):
         self._show(tab)
         if self.menu is not None:
             self.menu.tk_popup(event.x_root, event.y_root)
 
-    def _watch_modif(self, file):
-        sleep(5)
-        while not self._stop_thread[file]:
-            try:
-                mtime = os.stat(file).st_mtime
-                if mtime > self._files_mtime[file]:
-                    self._is_modified[file].set()
-            except FileNotFoundError:
-                self._is_deleted[file].set()
-            sleep(5)
-        del self._stop_thread[file]
-
-    def _start_watching(self, file):
-        self._files_mtime[file] = os.stat(file).st_mtime
-        self._files_check_deletion[file] = True
-        self._stop_thread[file] = False
-        self._is_modified[file] = Event()
-        self._is_deleted[file] = Event()
-        self._modif_watchers[file] = Thread(target=self._watch_modif,
-                                            args=(file,), daemon=True)
-        self._modif_watchers[file].start()
-
-    def _stop_watching(self, file):
-        if file in self._modif_watchers:
-            self._stop_thread[file] = True
-            del self._modif_watchers[file]
-            del self._files_check_deletion[file]
-            del self._is_modified[file]
-            del self._is_deleted[file]
-            del self._files_mtime[file]
-
-    def _modif_poll(self):
-        rev_files = {path: tab for tab, path in self.files.items()}
+    def _check_modif(self, tab):
+        """Check if file has been modified outside PyTkEditor."""
+        file = self.files[tab]
         try:
-            for file, modif, deletion in zip(self._is_modified.keys(), self._is_modified.values(), self._is_deleted.values()):
-                if modif.is_set():
-                    logging.info(file + ' has been modified')
-                    tab = rev_files[file]
+            mtime = os.stat(file).st_mtime
+            if mtime > self._files_mtime[tab]:
+                # the file has been modified
+                logging.info(f'{file} has been modified')
+                self.edit_modified(True, tab=tab, generate=True)
+                self.update_idletasks()
+                ans = askoptions('Warning',
+                                 f'{file} has been modified outside PyTkEditor. What do you want to do?',
+                                 self, 'warning', 'Reload', 'Overwrite', 'Cancel')
+                if ans == 'Reload':
+                    self.select(tab)
+                    self.event_generate('<<Reload>>')
+                elif ans == 'Overwrite':
+                    self.save(tab=tab)
+                    self.edit_modified(False, tab=tab, generate=True)
+                self._files_mtime[tab] = os.stat(file).st_mtime
+        except FileNotFoundError:
+            # the file has been deleted
+            try:
+                if self._files_check_deletion[tab]:
+                    logging.info(f'{file} has been deleted')
                     self.edit_modified(True, tab=tab, generate=True)
                     self.update_idletasks()
-                    rep = askyesno('Warning',
-                                   '{} has been modified outside PyTkEditor. Do you want to reload it?'.format(file),
-                                   icon='warning')
-                    if rep:
-                        self.select(tab)
-                        self.event_generate('<<Reload>>')
-                    self._files_mtime[file] = os.stat(file).st_mtime
-                    modif.clear()
-                elif deletion.is_set():
-                    logging.info(file + 'has been deleted')
-                    if self._files_check_deletion[file]:
-                        tab = rev_files[file]
-                        self.edit_modified(True, tab=tab, generate=True)
-                        self.update_idletasks()
-                        rep = askyesno('Warning',
-                                       '{} has been deleted. Do you want to save it?'.format(file),
-                                       icon='warning')
-                        if rep:
-                            self.save(tab=tab)
-                            self.edit_modified(False, tab=tab, generate=True)
-                        self._files_check_deletion[file] = rep
-                    deletion.clear()
-        except RuntimeError:
-            # files were closed at the same time
-            pass
-        finally:
-            self._modif_polling_id = self.after(2000, self._modif_poll)
-
-    def _on_destroy(self, event):
-        self.after_cancel(self._modif_polling_id)
+                    ans = askoptions('Warning',
+                                     f'{file} has been deleted. What do you want to do?',
+                                     self, 'warning', 'Save', 'Close', 'Cancel')
+                    if ans == 'Save':
+                        self.save(tab=tab)
+                        self.edit_modified(False, tab=tab, generate=True)
+                        self._files_check_deletion[tab] = True
+                    elif ans == 'Close':
+                        self._close(tab)
+                    else:
+                        self._files_check_deletion[tab] = False
+            except KeyError:
+                # the file does not exist yet
+                return
 
     def _menu_insert(self, tab, text):
         label = '{} - {}'.format(text, self.files.get(tab, ''))
@@ -372,7 +334,25 @@ class EditorNotebook(Notebook):
             return ("", "")
 
     # --- close
+    def _close(self, tab):
+        """Close a tab."""
+        self.wrapper.remove_tooltip(self._tab_labels[tab])
+        ed = self._tabs[tab]
+        if self.files[tab]:
+            self.last_closed.append(self.files[tab])
+        try:
+            del self._files_check_deletion[tab]
+            del self._files_mtime[tab]
+        except KeyError:
+            pass
+        del self.files[tab]
+        self.forget(tab)
+        if not self._visible_tabs:
+            self.event_generate('<<NotebookEmpty>>')
+        ed.destroy()
+
     def close(self, tab):
+        """Close tab and ask before dropping modifications."""
         rep = False
         if self.edit_modified(widget=self._tabs[tab]):
             rep = askyesnocancel('Confirmation', 'The file %r has been modified. Do you want to save it?' % self.files[tab])
@@ -380,19 +360,11 @@ class EditorNotebook(Notebook):
             self.save(tab)
         elif rep is None:
             return False
-        self.wrapper.remove_tooltip(self._tab_labels[tab])
-        ed = self._tabs[tab]
-        if self.files[tab]:
-            self.last_closed.append(self.files[tab])
-        self._stop_watching(self.files[tab])
-        del self.files[tab]
-        self.forget(tab)
-        if not self._visible_tabs:
-            self.event_generate('<<NotebookEmpty>>')
-        ed.destroy()
+        self._close(tab)
         return True
 
     def closeall(self, event=None):
+        """Close all tabs."""
         b = True
         tabs = self.tabs()
         i = 0
@@ -402,22 +374,25 @@ class EditorNotebook(Notebook):
         return b
 
     def close_other_tabs(self):
+        """Close all tabs except current one."""
         for tab in self.tabs():
             if tab != self.current_tab:
                 self.close(tab)
 
     def close_tabs_right(self):
+        """Close all tabs on the right of current one."""
         ind = self._visible_tabs.index(self.current_tab)
         for tab in self._visible_tabs[ind + 1:]:
             self.close(tab)
 
     def close_tabs_left(self):
+        """Close all tabs on the left of current one."""
         ind = self._visible_tabs.index(self.current_tab)
         for tab in self._visible_tabs[:ind]:
             self.close(tab)
 
     # --- save
-    def save(self, tab=None):
+    def save(self, tab=None, force=False):
         if tab is None:
             tab = self.current_tab
         if tab < 0:
@@ -425,21 +400,16 @@ class EditorNotebook(Notebook):
         if not self.files[tab]:
             res = self.saveas(tab)
         else:
-            if self.edit_modified(tab=tab):
+            if force or self.edit_modified(tab=tab):
                 file = self.files[tab]
                 try:
                     with open(file, 'w') as f:
                         f.write(self.get(tab))
                 except PermissionError as e:
                     showerror("Error", f"PermissionError: {e.strerror}: {file}", parent=self)
-                self._files_mtime[file] = os.stat(file).st_mtime
-                try:
-                    self._is_modified[file].clear()
-                    self._is_deleted[file].clear()
-                except KeyError:
-                    self._start_watching(file)
+                self._files_mtime[tab] = os.stat(file).st_mtime
+                self._files_check_deletion[tab] = True
                 res = True
-                self._files_check_deletion[file] = True
             else:
                 res = True
         return res
@@ -458,12 +428,13 @@ class EditorNotebook(Notebook):
                                      filetypes=[('Python', '*.py'), ('All files', '*')])
         if name:
             if self.files[tab]:
-                self._stop_watching(self.files[tab])
+                self._files_check_deletion[tab] = False
             self.files[tab] = name
             self._tabs[tab].file = name
             self.tab(tab, text=os.path.split(name)[1])
             self.wrapper.set_tooltip_text(tab, os.path.abspath(name))
-            self.save(tab)
+            self.save(tab, force=True)
+            self._files_check_deletion[tab] = True
             return True
         else:
             return False
@@ -504,15 +475,19 @@ class EditorNotebook(Notebook):
             file = ''
         else:
             title = os.path.split(file)[-1]
-            self._start_watching(file)
 
         editor = Editor(self, 'Python' if title.endswith('.py') else 'Text')
         if len(self._visible_tabs) == 0:
             self.event_generate('<<NotebookFirstTab>>')
         tab = self.add(editor, text=title)
+        editor.bind('<FocusIn>', lambda e: self._check_modif(tab))
         if file in self.last_closed:
             self.last_closed.remove(file)
         self.files[tab] = file
+        if file:
+            self._files_mtime[tab] = os.stat(file).st_mtime
+            self._files_check_deletion[tab] = True
+
         self._tab_menu.entryconfigure(self._tab_menu_entries[tab],
                                       label="{} - {}".format(title, os.path.dirname(file)))
         self._tabs[tab].file = file
@@ -553,4 +528,3 @@ class EditorNotebook(Notebook):
         tab = self.current_tab
         if tab >= 0:
             self._tabs[self.current_tab].choose_color()
-

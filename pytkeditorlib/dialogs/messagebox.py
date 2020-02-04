@@ -287,8 +287,8 @@ class TwoButtonBox(tk.Toplevel):
         return self.result
 
 
-class AskYesNoCancel(tk.Toplevel):
-    """Messagebox with two buttons."""
+class ThreeButtonBox(tk.Toplevel):
+    """Messagebox with three buttons."""
 
     def __init__(self, parent, title="", message="", image=None,
                  button1=_("Yes"), button2=_("No"), button3=_("Cancel")):
@@ -299,11 +299,13 @@ class AskYesNoCancel(tk.Toplevel):
             parent: parent of the toplevel window
             title: message box title
             message: message box text
-            button1/2: message displayed on the first/second button
+            button1/2/3: message displayed on the first/second button
             image: image displayed at the left of the message
+
+        self.result contains the text of the clicked button, "" otherwise
         """
 
-        tk.Toplevel.__init__(self, parent)
+        tk.Toplevel.__init__(self, parent, padx=4, pady=4)
         self.transient(parent)
         self.resizable(False, False)
         self.title(title)
@@ -311,7 +313,7 @@ class AskYesNoCancel(tk.Toplevel):
         self.rowconfigure(0, weight=1)
         self.columnconfigure(1, weight=1)
         self.columnconfigure(2, weight=1)
-        self.result = None
+        self.result = ""
 
         if image in ICONS:
             image = f"::tk::icons::{image}"
@@ -325,24 +327,22 @@ class AskYesNoCancel(tk.Toplevel):
         ttk.Label(frame, text=message, font="TkDefaultFont 10 bold",
                   wraplength=335).pack(side="left", padx=(4, 10), pady=(10, 4))
 
-        b1 = ttk.Button(self, text=button1, command=self.command1)
-        b1.grid(row=1, column=0, padx=10, pady=10)
-        ttk.Button(self, text=button2, command=self.command2).grid(row=1, column=1,
-                                                                   padx=10, pady=10)
-        ttk.Button(self, text=button3, command=self.destroy).grid(row=1, column=2,
-                                                                  padx=10, pady=10)
+        b1 = ttk.Button(self, text=button1, command=lambda: self.command(button1))
+        b1.grid(row=1, column=0, padx=8, pady=8, sticky='ew')
+        ttk.Button(self, text=button2,
+                   command=lambda: self.command(button2)).grid(row=1, column=1,
+                                                               padx=8, pady=8, sticky='ew')
+        ttk.Button(self, text=button3,
+                   command=lambda: self.command(button3)).grid(row=1, column=2,
+                                                               padx=8, pady=8, sticky='ew')
         try:
             self.grab_set()
         except tk.TclError:
             pass
         b1.focus_set()
 
-    def command1(self):
-        self.result = True
-        self.destroy()
-
-    def command2(self):
-        self.result = False
+    def command(self, name):
+        self.result = name
         self.destroy()
 
     def get_result(self):
@@ -439,11 +439,12 @@ def askyesno(title="", message="", parent=None, icon="question"):
     return box.get_result() == _("Yes")
 
 
-def askyesnocancel(title="", message="", parent=None, icon="question"):
+def askoptions(title="", message="", parent=None, icon="question",
+               button1=_("Yes"), button2=_("No"), button3=_("Cancel")):
     """
-    Display a dialog with buttons "Yes","No" and "Cancel".
+    Display a dialog with 3 buttons.
 
-    Return True if "Ok" is selected, False if "No" is selected, None otherwise.
+    Return the text of the clicked button, "" otherwise.
 
     Arguments:
         title: dialog title
@@ -451,8 +452,33 @@ def askyesnocancel(title="", message="", parent=None, icon="question"):
         parent: parent window
         icon: icon to display on the left of the message, either a PhotoImage
               or a string ('information', 'error', 'question', 'warning' or
-               mage path)
+              image path)
+       button1/2/3: button text
     """
-    box = AskYesNoCancel(parent, title, message, image=icon)
+    box = ThreeButtonBox(parent, title, message, icon, button1, button2, button3)
     box.wait_window(box)
     return box.get_result()
+
+
+def askyesnocancel(title="", message="", parent=None, icon="question"):
+    """
+    Display a dialog with buttons "Yes","No" and "Cancel".
+
+    Return True if "Yes" is selected, False if "No" is selected, None otherwise.
+
+    Arguments:
+        title: dialog title
+        message: message displayed in the dialog
+        parent: parent window
+        icon: icon to display on the left of the message, either a PhotoImage
+              or a string ('information', 'error', 'question', 'warning' or
+              image path)
+    """
+    res = askoptions(title, message, parent, icon)
+    if res == _('Yes'):
+        return True
+    elif res == _('No'):
+        return False
+    else:
+        return None
+
