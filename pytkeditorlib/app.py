@@ -284,11 +284,11 @@ class App(tk.Tk):
                              accelerator='F5')
         menu_run.add_separator()
         menu_run.add_command(image='img_run_cell',
-                             command=self.run_selection,
+                             command=self.run_cell,
                              compound='left', label='Run cell',
                              accelerator='Ctrl+Return')
         menu_run.add_command(image='img_run_cell_next',
-                             command=self.run_selection,
+                             command=lambda: self.run_cell(goto_next=True),
                              compound='left', label='Run cell and advance',
                              accelerator='Shift+Return')
         menu_run.add_separator()
@@ -389,7 +389,7 @@ class App(tk.Tk):
         self.bind('<Control-Shift-P>', self.print)
         self.bind('<Control-Alt-s>', self.saveas)
         self.bind('<<CtrlReturn>>', self.run_cell)
-        self.bind('<<ShiftReturn>>', self.run_cell_next)
+        self.bind('<<ShiftReturn>>', lambda e: self.run_cell(goto_next=True))
         self.bind('<F5>', self.run)
         self.bind('<F9>', self.run_selection)
         if cst.JUPYTER:
@@ -1085,6 +1085,16 @@ class App(tk.Tk):
         self.wait_window(p)
 
     # --- run
+    def _make_console_visible(self):
+        """Ensure Console's visiblility"""
+        console = self.widgets['Console']
+        if not console.visible.get():
+            console.visible.set(True)
+        else:
+            if not self.right_nb.select() == self.right_nb.index(console):
+                self.right_nb.select(console)
+        self.update_idletasks()
+
     def run(self, event=None):
         console = CONFIG.get("Run", "console")
         if self.save():
@@ -1102,43 +1112,22 @@ class App(tk.Tk):
                         return
                     self.execute_in_jupyter(code="%cd {}\n%run {}".format(wdir, file))
                 else:
-                    console = self.widgets['Console']
-                    if not console.visible.get():
-                        console.visible.set(True)
-                    else:
-                        if not self.right_nb.select() == self.right_nb.index(console):
-                            self.right_nb.select(console)
-                    self.update_idletasks()
+                    self._make_console_visible()
                     self.console.execute(f"%run {file}")
 
     def run_selection(self, event=None):
         code = self.editor.get_selection()
         if code:
-            console = self.widgets['Console']
-            if not console.visible.get():
-                console.visible.set(True)
-            else:
-                self.right_nb.select(console)
+            self._make_console_visible()
             self.console.execute(code)
-        self.editor.focus_tab()
+            self.editor.focus_tab()
 
-    def run_cell(self, event=None):
-        console = self.widgets['Console']
-        if not console.visible.get():
-            console.visible.set(True)
-        else:
-            self.right_nb.select(console)
-        self.console.execute(self.editor.get_cell())
-        self.editor.focus_tab()
-
-    def run_cell_next(self, event=None):
-        console = self.widgets['Console']
-        if not console.visible.get():
-            console.visible.set(True)
-        else:
-            self.right_nb.select(console)
-        self.console.execute(self.editor.get_cell(goto_next=True))
-        self.editor.focus_tab()
+    def run_cell(self, event=None, goto_next=False):
+        code = self.editor.get_cell(goto_next=goto_next)
+        if code:
+            self._make_console_visible()
+            self.console.execute(code)
+            self.editor.focus_tab()
 
     # --- jupyter
     def _init_kernel(self):

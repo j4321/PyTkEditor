@@ -121,7 +121,7 @@ class CodeTree(Treeview):
                     name = token.string[1:]
                     add = True
                 else:
-                    match = re.match(r'^# *In(\[.*\].*)$', token.string)
+                    match = re.match(r'^# In(\[.*\].*)$', token.string)
                     if match:
                         obj_type = 'cell'
                         indent = token.start[1]
@@ -129,7 +129,7 @@ class CodeTree(Treeview):
                         add = True
                         self.cells.append(token.start[0])
                     else:
-                        match = re.match(r'^#%% (.*)$', token.string)
+                        match = re.match(r'^# ?%% ?(.*)$', token.string)
                         if match:
                             obj_type = 'cell'
                             indent = token.start[1]
