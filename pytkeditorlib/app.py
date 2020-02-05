@@ -780,7 +780,7 @@ class App(tk.Tk):
         if args[0] is not KeyboardInterrupt:
             showerror("Error", str(args[1]), err, True)
         else:
-            self.destroy()
+            self.quit()
 
     def save_layout(self):
         layout = CONFIG.get('General', 'layout', fallback='horizontal')
