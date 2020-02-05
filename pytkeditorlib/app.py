@@ -1119,7 +1119,7 @@ class App(tk.Tk):
         code = self.editor.get_selection()
         if code:
             self._make_console_visible()
-            self.console.execute(code)
+            self.console.execute(code + '\n')
             self.editor.focus_tab()
 
     def run_cell(self, event=None, goto_next=False):
