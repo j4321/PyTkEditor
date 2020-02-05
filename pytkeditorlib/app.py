@@ -1106,7 +1106,9 @@ class App(tk.Tk):
                     if not console.visible.get():
                         console.visible.set(True)
                     else:
-                        self.right_nb.select(console)
+                        if not self.right_nb.select() == self.right_nb.index(console):
+                            self.right_nb.select(console)
+                    self.update_idletasks()
                     self.console.execute(f"%run {file}")
 
     def run_selection(self, event=None):

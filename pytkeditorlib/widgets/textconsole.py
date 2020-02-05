@@ -178,9 +178,12 @@ class TextConsole(RichText):
         rep = askyesno('Confirmation', 'Do you really want to restart the console?')
         if rep:
             kill(self.shell_pid, signal.SIGTERM)
-            self.shell_client.shutdown(socket.SHUT_RDWR)
-            self.shell_client.close()
-            self.shell_socket.close()
+            try:
+                self.shell_client.shutdown(socket.SHUT_RDWR)
+                self.shell_client.close()
+                self.shell_socket.close()
+            except OSError:
+                pass
             self.configure(state='normal')
             self.history.new_session()
             self.shell_clear()
@@ -309,9 +312,12 @@ class TextConsole(RichText):
 
     def quit(self, event=None):
         self.history.save()
-        self.shell_client.shutdown(socket.SHUT_RDWR)
-        self.shell_client.close()
-        self.shell_socket.close()
+        try:
+            self.shell_client.shutdown(socket.SHUT_RDWR)
+            self.shell_client.close()
+            self.shell_socket.close()
+        except OSError:
+            pass
 
     def _on_focusout(self, event):
         self._comp.withdraw()

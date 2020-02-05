@@ -158,8 +158,8 @@ class ConsoleMethods:
         wdir = dirname(filename)
         with open(filename) as file:
             code = file.read()
-        exec(f'chdir({wdir!r})', globals(), self.locals)
-        exec(code, globals(), self.locals)
+        chdir(wdir)
+        exec(code, self.locals, self.locals)
 
     def gui(self, gui):
         """
@@ -187,7 +187,7 @@ class SocketConsole(InteractiveConsole):
         self.locals['exit'] = self._exit
         self.locals['quit'] = self._exit
         self.locals['_console'] = cm
-        self.locals['_get_cwd'] = getcwd
+        self.locals['_getcwd'] = getcwd
         self.locals['_cwd'] = getcwd()
         self._initial_locals = self.locals.copy()
         signal.signal(signal.SIGINT, self.interrupt)
@@ -278,7 +278,7 @@ class SocketConsole(InteractiveConsole):
                         self.write('KeyboardInterrupt\n')
                         res = False
                 if not res:
-                    self.push('_cwd = _get_cwd()')
+                    self.push('_cwd = _getcwd()')
                 err = self.stderr.getvalue()
                 msg = f'{res}, "", {err!r}, False, {self.locals["_cwd"]!r}'
                 if len(msg) > 16300:
