@@ -68,11 +68,14 @@ class TextConsole(RichText):
         RichText.__init__(self, master, **kw)
 
         # --- regexp
-        self._re_abspaths = re.compile(rf'(~\w*)?(\{sep}\w+)+\{sep}?$')
-        self._re_relpaths = re.compile(rf'\w+(\{sep}\w+)*\{sep}?$')
+        ext_cmds = "|".join(EXTERNAL_COMMANDS)
+        magic_cmds = "|".join(MAGIC_COMMANDS)
+        pre_path = rf"(?:(?:(?:{ext_cmds}|cd|%run) )|(?:\"|'))"
+        self._re_abspaths = re.compile(rf'{pre_path}((?:~\w*)?(?:\{sep}\w+)+\{sep}?)$')
+        self._re_relpaths = re.compile(rf'{pre_path}(\w+(?:\{sep}\w+)*\{sep}?)$')
         self._re_console_cd = re.compile(r'^cd ?(.*)\n*$')
-        self._re_console_external = re.compile(rf'^({"|".join(EXTERNAL_COMMANDS)}) ?(.*)\n*$')
-        self._re_console_magic = re.compile(rf'^%({"|".join(MAGIC_COMMANDS)}) ?(.*)\n*$')
+        self._re_console_external = re.compile(rf'^({ext_cmds}) ?(.*)\n*$')
+        self._re_console_magic = re.compile(rf'^%({magic_cmds}) ?(.*)\n*$')
         self._re_help = re.compile(r'([.\w]*)(\?{1,2})$')
         self._re_expanduser = re.compile(r'(~\w*)')
         self._re_trailing_spaces = re.compile(r' *$', re.MULTILINE)
@@ -246,7 +249,7 @@ class TextConsole(RichText):
             # absolute paths
             match_path = self._re_abspaths.search(line)
             if match_path:
-                before_completion = match_path.group()
+                before_completion = match_path.groups()[0]
                 if '~' in before_completion:
                     before_completion = expanduser(before_completion)
                 paths = glob(before_completion + '*')
@@ -255,7 +258,7 @@ class TextConsole(RichText):
             if not comp:
                 match_path = self._re_relpaths.search(line)
                 if match_path:
-                    before_completion = match_path.group()
+                    before_completion = match_path.groups()[0]
                     paths = glob_rel(before_completion + '*', self.cwd)
                     comp = [PathCompletion(before_completion, path) for path in paths]
                     jedi_comp = sep not in before_completion
