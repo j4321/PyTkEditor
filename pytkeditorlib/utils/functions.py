@@ -129,7 +129,7 @@ TAIL_REGEXP = re.compile(r"[\n ]*$")
 SPLITTER_REGEXP = re.compile(r',(?!(?:[^\(]*\)|[^\[]*\]|[^\{]*\})) ?')
 OPEN_CHAR = {"}": "{", "]": "[", ")": "("}
 CLOSE_CHAR = {"{": "}", "(": ")", "[": "]"}
-
+DICKEY_REGEXP = re.compile(r"^[^:]*:")
 
 def find_closing_bracket(text, open_char, open_index):
     close_char = CLOSE_CHAR[open_char]
@@ -146,23 +146,38 @@ def find_closing_bracket(text, open_char, open_index):
         return -1
 
 
-def format_long_output(output, wrap_length):
+def format_long_output(output, wrap_length, head='', indent2=''):
     if len(output) <= wrap_length:
-        return output
-    indent = INDENT_REGEXP.match(output).group()
+        return head + output
+    indent1 = INDENT_REGEXP.match(output).group()
     tail = TAIL_REGEXP.search(output).group()
 
     if tail:
-        text = output[len(indent):-len(tail)]
+        text = output[len(indent1):-len(tail)]
     else:
-        text = output[len(indent):]
+        text = output[len(indent1):]
+    if not head:
+        indent2 = indent1 + indent2
+        head = indent1
     if text[0] in CLOSE_CHAR:
         close = find_closing_bracket(text, text[0], 0)
         if close == len(text) - 1:
             content = SPLITTER_REGEXP.split(text[1:-1])
-            if len(content) > 1:
-                return f"{indent}{text[0]}{content[0]},\n{indent} " + f",\n{indent} ".join(content[1:]) + text[-1] + tail
-    return output
+            if text[0] == '{':
+                fcontent = []
+                for c in content:
+                    m = DICKEY_REGEXP.match(c)
+                    if m:
+                        h = m.group()
+                    else:
+                        h = ''
+                    fcontent.append(format_long_output(c[len(h):], wrap_length - len(indent2) + 1, h, indent2 + ' '))
+            else:
+                fcontent = [format_long_output(c, wrap_length - len(indent2) + 1, '', indent2 + ' ')
+                            for c in content]
+            if len(fcontent) > 1:
+                return f"{head}{text[0]}{fcontent[0]},\n{indent2} " + f",\n{indent2} ".join(fcontent[1:]) + text[-1] + tail
+    return head + output
 
 
 # --- ANSI format parser
