@@ -640,13 +640,14 @@ class Notebook(ttk.Frame):
         tab = self.index(tab_id)
         if tab in self._visible_tabs:
             self._visible_tabs.remove(tab)
+            index = self._active_tabs.index(tab)
             if tab in self._active_tabs:
                 self._active_tabs.remove(tab)
             self._hidden_tabs.append(tab)
             self._tab_labels[tab].grid_remove()
             if self.current_tab == tab:
                 if self._active_tabs:
-                    self._show(self._active_tabs[0])
+                    self._show(self._active_tabs[max(index - 1, 0)])
                 else:
                     self.current_tab = -1
                 self._tabs[tab].grid_remove()
@@ -660,13 +661,14 @@ class Notebook(ttk.Frame):
         if tab in self._hidden_tabs:
             self._hidden_tabs.remove(tab)
         elif tab in self._visible_tabs:
+            index = self._active_tabs.index(tab)
             if tab in self._active_tabs:
                 self._active_tabs.remove(tab)
             self._visible_tabs.remove(tab)
             self._tab_labels[tab].grid_forget()
             if self.current_tab == tab:
                 if self._active_tabs:
-                    self._show(self._active_tabs[0])
+                    self._show(self._active_tabs[max(index - 1, 0)])
                 else:
                     self.current_tab = -1
                     if not self._visible_tabs and not self._hidden_tabs:
