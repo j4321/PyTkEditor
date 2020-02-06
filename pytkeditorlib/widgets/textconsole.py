@@ -74,6 +74,7 @@ class TextConsole(RichText):
         self._re_abspaths = re.compile(rf'{pre_path}((?:~\w*)?(?:\{sep}\w+)+\{sep}?)$')
         self._re_relpaths = re.compile(rf'{pre_path}(\w+(?:\{sep}\w+)*\{sep}?)$')
         self._re_console_cd = re.compile(r'^cd ?(.*)\n*$')
+        self._re_console_run = re.compile(r"^_console.run\('(.*)'\)$")
         self._re_console_external = re.compile(rf'^({ext_cmds}) ?(.*)\n*$')
         self._re_console_magic = re.compile(rf'^%({magic_cmds}) ?(.*)\n*$')
         self._re_help = re.compile(r'([.\w]*)(\?{1,2})$')
@@ -184,6 +185,7 @@ class TextConsole(RichText):
             except OSError:
                 pass
             self.configure(state='normal')
+            self._jedi_comp_extra = ''
             self.history.new_session()
             self.shell_clear()
             self._init_shell()
@@ -748,6 +750,11 @@ class TextConsole(RichText):
             if res:
                 self.mark_set('input', index)
             elif code:
+                match = self._re_console_run.match(code.strip())
+                if match:
+                    path = match.groups()[0]
+                    with open(path) as file:
+                        self._jedi_comp_extra += f"\n\n{file.read()}\n\n"
                 if add_to_hist:
                     self.history.add_history(code)
                     self._hist_item = self.history.get_length()
