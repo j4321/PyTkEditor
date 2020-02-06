@@ -53,6 +53,9 @@ class App(tk.Tk):
         self.pid = pid
         self.tk.eval('package require Tkhtml')
         self.title('PyTkEditor')
+
+        self._frame = ttk.Frame(self, padding=(0, 0, 0, 4))
+
         # --- images
         self._images = {name: tk.PhotoImage(f'img_{name}', file=IMAGES[name], master=self)
                         for name, path in IMAGES.items()}
@@ -66,7 +69,7 @@ class App(tk.Tk):
         self.option_add('*Menu.relief', 'sunken')
         self.option_add('*Menu.tearOff', False)
 
-        self.menu = tk.Menu(self, relief='flat')
+        self.menu = tk.Menu(self, relief='flat', borderwidth=0)
         self.menu_file = tk.Menu(self.menu)
         self.menu_recent_files = tk.Menu(self.menu_file)
         self.menu_edit = tk.Menu(self.menu)
@@ -105,7 +108,7 @@ class App(tk.Tk):
         self._init_kernel()
 
         # --- GUI elements
-        self._horizontal_pane = ttk.PanedWindow(self, orient='horizontal')
+        self._horizontal_pane = ttk.PanedWindow(self._frame, orient='horizontal')
         self._vertical_pane = ttk.PanedWindow(self._horizontal_pane, orient='vertical')
         # --- --- editor notebook
         self.editor = EditorNotebook(self._horizontal_pane, width=696)
@@ -129,8 +132,9 @@ class App(tk.Tk):
         # --- --- --- filebrowser
         self.widgets['File browser'] = Filebrowser(self.right_nb, self.open_file)
 
-        # ----- placement
-        self._horizontal_pane.pack(fill='both', expand=True, pady=(0, 4))
+        # --- --- placement
+        self._frame.pack(fill='both', expand=True)
+        self._horizontal_pane.pack(fill='both', expand=True)
         for name in widgets:
             self.right_nb.add(self.widgets.get(name, self.codestruct), text=name)
         self.layout = tk.StringVar(self, CONFIG.get("General", "layout", fallback='horizontal'))
@@ -141,6 +145,7 @@ class App(tk.Tk):
         for name, widget in self.widgets.items():
             widget.visible.set(CONFIG.getboolean(name, 'visible', fallback=True))
         self.right_nb.select_first_tab()
+
         # --- menu
         # --- --- file
         self.menu_file.add_command(label='New', command=self.new,
@@ -333,6 +338,12 @@ class App(tk.Tk):
                                   variable=self.fullscreen,
                                   command=self.toggle_fullscreen,
                                   accelerator='F11')
+        self.menubar = tk.BooleanVar(self, CONFIG.getboolean('General',
+                                                             'menubar',
+                                                             fallback=True))
+        menu_view.add_checkbutton(label='Menubar',
+                                  command=self.toggle_menubar,
+                                  variable=self.menubar)
         # --- --- --- widgets
         for name in sorted(widgets):
             menu_widgets.add_checkbutton(label=name,
@@ -369,7 +380,7 @@ class App(tk.Tk):
                                      value='pvertical',
                                      image='img_view_pvertical', compound='left')
 
-        self.configure(menu=self.menu)
+        self.toggle_menubar()
 
         # --- bindings
         self.bind_class('TCombobox', '<<ComboboxSelected>>',
@@ -801,6 +812,40 @@ class App(tk.Tk):
             self.fullscreen.set(val)
         self.attributes('-fullscreen', val)
         CONFIG.set('General', 'fullscreen', str(val))
+        CONFIG.save()
+
+    def _show_menubar(self, event=None):
+        self.configure(menu=self.menu)
+        self._frame.configure(padding=(0, 0, 0, 4))
+
+    def _hide_menubar(self, event=None):
+        self.configure(menu='')
+        self._frame.configure(padding=(0, 4))
+
+    def _toggle_menubar(self, event):
+        if self['menu']:
+            self._hide_menubar()
+        else:
+            self._show_menubar()
+
+    def toggle_menubar(self, event=None):
+        val = self.menubar.get()
+        if event:
+            val = not val
+            self.menubar.set(val)
+        if val:
+            self._show_menubar()
+            self.unbind('<Alt_R>')
+            self.unbind('<Alt_L>')
+            self.unbind('<ButtonPress>')
+            self.unbind('<Escape>')
+        else:
+            self._hide_menubar()
+            self.bind('<Alt_L>', self._toggle_menubar)
+            self.bind('<Alt_R>', self._toggle_menubar)
+            self.bind('<ButtonPress>', self._hide_menubar)
+            self.bind('<Escape>', self._hide_menubar)
+        CONFIG.set('General', 'menubar', str(val))
         CONFIG.save()
 
     def save_layout(self):
