@@ -135,6 +135,7 @@ if not CONFIG.read(PATH_CONFIG):
     CONFIG.set('General', 'opened_files', "")
     CONFIG.set('General', 'recent_files', "")
     CONFIG.set('General', 'layout', "horizontal")
+    CONFIG.set('General', 'fullscreen', "False")
     CONFIG.add_section('Layout')
     CONFIG.set('Layout', 'horizontal', "0.16 0.65")
     CONFIG.set('Layout', 'horizontal2', "0.65")

@@ -131,6 +131,7 @@ OPEN_CHAR = {"}": "{", "]": "[", ")": "("}
 CLOSE_CHAR = {"{": "}", "(": ")", "[": "]"}
 DICKEY_REGEXP = re.compile(r"^[^:]*:")
 
+
 def find_closing_bracket(text, open_char, open_index):
     close_char = CLOSE_CHAR[open_char]
     index = open_index + 1

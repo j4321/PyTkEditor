@@ -322,8 +322,18 @@ class App(tk.Tk):
                               image='img_menu_dummy', compound='left')
         menu_view.add_cascade(label='Window layout', menu=menu_layouts,
                               image='img_menu_dummy', compound='left')
+        self.fullscreen = tk.BooleanVar(self, CONFIG.getboolean('General',
+                                                                'fullscreen',
+                                                                fallback=False))
+        menu_view.add_checkbutton(label='Fullscreen',
+                                  indicatoron=False,
+                                  compound='left',
+                                  image='img_fullscreen_on',
+                                  selectimage='img_fullscreen_off',
+                                  variable=self.fullscreen,
+                                  command=self.toggle_fullscreen,
+                                  accelerator='F11')
         # --- --- --- widgets
-        # menu_widgets.add_checkbutton(label='Code structure', variable=self.codestruct.visible)
         for name in sorted(widgets):
             menu_widgets.add_checkbutton(label=name,
                                          variable=self.widgets.get(name, self.codestruct).visible)
@@ -394,6 +404,7 @@ class App(tk.Tk):
         self.bind('<F9>', self.run_selection)
         if cst.JUPYTER:
             self.bind('<F10>', self.execute_in_jupyter)
+        self.bind('<F11>', self.toggle_fullscreen)
 
         # --- maximize window
         self.update_idletasks()
@@ -408,6 +419,7 @@ class App(tk.Tk):
             pass
         self.update_idletasks()
         self.change_layout(True)
+        self.toggle_fullscreen()
 
         # --- restore opened files
         ofiles = CONFIG.get('General', 'opened_files').split(', ')
@@ -781,6 +793,15 @@ class App(tk.Tk):
             showerror("Error", str(args[1]), err, True)
         else:
             self.quit()
+
+    def toggle_fullscreen(self, event=None):
+        val = self.fullscreen.get()
+        if event:
+            val = not val
+            self.fullscreen.set(val)
+        self.attributes('-fullscreen', val)
+        CONFIG.set('General', 'fullscreen', str(val))
+        CONFIG.save()
 
     def save_layout(self):
         layout = CONFIG.get('General', 'layout', fallback='horizontal')
