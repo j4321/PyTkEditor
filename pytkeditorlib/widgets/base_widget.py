@@ -106,8 +106,13 @@ class RichText(Text):
         self.tag_configure('prompt', **CONSOLE_SYNTAX_HIGHLIGHTING['Token.Generic.Prompt'])
         self.tag_configure('output', foreground=CONSOLE_FG)
         self.tag_configure('highlight_find', background=CONSOLE_HIGHLIGHT_BG)
-        self.tag_configure('highlight', foreground='#00B100', font=FONT + ('bold',))
-        self.tag_configure('highlight_error', foreground='#FF0000', font=FONT + ('bold',))
+        # bracket matching:  fg;bg;font formatting
+        mb = CONFIG.get('Console', 'matching_brackets', fallback='#00B100;;bold').split(';')
+        opts = {'foreground': mb[0], 'background': mb[1], 'font': FONT + tuple(mb[2:])}
+        self.tag_configure('matching_brackets', **opts)
+        umb = CONFIG.get('Console', 'unmatched_bracket', fallback='#FF0000;;bold').split(';')
+        opts = {'foreground': umb[0], 'background': umb[1], 'font': FONT + tuple(umb[2:])}
+        self.tag_configure('unmatched_bracket', **opts)
         # --- ansi tags
         self.tag_configure('foreground default', foreground='')
         self.tag_configure('background default', background='')
@@ -125,8 +130,8 @@ class RichText(Text):
         self.tag_raise('sel')
 
     def _clear_highlight(self, event=None):
-        self.tag_remove('highlight', '1.0', 'end')
-        self.tag_remove('highlight_error', '1.0', 'end')
+        self.tag_remove('matching_brackets', '1.0', 'end')
+        self.tag_remove('unmatched_bracket', '1.0', 'end')
 
     def _find_matching_par(self, event=None):
         """Highlight matching brackets."""
@@ -149,11 +154,11 @@ class RichText(Text):
             index = close_index + '+1c'
             close_index = self.search(close_char, index, 'end')
         if stack == 0:
-            self.tag_add('highlight', 'insert-1c')
-            self.tag_add('highlight', index + '-1c')
+            self.tag_add('matching_brackets', 'insert-1c')
+            self.tag_add('matching_brackets', index + '-1c')
             return True
         else:
-            self.tag_add('highlight_error', 'insert-1c')
+            self.tag_add('unmatched_bracket', 'insert-1c')
             return False
 
     def _find_opening_par(self, char):
@@ -167,11 +172,11 @@ class RichText(Text):
             index = open_index
             open_index = self.search(open_char, index, '1.0', backwards=True)
         if stack == 0:
-            self.tag_add('highlight', 'insert-1c')
-            self.tag_add('highlight', index)
+            self.tag_add('matching_brackets', 'insert-1c')
+            self.tag_add('matching_brackets', index)
             return True
         else:
-            self.tag_add('highlight_error', 'insert-1c')
+            self.tag_add('unmatched_bracket', 'insert-1c')
             return False
 
 

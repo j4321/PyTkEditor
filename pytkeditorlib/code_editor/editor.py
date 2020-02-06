@@ -556,8 +556,13 @@ class Editor(ttk.Frame):
             opts['selectforeground'] = selectfg
             self.text.tag_configure(tag, **opts)
         self.text.tag_configure('highlight_find', background=EDITOR_HIGHLIGHT_BG)
-        self.text.tag_configure('highlight', foreground='#00B100', font=FONT + ('bold',))
-        self.text.tag_configure('highlight_error', foreground='#FF0000', font=FONT + ('bold',))
+        # bracket matching:  fg;bg;font formatting
+        mb = CONFIG.get('Editor', 'matching_brackets', fallback='#00B100;;bold').split(';')
+        opts = {'foreground': mb[0], 'background': mb[1], 'font': FONT + tuple(mb[2:])}
+        self.text.tag_configure('matching_brackets', **opts)
+        umb = CONFIG.get('Editor', 'unmatched_bracket', fallback='#FF0000;;bold').split(';')
+        opts = {'foreground': umb[0], 'background': umb[1], 'font': FONT + tuple(umb[2:])}
+        self.text.tag_configure('unmatched_bracket', **opts)
         self.text.tag_raise('sel')
 
     def parse(self, text, start):
@@ -586,8 +591,8 @@ class Editor(ttk.Frame):
 
     # --- brackets
     def _clear_highlight(self):
-        self.text.tag_remove('highlight', '1.0', 'end')
-        self.text.tag_remove('highlight_error', '1.0', 'end')
+        self.text.tag_remove('matching_brackets', '1.0', 'end')
+        self.text.tag_remove('unmatched_bracket', '1.0', 'end')
 
     def auto_close(self, event):
         sel = self.text.tag_ranges('sel')
@@ -601,10 +606,10 @@ class Editor(ttk.Frame):
             self.parse(event.char + text + self._autoclose[event.char], index)
         else:
             self._clear_highlight()
-            self.text.insert('insert', event.char, ['Token.Punctuation', 'highlight'])
+            self.text.insert('insert', event.char, ['Token.Punctuation', 'matching_brackets'])
             if not self._find_matching_par():
-                self.text.tag_remove('highlight_error', 'insert-1c')
-                self.text.insert('insert', self._autoclose[event.char], ['Token.Punctuation', 'highlight'])
+                self.text.tag_remove('unmatched_bracket', 'insert-1c')
+                self.text.insert('insert', self._autoclose[event.char], ['Token.Punctuation', 'matching_brackets'])
                 self.text.mark_set('insert', 'insert-1c')
         self.text.edit_separator()
         return 'break'
@@ -661,11 +666,11 @@ class Editor(ttk.Frame):
             index = close_index + '+1c'
             close_index = self.text.search(close_char, index, 'end')
         if stack == 0:
-            self.text.tag_add('highlight', 'insert-1c')
-            self.text.tag_add('highlight', index + '-1c')
+            self.text.tag_add('matching_brackets', 'insert-1c')
+            self.text.tag_add('matching_brackets', index + '-1c')
             return True
         else:
-            self.text.tag_add('highlight_error', 'insert-1c')
+            self.text.tag_add('unmatched_bracket', 'insert-1c')
             return False
 
     def _find_opening_par(self, char):
@@ -679,11 +684,11 @@ class Editor(ttk.Frame):
             index = open_index
             open_index = self.text.search(open_char, index, '1.0', backwards=True)
         if stack == 0:
-            self.text.tag_add('highlight', 'insert-1c')
-            self.text.tag_add('highlight', index)
+            self.text.tag_add('matching_brackets', 'insert-1c')
+            self.text.tag_add('matching_brackets', index)
             return True
         else:
-            self.text.tag_add('highlight_error', 'insert-1c')
+            self.text.tag_add('unmatched_bracket', 'insert-1c')
             return False
 
     # --- autocompletion and help tooltips

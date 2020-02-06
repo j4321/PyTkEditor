@@ -772,10 +772,10 @@ class TextConsole(RichText):
             self.parse()
         else:
             self._clear_highlight()
-            self.insert('insert', event.char, ['Token.Punctuation', 'highlight'])
+            self.insert('insert', event.char, ['Token.Punctuation', 'matching_brackets'])
             if not self._find_matching_par():
-                self.tag_remove('highlight_error', 'insert-1c')
-                self.insert('insert', self._autoclose[event.char], ['Token.Punctuation', 'highlight'])
+                self.tag_remove('unmatched_bracket', 'insert-1c')
+                self.insert('insert', self._autoclose[event.char], ['Token.Punctuation', 'matching_brackets'])
                 self.mark_set('insert', 'insert-1c')
         self.edit_separator()
         return 'break'

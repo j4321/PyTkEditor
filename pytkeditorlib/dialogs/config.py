@@ -26,9 +26,99 @@ from tkinter import ttk
 from tkinter import font
 
 from pygments.styles import get_all_styles
+from tkcolorpicker import askcolor
 
 from pytkeditorlib.utils.constants import CONFIG, PATH_TEMPLATE, JUPYTER
 from pytkeditorlib.gui_utils import AutoCompleteCombobox
+
+
+class ColorFrame(ttk.Frame):
+    def __init__(self, master=None, color='white', label='Color'):
+        ttk.Frame.__init__(self, master, padding=(4, 0))
+        self.label = ttk.Label(self, text=label)
+        self.label.pack(side='left')
+        self.entry = ttk.Entry(self, width=8)
+        self.entry.insert(0, color)
+        self.entry.pack(side='left', padx=4)
+        self.button = ttk.Button(self, image='img_color', padding=0,
+                                 command=self.askcolor)
+        self.button.pack(side='left')
+
+    def state(self, statespec=None):
+        self.button.state(statespec)
+        self.label.state(statespec)
+        return ttk.Frame.state(self, statespec)
+
+    def askcolor(self):
+        icolor = self.entry.get()
+        try:
+            self.winfo_rgb(icolor)
+        except tk.TclError:
+            icolor = "red"
+        color = askcolor(icolor, parent=self, title='Color')[1]
+        self.update_idletasks()
+        if color is not None:
+            self.entry.delete(0, 'end')
+            self.entry.insert(0, color)
+
+    def get_color(self):
+        color = self.entry.get()
+        if color:
+            try:
+                self.winfo_rgb(color)
+            except tk.TclError:
+                color = None
+        return color
+
+
+
+class FormattingFrame(ttk.Frame):
+    def __init__(self, master=None, fg='black', bg='white', *font_formatting):
+        ttk.Frame.__init__(self, master, padding=4)
+        style = ttk.Style(self)
+        style.configure('bold.TCheckbutton', font='TkDefaultFont 9 bold')
+        style.configure('italic.TCheckbutton', font='TkDefaultFont 9 italic')
+        style.configure('underline.TCheckbutton', font='TkDefaultFont 9 underline')
+        self._init_fg = fg
+        self._init_bg = bg
+        # fg
+        self.fg = ColorFrame(self, fg, 'foreground')
+        # bg
+        self.bg = ColorFrame(self, bg, 'background')
+
+        # font formatting
+        bold = ttk.Checkbutton(self, text='B', style='bold.TCheckbutton')
+        bold.state(['!alternate', '!'*('bold' not in font_formatting) + 'selected'])
+        italic = ttk.Checkbutton(self, text='I', style='italic.TCheckbutton')
+        italic.state(['!alternate', '!'*('italic' not in font_formatting) + 'selected'])
+        underline = ttk.Checkbutton(self, text='U', style='underline.TCheckbutton')
+        underline.state(['!alternate', '!'*('underline' not in font_formatting) + 'selected'])
+        self.formatting = [bold, italic, underline]
+
+        # placement
+        self.fg.pack(side='left')
+        self.bg.pack(side='left')
+        bold.pack(side='left', padx=(4, 1))
+        italic.pack(side='left', padx=1)
+        underline.pack(side='left', padx=(1, 0))
+
+    def state(self, statespec=None):
+        self.bg.state(statespec)
+        self.fg.state(statespec)
+        for cb in self.formatting:
+            cb.state(statespec)
+        return ttk.Frame.state(self, statespec)
+
+    def get_formatting(self):
+        fg = self.fg.get_color()
+        if fg is None:
+            fg = self._init_fg
+        bg = self.bg.get_color()
+        if bg is None:
+            bg = self._init_bg
+        formatting = ['bold', 'italic', 'underline']
+        font_formatting = ';'.join([f for f, cb in zip(formatting, self.formatting) if 'selected' in cb.state()])
+        return f"{fg};{bg};{font_formatting}"
 
 
 class Config(tk.Toplevel):
@@ -83,22 +173,50 @@ class Config(tk.Toplevel):
 
 
         # --- syntax highlighting
-        frame_s_h = ttk.Frame(self)
+        frame_s_h = ttk.Frame(self, padding=(4, 0))
+        frame_s_h.columnconfigure(1, weight=1)
         styles = list(get_all_styles())
         styles.sort()
         w = len(max(styles, key=lambda x: len(x)))
-        self.editor_style = AutoCompleteCombobox(frame_s_h, values=styles, width=w)
-        self.editor_style.insert(0, CONFIG.get('Editor', 'style'))
-        self.console_style = AutoCompleteCombobox(frame_s_h, values=styles, width=w)
-        self.console_style.insert(0, CONFIG.get('Console', 'style'))
 
         ttk.Label(frame_s_h, text='Syntax Highlighting',
-                  font=('TkDefaultFont', 10, 'bold')).grid(row=0, columnspan=4,
+                  font=('TkDefaultFont', 10, 'bold')).grid(row=0, columnspan=2,
                                                            sticky='w', pady=4)
-        ttk.Label(frame_s_h, text='Editor:').grid(row=1, column=0, sticky='e', padx=4, pady=4)
-        self.editor_style.grid(row=1, column=1, sticky='w', padx=4, pady=4)
-        ttk.Label(frame_s_h, text='Console:').grid(row=1, column=2, sticky='e', padx=4, pady=4)
-        self.console_style.grid(row=1, column=3, sticky='w', padx=4, pady=4)
+        # --- --- editor
+        self.editor_style = AutoCompleteCombobox(frame_s_h, values=styles, width=w)
+        self.editor_style.insert(0, CONFIG.get('Editor', 'style'))
+        mb = CONFIG.get('Editor', 'matching_brackets', fallback='#00B100;;bold').split(';')
+        self.editor_matching_brackets = FormattingFrame(frame_s_h, *mb)
+        umb = CONFIG.get('Editor', 'unmatched_bracket', fallback='#FF0000;;bold').split(';')
+        self.editor_unmatched_bracket = FormattingFrame(frame_s_h, *umb)
+
+        ttk.Label(frame_s_h, text='Editor',
+                  font=('TkDefaultFont', 9, 'bold')).grid(row=1, columnspan=2,
+                                                          sticky='w')
+        ttk.Label(frame_s_h, text='Theme:').grid(row=2, column=0, sticky='e', pady=(0, 4))
+        self.editor_style.grid(row=2, column=1, sticky='w', padx=8, pady=(0, 4))
+        ttk.Label(frame_s_h, text='Matching brackets:').grid(row=3, column=0, sticky='e')
+        self.editor_matching_brackets.grid(row=3, column=1, sticky='w')
+        ttk.Label(frame_s_h, text='Unmatched bracket:').grid(row=4, column=0, sticky='e')
+        self.editor_unmatched_bracket.grid(row=4, column=1, sticky='w')
+
+        # --- --- console
+        self.console_style = AutoCompleteCombobox(frame_s_h, values=styles, width=w)
+        self.console_style.insert(0, CONFIG.get('Console', 'style'))
+        mb = CONFIG.get('Console', 'matching_brackets', fallback='#00B100;;bold').split(';')
+        self.console_matching_brackets = FormattingFrame(frame_s_h, *mb)
+        umb = CONFIG.get('Console', 'unmatched_bracket', fallback='#FF0000;;bold').split(';')
+        self.console_unmatched_bracket = FormattingFrame(frame_s_h, *umb)
+
+        ttk.Label(frame_s_h, text='Console',
+                  font=('TkDefaultFont', 9, 'bold')).grid(row=5, columnspan=2,
+                                                          sticky='w')
+        ttk.Label(frame_s_h, text='Theme:').grid(row=6, column=0, sticky='e', pady=(0, 4))
+        self.console_style.grid(row=6, column=1, sticky='w', padx=8, pady=(0, 4))
+        ttk.Label(frame_s_h, text='Matching brackets:').grid(row=7, column=0, sticky='e')
+        self.console_matching_brackets.grid(row=7, column=1, sticky='w')
+        ttk.Label(frame_s_h, text='Unmatched bracket:').grid(row=8, column=0, sticky='e')
+        self.console_unmatched_bracket.grid(row=8, column=1, sticky='w')
 
         # --- code checking
         frame_check = ttk.Frame(self)
@@ -208,9 +326,13 @@ class Config(tk.Toplevel):
         estyle = self.editor_style.get()
         if estyle:
             CONFIG.set('Editor', 'style', estyle)
+        CONFIG.set('Editor', 'matching_brackets', self.editor_matching_brackets.get_formatting())
+        CONFIG.set('Editor', 'unmatched_bracket', self.editor_unmatched_bracket.get_formatting())
         cstyle = self.console_style.get()
         if cstyle:
             CONFIG.set('Console', 'style', cstyle)
+        CONFIG.set('Console', 'matching_brackets', self.console_matching_brackets.get_formatting())
+        CONFIG.set('Console', 'unmatched_bracket', self.console_unmatched_bracket.get_formatting())
         # --- code checking
         CONFIG.set('Editor', 'code_check',
                    str('selected' in self.code_check.state()))
