@@ -24,6 +24,7 @@ import os
 from webbrowser import open as url_open
 import tkinter as tk
 from tkinter import ttk
+from textwrap import wrap
 
 from pytkeditorlib.gui_utils import AutoHideScrollbar as Scrollbar
 from pytkeditorlib.utils.constants import REPORT_URL, CONFIG
@@ -63,16 +64,14 @@ class OneButtonBox(tk.Toplevel):
         frame = ttk.Frame(self)
         frame.rowconfigure(0, weight=1)
         frame.columnconfigure(1, weight=1)
-        l = len(message)
-        w = max(1, min(l, 50))
-        h = 0
-        for line in message.splitlines():
-            h += 1 + len(line) // w
+        msg = wrap(message, 50)
+        h = len(msg) + 1
+        w = len(max(msg, key=lambda x: len(x)))
         if h < 3:
-            w = min(l, 35)
-            h = 0
-            for line in message.splitlines():
-                h += 1 + len(line) // w
+            msg = wrap(message, 35)
+            w = len(max(msg, key=lambda x: len(x)))
+            h = len(msg) + 1
+
         theme_name = '{} Theme'.format(CONFIG.get('General', 'theme').capitalize())
         fg = CONFIG.get(theme_name, 'fg')
         display = tk.Text(frame, font="TkDefaultFont 10 bold", fg=fg,
@@ -144,17 +143,17 @@ class ShowError(tk.Toplevel):
         frame = ttk.Frame(self)
         frame.rowconfigure(0, weight=1)
         frame.columnconfigure(1, weight=1)
-        l = len(message)
-        l2 = len(traceback)
-        w = max(1, min(max(l, l2), 50))
-        if not l2 and l // w < 3:
-            w = 35
-        h = 0
-        for line in message.splitlines():
-            h += 1 + len(line) // w
-        h2 = 0
-        for line in traceback.splitlines():
-            h2 += 1 + len(line) // w
+
+        msg = wrap(message, 50)
+        h = len(msg) + 1
+        w = len(max(msg, key=lambda x: len(x)))
+        if not traceback and h < 3:
+            msg = wrap(message, 35)
+            w = len(max(msg, key=lambda x: len(x)))
+            h = len(msg) + 1
+        if traceback:
+            tbk = wrap(traceback, 50)
+            w = max(w, len(max(tbk, key=lambda x: len(x))))
 
         display = tk.Text(frame, font="TkDefaultFont 10 bold", fg=fg,
                           height=h, width=w, wrap="word")
