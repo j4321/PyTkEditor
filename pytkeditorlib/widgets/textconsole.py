@@ -39,7 +39,7 @@ import jedi
 from pytkeditorlib.utils.constants import SERVER_CERT, CLIENT_CERT, \
     MAGIC_COMMANDS, EXTERNAL_COMMANDS
 from pytkeditorlib.utils.functions import get_screen, PathCompletion, glob_rel, \
-    magic_complete, parse_ansi
+    magic_complete, parse_ansi, format_long_output
 from pytkeditorlib.dialogs import askyesno, Tooltip, CompListbox
 from pytkeditorlib.gui_utils import AutoHideScrollbar
 from .base_widget import BaseWidget, RichText
@@ -80,7 +80,6 @@ class TextConsole(RichText):
         self._re_expanduser = re.compile(r'(~\w*)')
         self._re_trailing_spaces = re.compile(r' *$', re.MULTILINE)
         self._re_prompt = re.compile(rf'^{re.escape(self._prompt2)}?', re.MULTILINE)
-
 
         self._jedi_comp_external = '\n'.join([f'\ndef {cmd}():\n    pass\n'
                                               for cmd in EXTERNAL_COMMANDS])
@@ -710,7 +709,8 @@ class TextConsole(RichText):
             if wait:
                 if output.strip():
                     self.configure(state='normal')
-                    if '\x1b' in output: # ansi formatting
+                    output = format_long_output(output, self["width"])
+                    if '\x1b' in output:  # ansi formatting
                         offset = int(self.index('end').split('.')[0]) - 1
                         tag_ranges, text = parse_ansi(output, offset)
                         self.insert('end', text, 'output')

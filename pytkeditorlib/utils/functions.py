@@ -123,6 +123,48 @@ def glob_rel(pattern, locdir):
     return paths
 
 
+# --- long output formatter
+INDENT_REGEXP = re.compile(r" *")
+TAIL_REGEXP = re.compile(r"[\n ]*$")
+SPLITTER_REGEXP = re.compile(r',(?!(?:[^\(]*\)|[^\[]*\]|[^\{]*\})) ?')
+OPEN_CHAR = {"}": "{", "]": "[", ")": "("}
+CLOSE_CHAR = {"{": "}", "(": ")", "[": "]"}
+
+
+def find_closing_bracket(text, open_char, open_index):
+    close_char = CLOSE_CHAR[open_char]
+    index = open_index + 1
+    close_index = text.find(close_char, index)
+    stack = 1
+    while stack > 0 and close_index > 0:
+        stack += text.count(open_char, index, close_index) - 1
+        index = close_index + 1
+        close_index = text.find(close_char, index)
+    if stack == 0:
+        return index - 1
+    else:
+        return -1
+
+
+def format_long_output(output, wrap_length):
+    if len(output) <= wrap_length:
+        return output
+    indent = INDENT_REGEXP.match(output).group()
+    tail = TAIL_REGEXP.search(output).group()
+
+    if tail:
+        text = output[len(indent):-len(tail)]
+    else:
+        text = output[len(indent):]
+    if text[0] in CLOSE_CHAR:
+        close = find_closing_bracket(text, text[0], 0)
+        if close == len(text) - 1:
+            content = SPLITTER_REGEXP.split(text[1:-1])
+            if len(content) > 1:
+                return f"{indent}{text[0]}{content[0]},\n{indent} " + f",\n{indent} ".join(content[1:]) + text[-1] + tail
+    return output
+
+
 # --- ANSI format parser
 ANSI_COLORS_DARK = ['black', 'red', 'green', 'yellow', 'royal blue', 'magenta',
                     'cyan', 'light gray']
