@@ -101,6 +101,8 @@ class TextConsole(RichText):
         self.mark_set('input', 'insert')
         self.mark_gravity('input', 'left')
 
+        self._poll_id = ""
+
         # --- bindings
         self.bind('<parenleft>', self._args_hint)
         self.bind('<Control-Return>', self.on_ctrl_return)
@@ -313,6 +315,10 @@ class TextConsole(RichText):
 
     def quit(self, event=None):
         self.history.save()
+        try:
+            self.after_cancel(self._poll_id)
+        except ValueError:
+            pass
         try:
             self.shell_client.shutdown(socket.SHUT_RDWR)
             self.shell_client.close()
@@ -688,11 +694,37 @@ class TextConsole(RichText):
             except Exception as e:
                 print(e)
                 return
-
+            try:
+                self.after_cancel(self._poll_id)
+            except ValueError:
+                pass
             self.after(1, self._check_result, auto_indent, code, index, add_to_hist)
         else:
             self.insert('insert', '\n')
             self.prompt()
+
+    def _poll_output(self):
+        """Get outputs coming in between """
+        try:
+            cmd = self.shell_client.recv(65536).decode()
+        except socket.error:
+            self._poll_id = self.after(100, self._poll_output)
+        else:
+            if cmd:
+                res, output, err, wait, cwd = eval(cmd)
+                index = self.index('input linestart -1c')
+                if output.strip():
+                    output = format_long_output(output, self["width"])
+                    if '\x1b' in output:  # ansi formatting
+                        offset = int(index.split('.')[0]) + 1
+                        tag_ranges, text = parse_ansi(output, offset)
+                        self.insert(f'{index}+1c', text, 'output')
+                        for tag, r in tag_ranges.items():
+                            self.tag_add(tag, *r)
+                    else:
+                        self.insert(f'{index}+1c', output, 'output')
+                    self.see('end')
+            self._poll_id = self.after(10, self._poll_output)
 
     def _check_result(self, auto_indent, code, index, add_to_hist=True):
         try:
@@ -712,15 +744,16 @@ class TextConsole(RichText):
             self.cwd = cwd
             if wait:
                 if output.strip():
-                    self.configure(state='normal')
                     output = format_long_output(output, self["width"])
                     if '\x1b' in output:  # ansi formatting
                         offset = int(self.index('end').split('.')[0]) - 1
                         tag_ranges, text = parse_ansi(output, offset)
+                        self.configure(state='normal')
                         self.insert('end', text, 'output')
                         for tag, r in tag_ranges.items():
                             self.tag_add(tag, *r)
                     else:
+                        self.configure(state='normal')
                         self.insert('end', output, 'output')
                     self.mark_set('input', 'end')
                     self.see('end')
@@ -760,6 +793,7 @@ class TextConsole(RichText):
                 if add_to_hist:
                     self.history.add_history(code)
                     self._hist_item = self.history.get_length()
+            self._poll_id = self.after(100, self._poll_output)
 
     # --- brackets
     def auto_close(self, event):

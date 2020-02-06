@@ -55,17 +55,15 @@ else:
     GUI.append('gtk')
 
 
-class Stdout(StringIO):
+class Stdout:
     def __init__(self, send_cmd, *args):
-        StringIO.__init__(self, *args)
         self.send_cmd = send_cmd
 
     def write(self, line):
-        StringIO.write(self, line)
         self.send_cmd(line)
 
-class ConsoleMethods:
 
+class ConsoleMethods:
     def __init__(self, locals):
         self.current_gui = ''
         self.locals = locals
@@ -263,12 +261,12 @@ class SocketConsole(InteractiveConsole):
 
     def interact(self):
         self.socket.setblocking(False)
-        while True:
-            try:
-                line = self.socket.recv(65536).decode()
-                if self.buffer:
-                    self.resetbuffer()
-                with redirect_stdout(self.stdout):
+        with redirect_stdout(self.stdout):
+            while True:
+                try:
+                    line = self.socket.recv(65536).decode()
+                    if self.buffer:
+                        self.resetbuffer()
                     try:
                         res = self.push(line)
                     except SystemExit:
@@ -277,28 +275,26 @@ class SocketConsole(InteractiveConsole):
                     except KeyboardInterrupt:
                         self.write('KeyboardInterrupt\n')
                         res = False
-                if not res:
-                    self.push('_cwd = _getcwd()')
-                err = self.stderr.getvalue()
-                msg = f'{res}, "", {err!r}, False, {self.locals["_cwd"]!r}'
-                if len(msg) > 16300:
-                    fileno, filename = mkstemp(text=True)
-                    with open(filename, 'w') as tmpfile:
-                        tmpfile.write(msg)
-                    msg = f'{res}, {filename!r}, "Too long", True, {self.locals["_cwd"]!r}'
-                self.socket.send(msg.encode())
-                self.stdout.close()
-                self.stderr.close()
-                self.stdout = Stdout(self.send_cmd)
-                self.stderr = StringIO()
-            except BrokenPipeError:
-                self.socket.close()
-                break
-            except socket.error as e:
-                if e.errno != 2:
-                    print('%r' % e, type(e), e)
-                self._gui_loop()
-                time.sleep(0.05)
+                    if not res:
+                        self.push('_cwd = _getcwd()')
+                    err = self.stderr.getvalue()
+                    msg = f'{res}, "", {err!r}, False, {self.locals["_cwd"]!r}'
+                    if len(msg) > 16300:
+                        fileno, filename = mkstemp(text=True)
+                        with open(filename, 'w') as tmpfile:
+                            tmpfile.write(msg)
+                        msg = f'{res}, {filename!r}, "Too long", True, {self.locals["_cwd"]!r}'
+                    self.socket.send(msg.encode())
+                    self.stderr.close()
+                    self.stderr = StringIO()
+                except BrokenPipeError:
+                    self.socket.close()
+                    break
+                except socket.error as e:
+                    if e.errno != 2:
+                        print('%r' % e, type(e), e)
+                    self._gui_loop()
+                    time.sleep(0.05)
 
 
 if __name__ == '__main__':
