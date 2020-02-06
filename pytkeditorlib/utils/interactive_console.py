@@ -275,9 +275,9 @@ class SocketConsole(InteractiveConsole):
                     except KeyboardInterrupt:
                         self.write('KeyboardInterrupt\n')
                         res = False
-                    if not res:
-                        self.push('_cwd = _getcwd()')
                     err = self.stderr.getvalue()
+                    if not res and not err:
+                        self.push('_cwd = _getcwd()')
                     msg = f'{res}, "", {err!r}, False, {self.locals["_cwd"]!r}'
                     if len(msg) > 16300:
                         fileno, filename = mkstemp(text=True)
