@@ -360,7 +360,7 @@ class Editor(ttk.Frame):
             index = self.text.index('insert linestart')
             self.text.delete('insert linestart', 'insert lineend')
 
-        marker = CONFIG.get('General', 'comment_marker', fallback='~')
+        marker = CONFIG.get('Editor', 'comment_marker', fallback='~')
         re_comment = re.compile(rf'^( *)#{re.escape(marker)}(.*)')
         for i, line in enumerate(lines):
             res = re_comment.match(line)

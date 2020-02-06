@@ -127,6 +127,19 @@ CLIENT_CERT = os.path.join(PATH_SSL, 'client.crt')
 # --- config
 CONFIG = configparser.ConfigParser()
 
+external_consoles = ['guake', 'tilda', 'terminator', 'yakuake', 'konsole',
+                     'xfce4-terminal', 'lxterminal', 'gnome-terminal', 'xterm']
+
+i = 0
+while i < len(external_consoles) and not os.path.exists(os.path.join('/usr', 'bin', external_consoles[i])):
+    print(os.path.join('/usr', 'bin', external_consoles[i]))
+    i += 1
+
+if i < len(external_consoles):
+    external_console = f"{external_consoles[i]} -e"
+else:
+    external_console = ''
+
 if not CONFIG.read(PATH_CONFIG):
     CONFIG.add_section('General')
     CONFIG.set('General', 'theme', "light")
@@ -147,6 +160,7 @@ if not CONFIG.read(PATH_CONFIG):
     CONFIG.set('Editor', 'style_check', "True")
     CONFIG.set('Editor', 'matching_brackets', '#00B100;;bold')  # fg;bg;font formatting
     CONFIG.set('Editor', 'unmatched_bracket', '#FF0000;;bold')  # fg;bg;font formatting
+    CONFIG.set('Editor', 'comment_marker', '~')
     CONFIG.add_section('Code structure')
     CONFIG.set('Code structure', 'visible', "True")
     CONFIG.add_section('Console')
@@ -156,7 +170,7 @@ if not CONFIG.read(PATH_CONFIG):
     CONFIG.set('Console', 'matching_brackets', '#00B100;;bold')  # fg;bg;font formatting
     CONFIG.set('Console', 'unmatched_bracket', '#FF0000;;bold')  # fg;bg;font formatting
     CONFIG.add_section('History')
-    CONFIG.set('History', 'maxsize', "10000")
+    CONFIG.set('History', 'max_size', "10000")
     CONFIG.set('History', 'visible', "True")
     CONFIG.set('History', 'order', "1")
     CONFIG.add_section('Help')
@@ -169,6 +183,7 @@ if not CONFIG.read(PATH_CONFIG):
     CONFIG.add_section('Run')
     CONFIG.set('Run', 'console', "external")
     CONFIG.set('Run', 'external_interactive', "True")
+    CONFIG.set('Run', 'external_console', external_console)
     CONFIG.add_section('Dark Theme')
     CONFIG.set('Dark Theme', 'bg', '#454545')
     CONFIG.set('Dark Theme', 'activebg', '#525252')

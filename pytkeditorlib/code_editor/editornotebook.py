@@ -28,10 +28,10 @@ from subprocess import Popen
 
 from tkfilebrowser import asksaveasfilename
 
-from pytkeditorlib.gui_utils import AutoCompleteEntryListbox
+from pytkeditorlib.gui_utils import AutoCompleteEntryListbox, Notebook
 from pytkeditorlib.dialogs import askyesnocancel, askoptions, showerror, \
     TooltipNotebookWrapper
-from pytkeditorlib.gui_utils import Notebook
+from pytkeditorlib.utils.constants import CONFIG
 from .editor import Editor
 
 
@@ -460,7 +460,15 @@ class EditorNotebook(Notebook):
             file = self.files[self.current_tab]
             if file:
                 filename = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'utils', 'console.py')
-                Popen(['xfce4-terminal', '-e', f'python {filename} {file} {interactive}'])
+                external_console = CONFIG.get('Run', 'external_console', fallback='').split()
+                try:
+
+                    Popen(external_console + [f"python {filename} {file} {interactive}"])
+                except Exception:
+                    showerror("Error",
+                              "PyTkEditor failed to run the file, please check \
+the external terminal configuration in the settings.",
+                              parent=self)
 
     def new(self, file=None):
         if file is None:
