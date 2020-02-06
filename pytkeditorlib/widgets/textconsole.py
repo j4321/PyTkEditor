@@ -547,6 +547,8 @@ class TextConsole(RichText):
             text = self.get('insert-1c', 'insert+1c')
             if re.search(r'    $', linestart):
                 self.delete('insert-4c', 'insert')
+            elif linestart == self._prompt2:
+                self.delete("insert linestart -1c", "insert")
             elif text in ["()", "[]", "{}"]:
                 self.delete('insert-1c', 'insert+1c')
             elif text in ["''"]:
