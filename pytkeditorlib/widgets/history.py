@@ -72,9 +72,8 @@ class History(RichText):
         RichText.update_style(self)
         self.maxsize = CONFIG.getint('History', 'max_size', fallback=10000)
 
-    def parse(self):
-        data = self.get('1.0', 'end')
-        start = '1.0'
+    def parse(self, start='1.0'):
+        data = self.get(start, 'end')
         while data and '\n' == data[0]:
             start = self.index('%s+1c' % start)
             data = data[1:]
@@ -104,27 +103,27 @@ class History(RichText):
 
     def add_history(self, line):
         self.history.append(line)
+        index = self.index('end-1c')
         self.configure(state='normal')
         self.insert('end', line + '\n')
-        self.parse()
+        self.parse(index)
         self.configure(state='disabled')
         self.see('end')
 
-    def replace_history_item(self, pos, line):
-        self.history[pos] = line
+    def _reset_text(self):
         self.configure(state='normal')
         self.delete('1.0', 'end')
         self.insert('1.0', '\n'.join(self.history))
         self.parse()
         self.configure(state='disabled')
 
+    def replace_history_item(self, pos, line):
+        self.history[pos] = line
+        self._reset_text()
+
     def remove_history_item(self, pos):
         del self.history[pos]
-        self.configure(state='normal')
-        self.delete('1.0', 'end')
-        self.insert('1.0', '\n'.join(self.history))
-        self.parse()
-        self.configure(state='disabled')
+        self._reset_text()
 
     def get_history_item(self, pos):
         try:
