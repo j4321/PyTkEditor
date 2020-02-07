@@ -36,7 +36,7 @@ from .base_widget import BaseWidget, RichText
 class History(RichText):
     """Python console command history."""
 
-    def __init__(self, master=None, histfile=HISTFILE, **kw):
+    def __init__(self, master=None, histfile=HISTFILE, current_session=False, **kw):
         """ Crée un historique vide """
         kw.setdefault('width', 1)
         RichText.__init__(self, master, **kw)
@@ -44,6 +44,7 @@ class History(RichText):
         self.histfile = histfile
         self.maxsize = CONFIG.getint('History', 'max_size', fallback=10000)
         self.history = []
+        self.current_session = current_session
 
         # --- bindings
         self.bind('<1>', lambda e: self.focus_set())
@@ -57,9 +58,7 @@ class History(RichText):
             self._session_start = len(self.history)
         except (FileNotFoundError, pickle.UnpicklingError, EOFError):
             self._session_start = 0
-        self.insert('1.0', '\n'.join(self.history) + '\n')
-        self.parse()
-        self.configure(state='disabled')
+        self.reset_text()
 
     def new_session(self):
         self._session_start = len(self.history)
@@ -110,20 +109,26 @@ class History(RichText):
         self.configure(state='disabled')
         self.see('end')
 
-    def _reset_text(self):
+    def reset_text(self):
+        self.configure(cursor='watch')
+        self.update_idletasks()
         self.configure(state='normal')
         self.delete('1.0', 'end')
-        self.insert('1.0', '\n'.join(self.history))
+        if self.current_session:
+            self.insert('1.0', '\n'.join(self.history[self._session_start:]))
+        else:
+            self.insert('1.0', '\n'.join(self.history))
         self.parse()
-        self.configure(state='disabled')
+        self.configure(state='disabled', cursor='')
 
     def replace_history_item(self, pos, line):
         self.history[pos] = line
-        self._reset_text()
+
+        self.reset_text()
 
     def remove_history_item(self, pos):
         del self.history[pos]
-        self._reset_text()
+        self.reset_text()
 
     def get_history_item(self, pos):
         try:
@@ -147,8 +152,17 @@ class HistoryFrame(BaseWidget):
 
         self._search_count = tk.IntVar(self)
 
+        current_session = CONFIG.getboolean('History', 'current_session', fallback=False)
+        self._current_session = tk.BooleanVar(self, current_session)
+        # --- menu
+        self.menu = tk.Menu(self)
+        self.menu.add_checkbutton(label='Current session only',
+                                  command=self._current_session_toggle,
+                                  variable=self._current_session)
+        self.menu.add_command(label='Find', command=self.find)
+
         syh = AutoHideScrollbar(self, orient='vertical')
-        self.history = History(self, HISTFILE,
+        self.history = History(self, HISTFILE, current_session,
                                yscrollcommand=syh.set,
                                relief='flat', borderwidth=0, highlightthickness=0)
         syh.configure(command=self.history.yview)
@@ -198,6 +212,13 @@ class HistoryFrame(BaseWidget):
         self.frame_search.grid_remove()
 
         self.update_style = self.history.update_style
+
+    def _current_session_toggle(self):
+        val = self._current_session.get()
+        self.history.current_session = val
+        self.history.reset_text()
+        CONFIG.set('History', 'current_session', str(val))
+        CONFIG.save()
 
     def find(self, event=None):
         self.frame_search.grid()
