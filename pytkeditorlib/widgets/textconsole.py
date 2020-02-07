@@ -513,6 +513,7 @@ class TextConsole(RichText):
             self.parse()
             self.insert('insert', '\n')
             self.insert('insert', self._prompt2, 'prompt')
+            self.see('end')
             self.eval_current(True)
 
     def on_return(self, event=None):
@@ -537,6 +538,7 @@ class TextConsole(RichText):
     def on_ctrl_return(self, event=None):
         self.parse()
         self.insert('insert', '\n' + self._prompt2, 'prompt')
+        self.see('end')
         return 'break'
 
     def on_backspace(self, event):
