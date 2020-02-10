@@ -504,6 +504,17 @@ class Notebook(ttk.Frame):
         keys = ttk.Frame.keys(self)
         return keys + ['closebutton', 'closecommand', 'tabmenu']
 
+    def busy(self, busy, tab=False):
+        if busy:
+            self.configure(cursor='watch')
+            if tab:
+                if self.current_tab >= 0:
+                    self._tabs[self.current_tab].busy(True)
+        else:
+            self.configure(cursor='')
+            if self.current_tab >= 0:
+                self._tabs[self.current_tab].busy(False)
+
     def add(self, widget, **kwargs):
         """
         Add widget (or redisplay it if it was hidden) in the notebook and return

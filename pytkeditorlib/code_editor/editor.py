@@ -34,9 +34,8 @@ from pytkeditorlib.dialogs.complistbox import CompListbox
 from pytkeditorlib.dialogs import showerror, showinfo, \
     TooltipTextWrapper, Tooltip, ColorPicker
 from pytkeditorlib.gui_utils import AutoHideScrollbar, EntryHistory
-from pytkeditorlib.utils.constants import PYTHON_LEX, CONFIG, IMAGES
-from pytkeditorlib.utils.functions import get_screen, load_style, valide_entree_nb, \
-    PathCompletion
+from pytkeditorlib.utils.constants import PYTHON_LEX, CONFIG, IMAGES, \
+    get_screen, load_style, valide_entree_nb, PathCompletion
 from .filebar import FileBar
 
 
@@ -81,18 +80,18 @@ class Editor(ttk.Frame):
         self.file = ''
 
         self.text = tk.Text(self, undo=True, autoseparators=False,
-                            width=81, height=45, wrap='none')
+                            width=81, height=45, wrap='none', cursor='watch')
 
         self.sep = tk.Frame(self.text)
         self._sep_x = 0
 
-        self.line_nb = tk.Text(self, width=1, cursor='arrow')
+        self.line_nb = tk.Text(self, width=1, cursor='watch')
         self.line_nb.insert('1.0', '1')
         self.line_nb.tag_configure('right', justify='right')
         self.line_nb.tag_add('right', '1.0', 'end')
         self.line_nb.configure(state='disabled')
 
-        self.syntax_checks = tk.Text(self, width=2, cursor='arrow',
+        self.syntax_checks = tk.Text(self, width=2, cursor='watch',
                                      state='disabled')
         self.textwrapper = TooltipTextWrapper(self.syntax_checks, title='Syntax',
                                               titlestyle='syntax.title.tooltip.TLabel')
@@ -105,10 +104,11 @@ class Editor(ttk.Frame):
             sx.set(x0, x1)
             self.sep.place_configure(relx=self._sep_x / self.text.winfo_width() - float(x0))
 
-        self.filebar = FileBar(self, self, width=10)
+        self.filebar = FileBar(self, self, width=10, cursor='watch')
         self.text.configure(xscrollcommand=xscroll, yscrollcommand=sy.set)
         self.line_nb.configure(yscrollcommand=sy.set)
         self.syntax_checks.configure(yscrollcommand=sy.set)
+        self.update_idletasks()
 
         # --- search and replace
         self._highlighted = ''
@@ -511,6 +511,18 @@ class Editor(ttk.Frame):
         return "break"
 
     # --- style and syntax highlighting
+    def busy(self, busy):
+        if busy:
+            self.text.configure(cursor='watch')
+            self.line_nb.configure(cursor='watch')
+            self.syntax_checks.configure(cursor='watch')
+            self.filebar.configure(cursor='watch')
+        else:
+            self.text.configure(cursor='')
+            self.line_nb.configure(cursor='arrow')
+            self.syntax_checks.configure(cursor='arrow')
+            self.filebar.configure(cursor='')
+
     def update_style(self):
         FONT = (CONFIG.get("General", "fontfamily"),
                 CONFIG.getint("General", "fontsize"))

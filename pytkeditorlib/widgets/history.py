@@ -58,7 +58,7 @@ class History(RichText):
             self._session_start = len(self.history)
         except (FileNotFoundError, pickle.UnpicklingError, EOFError):
             self._session_start = 0
-        self.reset_text()
+        self.reset_text(init=True)
 
     def new_session(self):
         self._session_start = len(self.history)
@@ -109,8 +109,9 @@ class History(RichText):
         self.configure(state='disabled')
         self.see('end')
 
-    def reset_text(self):
-        self.configure(cursor='watch')
+    def reset_text(self, init=False):
+        if not init:
+            self.winfo_toplevel().busy(True)
         self.update_idletasks()
         self.configure(state='normal')
         self.delete('1.0', 'end')
@@ -119,7 +120,9 @@ class History(RichText):
         else:
             self.insert('1.0', '\n'.join(self.history))
         self.parse()
-        self.configure(state='disabled', cursor='')
+        self.configure(state='disabled')
+        if not init:
+            self.winfo_toplevel().busy(False)
 
     def replace_history_item(self, pos, line):
         self.history[pos] = line
@@ -162,6 +165,7 @@ class HistoryFrame(BaseWidget):
         self.menu.add_command(label='Find', command=self.find)
 
         syh = AutoHideScrollbar(self, orient='vertical')
+
         self.history = History(self, HISTFILE, current_session,
                                yscrollcommand=syh.set,
                                relief='flat', borderwidth=0, highlightthickness=0)
@@ -219,6 +223,14 @@ class HistoryFrame(BaseWidget):
         self.history.reset_text()
         CONFIG.set('History', 'current_session', str(val))
         CONFIG.save()
+
+    def busy(self, busy):
+        if busy:
+            self.configure(cursor='watch')
+            self.history.configure(cursor='watch')
+        else:
+            self.history.configure(cursor='')
+            self.configure(cursor='')
 
     def find(self, event=None):
         self.frame_search.grid()

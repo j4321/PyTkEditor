@@ -501,6 +501,7 @@ the external terminal configuration in the settings.",
         self._tabs[tab].file = file
         self.wrapper.add_tooltip(tab, file if file else title)
         editor.text.bind('<<Modified>>', lambda e: self.edit_modified(widget=editor, generate=True))
+        editor.busy(False)
 
     def file_switch(self, event=None):
 

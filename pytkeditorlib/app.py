@@ -53,7 +53,10 @@ class App(tk.Tk):
         self.pid = pid
         self.tk.eval('package require Tkhtml')
         self.title('PyTkEditor')
-
+        self.configure(cursor='watch')
+        self.update_idletasks()
+        self.splash = Popen(['python',
+                             os.path.join(os.path.dirname(__file__), 'utils', 'splash.py')])
         self._frame = ttk.Frame(self, padding=(0, 0, 0, 4))
 
         # --- images
@@ -449,6 +452,11 @@ class App(tk.Tk):
         # --- signals
         signal.signal(signal.SIGUSR1, self._signal_open_files)
         signal.signal(signal.SIGUSR2, self._signal_exec_jupyter)
+        signal.signal(signal.SIGINT, self.kill)
+        signal.signal(signal.SIGTERM, self.quit)
+
+        self.configure(cursor='')
+        self.splash.terminate()
 
     @staticmethod
     def _select_all(event):
@@ -803,7 +811,20 @@ class App(tk.Tk):
         if args[0] is not KeyboardInterrupt:
             showerror("Error", str(args[1]), err, True)
         else:
-            self.quit()
+            self.kill()
+
+    def busy(self, busy):
+        if busy:
+            self.configure(cursor='watch')
+            self.right_nb.busy(True, True)
+            self.editor.busy(True)
+            self.codestruct.configure(cursor='watch')
+            self.update_idletasks()
+        else:
+            self.configure(cursor='')
+            self.right_nb.busy(False)
+            self.editor.busy(False)
+            self.codestruct.configure(cursor='')
 
     def toggle_fullscreen(self, event=None):
         val = self.fullscreen.get()
@@ -936,7 +957,11 @@ class App(tk.Tk):
         for widget in self.widgets.values():
             widget.update_style()
 
-    def quit(self):
+    def kill(self, *args):
+        self.splash.kill()
+        self.destroy()
+
+    def quit(self, *args):
         files = ', '.join(self.editor.get_open_files())
         CONFIG.set('General', 'opened_files', files)
         CONFIG.save()
@@ -944,6 +969,8 @@ class App(tk.Tk):
         if res:
             self.save_layout()
             self.destroy()
+            self.splash.terminate()
+            self.splash.wait()
 
     def new(self, event=None):
         try:
@@ -1007,10 +1034,11 @@ class App(tk.Tk):
                 logging.exception(str(e))
                 showerror('Error', "{}: {}".format(type(e), e), err, parent=self)
 
-    def reload(self, event):
+    def reload(self, event=None):
         file = self.editor.files[self.editor.current_tab]
         txt = self.load_file(file)
         if txt is not None:
+            self.busy(True)
             self.editor.delete('1.0', 'end')
             self.editor.insert('1.0', txt)
             self.editor.edit_reset()
@@ -1018,8 +1046,10 @@ class App(tk.Tk):
             self.codestruct.populate(self.editor.filename, self.editor.get(strip=False))
             self.check_syntax()
             self.editor.goto_start()
+            self.busy(False)
 
     def open_file(self, file):
+        self.update_idletasks()
         files = list(self.editor.files.values())
         if file in files:
             self.editor.select(list(self.editor.files.keys())[files.index(file)])
@@ -1027,6 +1057,7 @@ class App(tk.Tk):
         else:
             txt = self.load_file(file)
             if txt is not None:
+                self.busy(True)
                 self.editor.new(file)
                 self.editor.insert('1.0', txt)
                 self.editor.edit_reset()
@@ -1037,6 +1068,7 @@ class App(tk.Tk):
                 self._update_recent_files(file)
                 CONFIG.set('General', 'recent_files', ', '.join(self.recent_files))
                 CONFIG.save()
+                self.busy(False)
 
     def open(self, file=None):
         if file:

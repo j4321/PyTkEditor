@@ -37,8 +37,7 @@ from pygments.lexers import Python3Lexer
 import jedi
 
 from pytkeditorlib.utils.constants import SERVER_CERT, CLIENT_CERT, \
-    MAGIC_COMMANDS, EXTERNAL_COMMANDS
-from pytkeditorlib.utils.functions import get_screen, PathCompletion, glob_rel, \
+    MAGIC_COMMANDS, EXTERNAL_COMMANDS, get_screen, PathCompletion, glob_rel, \
     magic_complete, parse_ansi, format_long_output
 from pytkeditorlib.dialogs import askyesno, Tooltip, CompListbox
 from pytkeditorlib.gui_utils import AutoHideScrollbar
@@ -866,3 +865,11 @@ class ConsoleFrame(BaseWidget):
         self.menu.add_command(label='Restart console', command=self.console.restart_shell)
 
         self.update_style = self.console.update_style
+
+    def busy(self, busy):
+        if busy:
+            self.configure(cursor='watch')
+            self.console.configure(cursor='watch')
+        else:
+            self.console.configure(cursor='')
+            self.configure(cursor='')

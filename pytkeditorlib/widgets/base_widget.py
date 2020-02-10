@@ -1,4 +1,3 @@
-#! /usr/bin/python3
 # -*- coding: utf-8 -*-
 """
 PyTkEditor - Python IDE
@@ -26,8 +25,8 @@ from tkinter.ttk import Frame
 from tkcolorpicker.functions import rgb_to_hsv, hexa_to_rgb
 
 from pytkeditorlib.gui_utils import Notebook
-from pytkeditorlib.utils.constants import CONFIG
-from pytkeditorlib.utils.functions import load_style, ANSI_COLORS_DARK, ANSI_COLORS_LIGHT
+from pytkeditorlib.utils.constants import CONFIG, load_style, ANSI_COLORS_DARK, \
+    ANSI_COLORS_LIGHT
 
 
 class BaseWidget(Frame):
@@ -44,6 +43,12 @@ class BaseWidget(Frame):
 
     def update_style(self):
         pass  # to be overriden in subclass
+
+    def busy(self, busy):
+        if busy:
+            self.configure(cursor='watch')
+        else:
+            self.configure(cursor='')
 
     def _visibility_trace(self, *args):
         visible = self.visible.get()
