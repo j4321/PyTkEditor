@@ -15,6 +15,7 @@ Copyright:
 License: GPL-3+
 
 Files:
+    animation/*
     fulscreen_on.png
     fulscreen_off.png
     edit.png
