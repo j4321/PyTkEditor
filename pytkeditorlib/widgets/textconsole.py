@@ -23,7 +23,6 @@ Python console text widget
 
 import tkinter as tk
 import sys
-import logging
 import re
 from os import kill, remove, getcwd
 from os.path import join, dirname, sep, expanduser
@@ -70,7 +69,7 @@ class TextConsole(RichText):
         # --- regexp
         ext_cmds = "|".join(EXTERNAL_COMMANDS)
         magic_cmds = "|".join(MAGIC_COMMANDS)
-        pre_path = rf"(?:(?:(?:{ext_cmds}|cd|%run) )|(?:\"|'))"
+        pre_path = rf"(?:(?:(?:{ext_cmds}|cd|%run|%logstart) )|(?:\"|'))"
         self._re_abspaths = re.compile(rf'{pre_path}((?:~\w*)?(?:\{sep}\w+)+\{sep}?)$')
         self._re_relpaths = re.compile(rf'{pre_path}(\w+(?:\{sep}\w+)*\{sep}?)$')
         self._re_console_cd = re.compile(r'^cd ?(.*)\n*$')
@@ -638,6 +637,7 @@ class TextConsole(RichText):
             code = self._re_trailing_spaces.sub('', code)
             # remove leading prompts
             code = self._re_prompt.sub('', code)
+            # external cmds
             match = self._re_console_external.search(code)
             if match:
                 self.history.add_history(code)
@@ -652,6 +652,7 @@ class TextConsole(RichText):
                 code = f"_console.external({code!r})"
                 add_to_hist = False
             else:
+                # cd
                 match = self._re_console_cd.search(code)
                 if match:
                     self.history.add_history(code)
@@ -662,11 +663,13 @@ class TextConsole(RichText):
                         code = f"_console.cd({match.groups()[0]!r})"
                     add_to_hist = False
                 else:
+                    # magic cmds
                     match = self._re_console_magic.match(code)
                     if match:
                         self.history.add_history(code)
                         self._hist_item = self.history.get_length()
                         cmd, arg = match.groups()
+                        arg = arg.strip()
                         if arg in ['?', '??']:
                             code = f"_console.print_doc(_console.{cmd})"
                         else:
@@ -675,6 +678,7 @@ class TextConsole(RichText):
                             code = f"_console.{cmd}({arg!r})"
                         add_to_hist = False
                     else:
+                        # help
                         match = self._re_help.search(code)
                         if match:
                             self.history.add_history(code)

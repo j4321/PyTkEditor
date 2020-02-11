@@ -331,7 +331,7 @@ def glob_rel(pattern, locdir):
     return paths
 
 # --- console
-MAGIC_COMMANDS = ['run', 'gui', 'pylab', 'magic']
+MAGIC_COMMANDS = ['run', 'gui', 'pylab', 'magic', 'logstart', 'logstop', 'logstate']
 EXTERNAL_COMMANDS = ['ls', 'cat', 'mv', 'rm', 'cp', 'mkdir']
 CONSOLE_HELP = f"""
 Interactive Python Console
