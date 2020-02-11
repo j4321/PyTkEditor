@@ -126,7 +126,7 @@ class ConsoleMethods:
         res = run(cmd, capture_output=True)
         err = res.stderr.decode()
         if err:
-            print(err)
+            sys.stderr.write(err)
         else:
             print(res.stdout.decode())
 
