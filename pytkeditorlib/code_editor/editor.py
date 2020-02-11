@@ -707,26 +707,30 @@ class Editor(ttk.Frame):
     def _args_hint(self, event=None):
         index = self.text.index('insert')
         row, col = str(index).split('.')
-        script = jedi.Script(self.text.get('1.0', 'end'), int(row), int(col), self.file)
-        res = script.goto_definitions()
+        try:
+            script = jedi.Script(self.text.get('1.0', 'end'), int(row), int(col), self.file)
+            res = script.goto_definitions()
+        except Exception:
+            # jedi raised an exception
+            return
         if res:
             try:
                 args = res[-1].docstring().splitlines()[0]
-            except IndexError:
-                pass
-            else:
-                self._tooltip.configure(text=args)
-                xb, yb, w, h = self.text.bbox('insert')
-                xr = self.text.winfo_rootx()
-                yr = self.text.winfo_rooty()
-                ht = self._tooltip.winfo_reqheight()
-                screen = get_screen(xr, yr)
-                y = yr + yb + h
-                x = xr + xb
-                if y + ht > screen[3]:
-                    y = yr + yb - ht
-                self._tooltip.geometry('+%i+%i' % (x, y))
-                self._tooltip.deiconify()
+            except Exception:
+                # usually caused by an exception raised in Jedi
+                return
+            self._tooltip.configure(text=args)
+            xb, yb, w, h = self.text.bbox('insert')
+            xr = self.text.winfo_rootx()
+            yr = self.text.winfo_rooty()
+            ht = self._tooltip.winfo_reqheight()
+            screen = get_screen(xr, yr)
+            y = yr + yb + h
+            x = xr + xb
+            if y + ht > screen[3]:
+                y = yr + yb - ht
+            self._tooltip.geometry('+%i+%i' % (x, y))
+            self._tooltip.deiconify()
 
     def _comp_display(self):
         index = self.text.index('insert wordend')
@@ -747,9 +751,8 @@ class Editor(ttk.Frame):
         # --- jedi code autocompletion
         if not comp:
             row, col = str(self.text.index('insert')).split('.')
-            script = jedi.Script(self.text.get('1.0', 'end'), int(row), int(col), self.file)
-
             try:
+                script = jedi.Script(self.text.get('1.0', 'end'), int(row), int(col), self.file)
                 comp = script.completions()
             except Exception:
                 # jedi raised an exception

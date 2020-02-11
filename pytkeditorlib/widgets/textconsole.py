@@ -23,6 +23,7 @@ Python console text widget
 
 import tkinter as tk
 import sys
+import logging
 import re
 from os import kill, remove, getcwd
 from os.path import join, dirname, sep, expanduser
@@ -218,13 +219,17 @@ class TextConsole(RichText):
 
     def _args_hint(self, event=None):
         index = self.index('insert')
-        script = self._jedi_script()
-        res = script.goto_definitions()
+        try:
+            script = self._jedi_script()
+            res = script.goto_definitions()
+        except Exception:
+            return
         self.mark_set('insert', index)
         if res:
             try:
                 args = res[-1].docstring().splitlines()[0]
-            except IndexError:
+            except Exception:
+                # usually caused by an exception raised in Jedi
                 return
             self._tooltip.configure(text=args)
             xb, yb, w, h = self.bbox('insert')
@@ -269,8 +274,8 @@ class TextConsole(RichText):
                     jedi_comp = sep not in before_completion
             # --- jedi code autocompletion
             if not comp or jedi_comp:
-                script = self._jedi_script()
                 try:
+                    script = self._jedi_script()
                     comp.extend(script.completions())
                 except Exception:
                     # jedi raised an exception
