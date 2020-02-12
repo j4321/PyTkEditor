@@ -1,8 +1,38 @@
 PyTkEditor
-========
+==========
 Copyright 2018-2019 Juliette Monsel <j_4321 at protonmail dot com>
 
-Python3 IDE written with Tkinter for Linux.
+Python3 IDE written with Tkinter for Linux. 
+
+**Main features:**
+
+    - Multi-tab code editor with line numbers
+    
+    - Widgets (can be hidden):
+    
+        + Rich text python console
+        + Console history
+        + Help widget to graphically display the help about objects from the console or the editor
+        + File browser with filter on file extensions
+        + Code structure (classes, functions, TODOs, cells, comments ``# ---``)
+    
+    - Autocompletion on tab in editor and console
+    
+    - Syntax highlighting (all pygments styles are supported) in editor, console and history
+        
+    - Search and replace (in single tab or whole session)
+    
+    - Run code in external terminal, embedded console or Jupyter QtConsole
+    
+    - Optional syntax and style (PEP8) checking 
+    
+    - Color picker
+    
+    - Partially customizable layout (vertical or horizontal splitting with resizable panes)
+    
+    - Print file or export in HTML (preserving syntax highlighting)
+    
+
 
 **Disclaimer:** This is a project I made for fun and this IDE is not meant 
 to perform well or to be really stable. The console especially will 
