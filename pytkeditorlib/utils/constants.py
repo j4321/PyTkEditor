@@ -108,6 +108,7 @@ for img in os.listdir(PATH_IMG):
         IMAGES[name] = os.path.join(PATH_IMG, img)
 
 IM_CLOSE = os.path.join(PATH_IMG, 'close_{theme}.png')
+IM_SELECTED = os.path.join(PATH_IMG, 'selected_{theme}.png')
 ANIM_LOADING = [os.path.join(PATH_IMG, 'animation', file)
                 for file in os.listdir(os.path.join(PATH_IMG, 'animation'))]
 ANIM_LOADING.sort()

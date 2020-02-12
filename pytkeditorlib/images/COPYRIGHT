@@ -16,6 +16,8 @@ License: GPL-3+
 
 Files:
     animation/*
+    selected_light.png
+    selected_dark.png
     fulscreen_on.png
     fulscreen_off.png
     edit.png

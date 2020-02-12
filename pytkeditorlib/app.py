@@ -38,7 +38,7 @@ from pygments.formatters import HtmlFormatter
 from PIL import Image, ImageTk
 
 from pytkeditorlib.code_editor import EditorNotebook
-from pytkeditorlib.utils.constants import IMAGES, CONFIG, IM_CLOSE
+from pytkeditorlib.utils.constants import IMAGES, CONFIG, IM_CLOSE, IM_SELECTED
 from pytkeditorlib.utils import constants as cst
 from pytkeditorlib.utils.syntax_check import check_file
 from pytkeditorlib.dialogs import showerror, About, Config, SearchDialog, PrintDialog
@@ -63,8 +63,10 @@ class App(tk.Tk):
         self._images = {name: tk.PhotoImage(f'img_{name}', file=IMAGES[name], master=self)
                         for name, path in IMAGES.items()}
         self._images['img_menu_dummy'] = tk.PhotoImage('img_menu_dummy', width=18, height=18, master=self)
+        self._images['img_menu_dummy_cb'] = tk.PhotoImage('img_menu_dummy_cb', width=16, height=16, master=self)
         self._im_close = tk.PhotoImage(name='img_close', master=self)
         self._im_close_menu = ImageTk.PhotoImage(Image.new('RGBA', (18, 18)), name='img_close_menu', master=self)
+        self._im_selected = tk.PhotoImage(name='img_selected', master=self)
         self.iconphoto(True, 'img_icon')
 
         self.option_add('*Menu.borderWidth', 1)
@@ -345,11 +347,19 @@ class App(tk.Tk):
                                                              'menubar',
                                                              fallback=True))
         menu_view.add_checkbutton(label='Menubar',
+                                  image='img_menu_dummy_cb',
+                                  selectimage=self._im_selected,
+                                  indicatoron=False,
+                                  compound='left',
                                   command=self.toggle_menubar,
                                   variable=self.menubar)
         # --- --- --- widgets
         for name in sorted(widgets):
             menu_widgets.add_checkbutton(label=name,
+                                         image='img_menu_dummy_cb',
+                                         selectimage=self._im_selected,
+                                         indicatoron=False,
+                                         compound='left',
                                          variable=self.widgets.get(name, self.codestruct).visible)
 
         self.menu.add_cascade(label='File', underline=0, menu=self.menu_file)
@@ -485,6 +495,7 @@ class App(tk.Tk):
         d = (18 - img.size[0]) // 2
         img2.paste(img, (d, d))
         self._im_close_menu.paste(img2)
+        self._im_selected.configure(file=IM_SELECTED.format(theme=theme_name))
 
         # --- configuration dict
         button_style_config = {'bordercolor': theme['bordercolor'],

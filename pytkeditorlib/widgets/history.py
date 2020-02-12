@@ -160,9 +160,16 @@ class HistoryFrame(BaseWidget):
         # --- menu
         self.menu = tk.Menu(self)
         self.menu.add_checkbutton(label='Current session only',
+                                  image='img_menu_dummy_cb',
+                                  selectimage='img_selected',
+                                  indicatoron=False,
+                                  compound='left',
                                   command=self._current_session_toggle,
                                   variable=self._current_session)
-        self.menu.add_command(label='Find', command=self.find)
+        self.menu.add_command(label='Find',
+                              command=self.find,
+                              image='img_menu_dummy',
+                              compound='left')
 
         syh = AutoHideScrollbar(self, orient='vertical')
 
