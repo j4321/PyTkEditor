@@ -30,6 +30,7 @@ import sys
 import signal
 import tkinter
 import time
+import timeit
 from datetime import datetime
 from os import chdir, getcwd
 from os.path import dirname, expanduser, join
@@ -218,6 +219,13 @@ class ConsoleMethods:
         self.locals['matplotlib'] = matplotlib
         self.locals['plt'] = plt
         self.locals['np'] = numpy
+
+    def timeit(self, code):
+        """Benchmark a single line statement."""
+        locs = self.locals.copy()
+        timer = timeit.Timer(lambda: exec(code, locs, locs))
+        nb, t_tot = timer.autorange()
+        print(f"average time {t_tot/nb} s over {nb} executions")
 
     def run(self, filename):
         """Set working directory to filename's directory and run filename."""
