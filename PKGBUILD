@@ -1,30 +1,37 @@
 # Maintainer: Juliette Monsel <j_4321 at protonmail dot com>
-pkgname=pytkeditor
-pkgver=1.0.0a0
+pkgname=pytkeditor-git
+pkgver=r177.16a1bdc
 pkgrel=1
 pkgdesc="Python IDE"
 arch=('any')
 license=('GPL3')
-makedepends=('python-setuptools')
+makedepends=('python-setuptools' 'git')
 depends=('tk'
          'desktop-file-utils'
+         'python-pillow'
          'python-xlib'
+         'python-jedi'
          'python-docutils'
          'python-tkfilebrowser'
+         'python-tkcolorpicker'
          'python-pyflakes'
          'python-pygments'
          'python-ewmh'
-         'python-pillow'
-         'python-jedi'
          'python-pycodestyle')
-source=("$pkgname-$pkgver.tar.gz")
-sha512sums=('c33a791569ddc6d3b3dc8c81316d6fd2df8d195bb2c659431241cf2f9efee10699282f908f2e201c299fe6e9cf938a45196d62d626ba25feedf1a67b05d22339')
+source=("${pkgname}::git+https://gitlab.com/j_4321/PyTkEditor")
+sha512sums=('SKIP')
+
+pkgver() {
+  cd "$pkgname"
+  printf "r%s.%s" "$(git rev-list --count HEAD)" "$(git rev-parse --short HEAD)"
+}
 
 build() {
-    cd "$srcdir/$pkgname-$pkgver"
+    cd "$srcdir/$pkgname"
     python setup.py build
 }
+
 package() {
-    cd "$srcdir/$pkgname-$pkgver"
+    cd "$srcdir/$pkgname"
     python setup.py install --root="$pkgdir/" --prefix=/usr --optimize=1 --skip-build
 }
