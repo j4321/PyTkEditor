@@ -1,5 +1,5 @@
 PyTkEditor
-========
+==========
 Copyright 2018-2019 Juliette Monsel <j_4321 at protonmail dot com>
 
 Python3 IDE written with Tkinter for Linux.
@@ -9,6 +9,8 @@ to perform well or to be really stable. The console especially will
 never reach the level of the IPython qtconsole. I add new features when 
 I have new ideas.
 
+Quickstart
+----------
 
 **Requirement:** Linux
 
@@ -28,10 +30,18 @@ I have new ideas.
     
 **Install:**
 
+If you have Archlinux, you can use the PKGBUILD provided in the repository 
+to build *pytkeditor-git* from the master branch.
+
+Otherwise you can install *pytkeditor* with
 ::
 
     $ sudo python3 setup.py install
-        
+
+though it will not be managed by your package manager.
+
+You can also directly launch it without installing.
+                
 **Launch:**
 
 If PyTkEditor is installed:
@@ -40,10 +50,11 @@ If PyTkEditor is installed:
 
     $ pytkeditor
 
-or from the main menu *Development>PyTkEditor*.
+or from the main menu *Development > PyTkEditor*.
     
 Without installing:
 
 ::
 
     $ python3 pytkeditor
+
