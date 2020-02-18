@@ -139,6 +139,7 @@ class TextConsole(RichText):
 
     def parse(self):
         data = self.get('input', 'end')
+        print(data)
         start = 'input'
         while data and '\n' == data[0]:
             start = self.index('%s+1c' % start)
@@ -540,7 +541,8 @@ class TextConsole(RichText):
 
     def on_ctrl_return(self, event=None):
         self.parse()
-        self.insert('insert', '\n' + self._prompt2, 'prompt')
+        self.insert('insert', '\n')
+        self.insert('insert', self._prompt2, 'prompt')
         self.see('end')
         return 'break'
 
