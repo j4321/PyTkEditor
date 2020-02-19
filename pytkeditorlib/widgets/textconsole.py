@@ -406,8 +406,10 @@ class TextConsole(RichText):
             pass
         self.edit_separator()
         txt = self.clipboard_get()
-        self.insert("insert", txt)
-        self.insert_cmd(self.get("input", "end"))
+        if self.get("input", "input_end").strip():
+            self.insert("insert", txt.replace('\n', f"\n{self._prompt2}"))
+        else:
+            self.insert_cmd(txt)
         self.parse()
         return 'break'
 
