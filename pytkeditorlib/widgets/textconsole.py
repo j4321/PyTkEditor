@@ -20,8 +20,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 Python console text widget
 """
-
 import tkinter as tk
+from tkinter.font import Font
 import sys
 import re
 from os import kill, remove, getcwd
@@ -56,6 +56,8 @@ class TextConsole(RichText):
         banner = kw.pop('banner', f'Python {sys.version.splitlines()[0]}\n')
         self._prompt1 = kw.pop('prompt1')
         self._prompt2 = kw.pop('prompt2')
+
+        self._line_height = 17
 
         self.cwd = getcwd()  # console current working directory
 
@@ -96,9 +98,12 @@ class TextConsole(RichText):
 
         # --- initialization
         self.insert('end', banner, 'banner')
+        self.mark_set('input_end', 'insert')
         self.prompt()
         self.mark_set('input', 'insert')
         self.mark_gravity('input', 'left')
+        self.mark_set('input_end', 'insert')
+        self.mark_gravity('input_end', 'right')
 
         self._poll_id = ""
 
@@ -136,10 +141,14 @@ class TextConsole(RichText):
         self.bind("<parenright>", self.close_brackets)
         self.bind("<bracketright>", self.close_brackets)
         self.bind("<braceright>", self.close_brackets)
+        self.bind("<Configure>", self._on_configure)
+
+    def update_style(self):
+        RichText.update_style(self)
+        self._line_height = Font(self, self.cget('font')).metrics('linespace')
 
     def parse(self):
-        data = self.get('input', 'end')
-        print(data)
+        data = self.get('input', 'input_end')
         start = 'input'
         while data and '\n' == data[0]:
             start = self.index('%s+1c' % start)
@@ -206,7 +215,7 @@ class TextConsole(RichText):
 
     def _jedi_script(self):
 
-        lines = self.get('insert linestart + %ic' % len(self._prompt1), 'end').rstrip('\n')
+        lines = self.get('insert linestart + %ic' % len(self._prompt1), 'input_end').rstrip('\n')
 
         session_code = '\n\n'.join([self._jedi_comp_external, self._jedi_comp_extra] + self.history.get_session_hist()) + '\n\n'
 
@@ -299,6 +308,15 @@ class TextConsole(RichText):
             self._comp.deiconify()
 
     # --- bindings
+    def _on_configure(self, event):
+        nb_lines = event.height // self._line_height - 1
+        insert = self.index('insert')
+        input_end = self.index('input_end')
+        self.delete('input_end', 'end')
+        self.insert('end', '\n' * nb_lines)
+        self.mark_set('insert', insert)
+        self.mark_set('input_end', input_end)
+
     def undo(self, event=None):
         try:
             self.edit_undo()
@@ -345,8 +363,9 @@ class TextConsole(RichText):
         return "break"
 
     def on_ctrl_c(self, event):
-        sel = self.tag_ranges('sel')
-        if sel:
+        try:
+            if self.compare('sel.last', '>', 'input_end'):
+                self.tag_remove('sel', 'input_end', 'sel.last')
             txt = self.get('sel.first', 'sel.last').splitlines()
             lines = []
             for i, line in enumerate(txt):
@@ -358,25 +377,30 @@ class TextConsole(RichText):
                     lines.append(line)
             self.clipboard_clear()
             self.clipboard_append('\n'.join(lines))
-        elif self.cget('state') == 'disabled':
-            kill(self.shell_pid, signal.SIGINT)
+        except tk.TclError:
+            if self.cget('state') == 'disabled':
+                kill(self.shell_pid, signal.SIGINT)
         return 'break'
 
     def on_cut(self, event):
         try:
             if self.compare('sel.first', '<', 'input'):
                 self.tag_remove('sel', 'sel.first', 'input')
-            # if self.compare('sel.last', '<', 'input'):
-                # return "break"
+            if self.compare('sel.last', '>', 'input_end'):
+                self.tag_remove('sel', 'input_end', 'sel.last')
         except tk.TclError:
             pass
 
     def on_paste(self, event):
         if self.compare('insert', '<', 'input'):
             return "break"
+        if self.compare('insert', '>', 'input_end'):
+            return "break"
         try:
             if self.compare('sel.first', '<', 'input'):
                 self.tag_remove('sel', 'sel.first', 'input')
+            if self.compare('sel.last', '>', 'input_end'):
+                self.tag_remove('sel', 'input_end', 'sel.last')
             self.delete('sel.first', 'sel.last')
         except tk.TclError:
             pass
@@ -397,12 +421,20 @@ class TextConsole(RichText):
                 pass
         if self.compare('insert', '<', 'input') and event.keysym not in ['Left', 'Right']:
             self._hist_item = self.history.get_length()
-            self.mark_set('insert', 'input lineend')
+            self.mark_set('insert', 'input_end')
+            if not event.char.isalnum():
+                return 'break'
+        elif self.compare('insert', '>', 'input_end') and event.keysym not in ['Left', 'Right']:
+            self._hist_item = self.history.get_length()
+            self.mark_set('insert', 'input_end')
             if not event.char.isalnum():
                 return 'break'
 
     def on_key_release(self, event):
         if self.compare('insert', '<', 'input') and event.keysym not in ['Left', 'Right']:
+            self._hist_item = self.history.get_length()
+            return 'break'
+        elif self.compare('insert', '>', 'input_end') and event.keysym not in ['Left', 'Right']:
             self._hist_item = self.history.get_length()
             return 'break'
         elif self._comp.winfo_ismapped():
@@ -418,7 +450,10 @@ class TextConsole(RichText):
 
     def on_up(self, event):
         if self.compare('insert', '<', 'input'):
-            self.mark_set('insert', 'end')
+            self.mark_set('insert', 'input')
+            return 'break'
+        elif self.compare('insert', '>', 'input_end'):
+            self.mark_set('insert', 'input_end')
             return 'break'
         elif self._comp.winfo_ismapped():
             self._comp.sel_prev()
@@ -443,12 +478,15 @@ class TextConsole(RichText):
 
     def on_down(self, event):
         if self.compare('insert', '<', 'input'):
-            self.mark_set('insert', 'end')
+            self.mark_set('insert', 'input_end')
+            return 'break'
+        elif self.compare('insert', '>', 'input_end'):
+            self.mark_set('insert', 'input_end')
             return 'break'
         elif self._comp.winfo_ismapped():
             self._comp.sel_next()
             return 'break'
-        elif self.compare('insert lineend', '==', 'end-1c'):
+        elif self.compare('insert lineend', '==', 'input_end'):
             line = self._hist_match
             self._hist_item += 1
             item = self.history.get_history_item(self._hist_item)
@@ -460,21 +498,27 @@ class TextConsole(RichText):
                 self.mark_set('insert', 'input+%ic' % len(self._hist_match))
             else:
                 self._hist_item = self.history.get_length()
-                self.delete('input', 'end')
+                self.delete('input', 'input_end')
                 self.insert('insert', line)
             self.parse()
             return 'break'
 
     def on_tab(self, event):
         if self.compare('insert', '<', 'input'):
-            self.mark_set('insert', 'input lineend')
+            self.mark_set('insert', 'input_end')
             return "break"
-        elif self._comp.winfo_ismapped():
+        if self.compare('insert', '>', 'input_end'):
+            self.mark_set('insert', 'input_end')
+            return "break"
+        if self._comp.winfo_ismapped():
             self._comp_sel()
             return "break"
-
-        sel = self.tag_ranges('sel')
-        if sel:
+        self.edit_separator()
+        try:
+            if self.compare('sel.first', '<', 'input'):
+                self.tag_remove('sel', 'sel.first', 'input')
+            if self.compare('sel.last', '>', 'input_end'):
+                self.tag_remove('sel', 'input_end', 'sel.last')
             start = str(self.index('sel.first'))
             end = str(self.index('sel.last'))
             start_line = int(start.split('.')[0])
@@ -482,7 +526,7 @@ class TextConsole(RichText):
             char = len(self._prompt1)
             for line in range(start_line, end_line):
                 self.insert(f'{line}.{char}', '    ')
-        else:
+        except tk.TclError:
             txt = self.get(f'insert linestart+{len(self._prompt1)}c', 'insert')
             if txt == ' ' * len(txt):
                 self.insert('insert', '    ')
@@ -491,9 +535,19 @@ class TextConsole(RichText):
         return "break"
 
     def unindent(self, event=None):
+        if self.compare('insert', '<', 'input'):
+            self.mark_set('insert', 'input_end')
+            return "break"
+        if self.compare('insert', '>', 'input_end'):
+            self.mark_set('insert', 'input_end')
+            return "break"
         self.edit_separator()
         sel = self.tag_ranges('sel')
         if sel:
+            if self.compare('sel.first', '<', 'input'):
+                self.tag_remove('sel', 'sel.first', 'input')
+            if self.compare('sel.last', '>', 'input_end'):
+                self.tag_remove('sel', 'input_end', 'sel.last')
             start = str(self.index('sel.first'))
             end = str(self.index('sel.last'))
         else:
@@ -510,52 +564,62 @@ class TextConsole(RichText):
 
     def on_shift_return(self, event):
         if self.compare('insert', '<', 'input'):
-            self.mark_set('insert', 'input lineend')
+            self.mark_set('insert', 'input_end')
+            return 'break'
+        elif self.compare('insert', '>', 'input_end'):
+            self.mark_set('insert', 'input_end')
             return 'break'
         else:
-            self.mark_set('insert', 'end')
+            self.mark_set('insert', 'input_end')
             self.parse()
             self.insert('insert', '\n')
             self.insert('insert', self._prompt2, 'prompt')
-            self.see('end')
+            self.see('input_end')
             self.eval_current(True)
 
     def on_return(self, event=None):
         if self.compare('insert', '<', 'input'):
-            self.mark_set('insert', 'input lineend')
+            self.mark_set('insert', 'input_end')
+            return 'break'
+        if self.compare('insert', '>', 'input_end'):
+            self.mark_set('insert', 'input_end')
             return 'break'
         if self._comp.winfo_ismapped():
             self._comp_sel()
         else:
             self.parse()
-            if self.index('end-1c linestart') == self.index('input linestart'):
+            if self.index('input_end linestart') == self.index('input linestart'):
                 self.eval_current(True)
             else:
-                text = self._re_prompt.sub('', self.get('insert', 'end')).strip()
+                text = self._re_prompt.sub('', self.get('insert', 'input_end')).strip()
                 if text:
                     self.insert('insert', '\n' + self._prompt2, 'prompt')
                 else:
                     self.eval_current(True)
-            self.see('end')
+            self.see('input_end')
         return 'break'
 
     def on_ctrl_return(self, event=None):
         self.parse()
         self.insert('insert', '\n')
         self.insert('insert', self._prompt2, 'prompt')
-        self.see('end')
+        self.see('input_end')
         return 'break'
 
     def on_backspace(self, event):
         self._clear_highlight()
-        if self.compare('insert', '<=', 'input'):
-            self.mark_set('insert', 'input lineend')
-            return 'break'
         self.edit_separator()
-        sel = self.tag_ranges('sel')
-        if sel:
-            self.delete('sel.first', 'sel.last')
-        else:
+        try:  # there is selected text
+            if self.compare('sel.first', '<', 'input'):
+                self.tag_remove('sel', 'sel.first', 'input')
+            if self.compare('sel.last', '>', 'input_end'):
+                self.tag_remove('sel', 'input_end', 'sel.last')
+            if self.tag_ranges('sel'):
+                self.delete('sel.first', 'sel.last')
+        except tk.TclError:  # no selected text
+            if self.compare('insert', '<=', 'input') or self.compare('insert', '>', 'input_end'):
+                self.mark_set('insert', 'input_end')
+                return 'break'
             linestart = self.get('insert linestart', 'insert')
             text = self.get('insert-1c', 'insert+1c')
             if re.search(r'    $', linestart):
@@ -586,7 +650,7 @@ class TextConsole(RichText):
     def insert_cmd(self, cmd):
         self.edit_separator()
         input_index = self.index('input')
-        self.delete('input', 'end')
+        self.delete('input', 'input_end')
         lines = cmd.splitlines()
         if lines:
             indent = len(re.search(r'^( )*', lines[0]).group())
@@ -597,16 +661,16 @@ class TextConsole(RichText):
                 self.prompt(True)
                 self.insert('insert', line)
                 self.mark_set('input', input_index)
-        self.see('end')
+        self.see('input_end')
 
     def prompt(self, result=False):
         if result:
             self.edit_separator()
-            self.insert('end', self._prompt2, 'prompt')
+            self.insert('input_end', self._prompt2, 'prompt')
         else:
-            self.insert('end', self._prompt1, 'prompt')
+            self.insert('input_end', self._prompt1, 'prompt')
             self.edit_reset()
-        self.mark_set('input', 'end-1c')
+        self.mark_set('input', 'input_end')
 
     # --- docstrings
     def get_docstring(self, obj):
@@ -623,7 +687,7 @@ class TextConsole(RichText):
 
     # --- execute
     def execute(self, cmd):
-        self.delete('input', 'end')
+        self.delete('input', 'input_end')
         self.insert_cmd(cmd)
         self.parse()
         self.focus_set()
@@ -735,7 +799,7 @@ class TextConsole(RichText):
                             self.tag_add(tag, *r)
                     else:
                         self.insert(f'{index}+1c', output, 'output')
-                    self.see('end')
+                    self.see('input_end')
             self._poll_id = self.after(10, self._poll_output)
 
     def _check_result(self, auto_indent, code, index, add_to_hist=True):
@@ -758,17 +822,17 @@ class TextConsole(RichText):
                 if output.strip():
                     output = format_long_output(output, self["width"])
                     if '\x1b' in output:  # ansi formatting
-                        offset = int(self.index('end').split('.')[0]) - 1
+                        offset = int(self.index('input_end').split('.')[0]) - 1
                         tag_ranges, text = parse_ansi(output, offset)
                         self.configure(state='normal')
-                        self.insert('end', text, 'output')
+                        self.insert('input_end', text, 'output')
                         for tag, r in tag_ranges.items():
                             self.tag_add(tag, *r)
                     else:
                         self.configure(state='normal')
-                        self.insert('end', output, 'output')
-                    self.mark_set('input', 'end')
-                    self.see('end')
+                        self.insert('input_end', output, 'output')
+                    self.mark_set('input', 'input_end')
+                    self.see('input_end')
                 self.configure(state='disabled')
                 self.after(1, self._check_result, auto_indent, code, index, add_to_hist)
                 return
@@ -781,7 +845,7 @@ class TextConsole(RichText):
                     self.shell_clear()
                     return
                 else:
-                    self.insert('end', err, 'Token.Error')
+                    self.insert('input_end', err, 'Token.Error')
 
             if not res and self.compare('insert linestart', '>', 'insert'):
                 self.insert('insert', '\n')
@@ -793,7 +857,7 @@ class TextConsole(RichText):
                 if line and line[-1] == ':':
                     indent = indent + '    '
                 self.insert('insert', indent)
-            self.see('end')
+            self.see('input_end')
             if res:
                 self.mark_set('input', index)
             elif code:

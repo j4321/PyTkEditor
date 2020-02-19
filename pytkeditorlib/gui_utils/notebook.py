@@ -375,7 +375,7 @@ class Notebook(ttk.Frame):
         if self._dragged_tab:
             self._dragged_tab.unbind_all('<Motion>')
             self._dragged_tab.unbind_all('<Escape>')
-            self._dragged_tab.unbind_all('<<ButtonRelease-1>>')
+            self._dragged_tab.unbind_all('<ButtonRelease-1>')
             self._dragged_tab.grid(**self._dummy_frame.grid_info())
             self._dragged_tab = None
             self._dummy_frame.grid_forget()
