@@ -1,6 +1,6 @@
 PyTkEditor
 ==========
-Copyright 2018-2019 Juliette Monsel <j_4321 at protonmail dot com>
+Copyright 2018-2020 Juliette Monsel <j_4321 at protonmail dot com>
 
 Python3 IDE written with Tkinter for Linux. 
 
@@ -45,6 +45,7 @@ Quickstart
 **Requirement:** Linux
 
 **Dependencies:**
+
     - Python 3 with Tkinter
     - `setuptools <https://pypi.org/project/setuptools/>`_ (install dependency)
     - `docutils <https://pypi.org/project/docutils/>`_
