@@ -179,6 +179,14 @@ class Config(tk.Toplevel):
                    command=self.edit_template).pack(side='left', padx=4, pady=8)
         frame_template.grid(row=2, columnspan=2, sticky='w')
 
+        # --- confirm quit
+        self.confirm_quit = ttk.Checkbutton(frame_general, text="Show confirmation dialog before exiting")
+        if CONFIG.getboolean("General", "confirm_quit", fallback=False):
+            self.confirm_quit.state(('selected', '!alternate'))
+        else:
+            self.confirm_quit.state(('!selected', '!alternate'))
+        self.confirm_quit.grid(row=3, columnspan=2, sticky='w', padx=4, pady=4)
+
     def _init_editor(self):
         frame_editor = ttk.Frame(self.notebook, padding=4)
         self.notebook.add(frame_editor, text='Editor')
@@ -342,6 +350,8 @@ class Config(tk.Toplevel):
             pass
         else:
             CONFIG.set('General', 'fontsize', str(size))
+        CONFIG.set('General', 'confirm_quit',
+                   str('selected' in self.confirm_quit.state()))
 
         # --- editor
         # --- --- syntax highlighting

@@ -1017,15 +1017,20 @@ class App(tk.Tk):
         self.destroy()
 
     def quit(self, *args):
-        files = ', '.join(self.editor.get_open_files())
-        CONFIG.set('General', 'opened_files', files)
-        CONFIG.save()
-        res = self.editor.closeall()
-        if res:
-            self.save_layout()
-            self.destroy()
-            self.splash.terminate()
-            self.splash.wait()
+        if CONFIG.getboolean('General', 'confirm_quit', fallback=False):
+            ans = askyesno('Confirmation', 'Do you really want to quit?')
+        else:
+            ans = True
+        if ans:
+            files = ', '.join(self.editor.get_open_files())
+            CONFIG.set('General', 'opened_files', files)
+            CONFIG.save()
+            res = self.editor.closeall()
+            if res:
+                self.save_layout()
+                self.destroy()
+                self.splash.terminate()
+                self.splash.wait()
 
     def new(self, event=None):
         try:
