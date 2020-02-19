@@ -20,8 +20,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 GUI widget to display the code structure
 """
-from tkinter import PhotoImage, BooleanVar, Menu, TclError
-from tkinter.ttk import Treeview, Frame, Label
+from tkinter import TclError
+from tkinter.ttk import Treeview, Frame, Label, Button
 from tkinter.font import Font
 import tokenize
 from io import BytesIO
@@ -29,7 +29,8 @@ import re
 import logging
 
 from pytkeditorlib.gui_utils import AutoHideScrollbar, AutoCompleteCombobox2
-from pytkeditorlib.utils.constants import IMAGES, CONFIG, save_config
+from pytkeditorlib.utils.constants import CONFIG
+from .base_widget import BaseWidget
 
 
 class Tree:
@@ -61,19 +62,14 @@ class CodeTree(Treeview):
     def __init__(self, master):
         Treeview.__init__(self, master, show='tree', selectmode='none',
                           style='flat.Treeview', padding=4)
-        self._img_class = PhotoImage(file=IMAGES['c'], master=self)
-        self._img_fct = PhotoImage(file=IMAGES['f'], master=self)
-        self._img_hfct = PhotoImage(file=IMAGES['hf'], master=self)
-        self._img_sep = PhotoImage(file=IMAGES['sep'], master=self)
-        self._img_cell = PhotoImage(file=IMAGES['cell'], master=self)
 
         self.font = Font(self, font="TkDefaultFont 9")
 
-        self.tag_configure('class', image=self._img_class)
-        self.tag_configure('def', image=self._img_fct)
-        self.tag_configure('_def', image=self._img_hfct)
-        self.tag_configure('#', image=self._img_sep)
-        self.tag_configure('cell', image=self._img_cell)
+        self.tag_configure('class', image='img_c')
+        self.tag_configure('def', image='img_f')
+        self.tag_configure('_def', image="img_hf")
+        self.tag_configure('#', image='img_sep')
+        self.tag_configure('cell', image='img_cell')
         self.callback = None
         self.cells = []
 
@@ -124,13 +120,22 @@ class CodeTree(Treeview):
                     indent = token.start[1]
                     name = token.string[1:]
                     add = True
-                elif re.match(r'#( )*In\[.*\]', token.string):
-                    res = re.match(r'#( )*In', token.string)
-                    obj_type = 'cell'
-                    indent = token.start[1]
-                    name = token.string[len(res.group()):].strip()
-                    add = True
-                    self.cells.append(token.start[0])
+                else:
+                    match = re.match(r'^# In(\[.*\].*)$', token.string)
+                    if match:
+                        obj_type = 'cell'
+                        indent = token.start[1]
+                        name = match.groups()[0].strip()
+                        add = True
+                        self.cells.append(token.start[0])
+                    else:
+                        match = re.match(r'^# ?%% ?(.*)$', token.string)
+                        if match:
+                            obj_type = 'cell'
+                            indent = token.start[1]
+                            name = match.groups()[0].strip()
+                            add = True
+                            self.cells.append(token.start[0])
 
             if add:
                 tree_index += 1
@@ -146,19 +151,22 @@ class CodeTree(Treeview):
         return names
 
 
-class CodeStructure(Frame):
-    def __init__(self, master):
-        Frame.__init__(self, master, style='border.TFrame', padding=2)
+class CodeStructure(BaseWidget):
+    def __init__(self, master, manager):
+        BaseWidget.__init__(self, master, 'Code structure', style='border.TFrame')
         self.rowconfigure(1, weight=1)
         self.columnconfigure(0, weight=1)
 
-        self.visible = BooleanVar(self)
-        self.visible.trace_add('write', self._visibility_trace)
+        self._manager = manager
 
-        self.menu = Menu(self)
-        self.menu.add_command(label='Hide', command=lambda: self.visible.set(False))
+        header = Frame(self)
+        header.columnconfigure(0, weight=1)
+        self._close_btn = Button(header, style='close.TButton', padding=0,
+                                 command=lambda: self.visible.set(False))
+        self._close_btn.grid(row=0, column=1)
+        self.filename = Label(header, padding=(4, 0))
+        self.filename.grid(row=0, column=0, sticky='w')
 
-        self.filename = Label(self, padding=(4, 2), anchor='w')
         self.codetree = CodeTree(self)
         self._sx = AutoHideScrollbar(self, orient='horizontal', command=self.codetree.xview)
         self._sy = AutoHideScrollbar(self, orient='vertical', command=self.codetree.yview)
@@ -172,7 +180,7 @@ class CodeStructure(Frame):
         self.codetree.configure(xscrollcommand=self._sx.set,
                                 yscrollcommand=self._sy.set)
 
-        self.filename.grid(row=0, column=0, sticky='we')
+        header.grid(row=0, columnspan=2, sticky='we')
         self.codetree.grid(row=1, column=0, sticky='ewns')
         self._sx.grid(row=2, column=0, sticky='ew')
         self._sy.grid(row=1, column=1, sticky='ns')
@@ -185,22 +193,66 @@ class CodeStructure(Frame):
         self.goto_entry.bind('<<ComboboxSelected>>', self.goto)
         self.goto_entry.bind('<Key>', self._reset_goto)
 
-        self.filename.bind('<ButtonRelease-3>', self._show_menu)
+    @property
+    def manager(self):
+        return self._manager
+
+    @manager.setter
+    def manager(self, new_manager):
+        if CONFIG.get("General", "layout") in ["vertical", "horizontal2"]:
+            self.configure(style='TFrame')
+            self._close_btn.grid_remove()
+        else:
+            self.configure(style='border.TFrame')
+            self._close_btn.grid()
+        if self.visible.get():
+            try:
+                self._manager.forget(self)
+            except TclError:
+                pass
+            self._manager = new_manager
+            self.show()
+        else:
+            self._manager = new_manager
 
     def _reset_goto(self, event):
         self._goto_index = 0
 
-    def _show_menu(self, event):
-        self.menu.tk_popup(event.x_root, event.y_root)
+    def hide(self):
+        try:
+            layout = CONFIG.get("General", "layout")
+            if layout in ["vertical", "horizontal2"]:
+                self.manager.hide(self)
+            else:
+                # save layout
+                old = CONFIG.get("Layout", layout).split()
+                w = self.master.winfo_width()
+                pos = '%.3f' % (self.master.sashpos(0)/w)
+                CONFIG.set("Layout", layout, f"{pos} {old[1]}")
+                CONFIG.save()
+                self.manager.forget(self)
+        except TclError:
+            pass
+
+    def show(self):
+        layout = CONFIG.get("General", "layout")
+        if layout in ["vertical", "horizontal2"]:
+            self.manager.add(self, text=self.name)
+            self.manager.select(self)
+        else:
+            self.manager.insert(0, self, weight=1)
+            w = self.master.winfo_width()
+            pos = int(float(CONFIG.get("Layout", layout).split()[0]) * w)
+            self.master.sashpos(0, pos)
 
     def _visibility_trace(self, *args):
         visible = self.visible.get()
         if visible:
-            self.master.insert(0, self, weight=1)
+            self.show()
         else:
-            self.master.forget(self)
+            self.hide()
         CONFIG.set('Code structure', 'visible', str(visible))
-        save_config()
+        CONFIG.save()
 
     def get_cells(self):
         return self.codetree.cells

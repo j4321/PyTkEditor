@@ -18,4 +18,4 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 Utils and scripts
 """
-from . import constants
+from .version import __version__

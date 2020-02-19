@@ -37,15 +37,15 @@ class Tab(ttk.Frame):
         self.label = ttk.Label(self.frame, style='Notebook.Tab.Label', **kwargs,
                                anchor='center', takefocus=False)
         self.closebtn = ttk.Button(self.frame, style='Notebook.Tab.Close',
-                                   command=self.closecommand,
+                                   command=self.closecommand, padding=0,
                                    class_='Notebook.Tab.Close',
                                    takefocus=False)
-        self.label.pack(side='left', padx=(6, 0))
+        self.label.pack(side='left', padx=(2, 0))
         if self._closebutton:
-            self.closebtn.pack(side='right', padx=(0, 6))
+            self.closebtn.pack(side='right', padx=(0, 2), pady=(1, 0))
         self.update_idletasks()
-        self.configure(width=self.frame.winfo_reqwidth() + 6,
-                       height=self.frame.winfo_reqheight() + 6)
+        self.configure(width=self.frame.winfo_reqwidth() + 2,
+                       height=self.frame.winfo_reqheight() + 2)
         self.frame.place(bordermode='inside', anchor='nw', x=0, y=0,
                          relwidth=1, relheight=1)
         self.label.bind('<Configure>', self._resize)
@@ -61,8 +61,8 @@ class Tab(ttk.Frame):
             self.closecommand()
 
     def _resize(self, event):
-        self.configure(width=self.frame.winfo_reqwidth() + 6,
-                       height=self.frame.winfo_reqheight() + 6)
+        self.configure(width=self.frame.winfo_reqwidth() + 2,
+                       height=self.frame.winfo_reqheight() + 2)
 
     def closecommand(self):
         self._closecommand(self.tab_nb)
@@ -73,13 +73,13 @@ class Tab(ttk.Frame):
         self.frame.state(*args)
         self.closebtn.state(*args)
         if args and 'selected' in self.state():
-            self.configure(width=self.frame.winfo_reqwidth() + 6,
-                           height=self.frame.winfo_reqheight() + 6)
+            self.configure(width=self.frame.winfo_reqwidth() + 2,
+                           height=self.frame.winfo_reqheight() + 2)
             self.frame.place_configure(relheight=1.1)
         else:
             self.frame.place_configure(relheight=1)
-            self.configure(width=self.frame.winfo_reqwidth() + 6,
-                           height=self.frame.winfo_reqheight() + 6)
+            self.configure(width=self.frame.winfo_reqwidth() + 2,
+                           height=self.frame.winfo_reqheight() + 2)
         return res
 
     def bind(self, sequence=None, func=None, add=None):
@@ -99,8 +99,8 @@ class Tab(ttk.Frame):
             else:
                 self.closebtn.pack_forget()
             self.update_idletasks()
-            self.configure(width=self.frame.winfo_reqwidth() + 6,
-                           height=self.frame.winfo_reqheight() + 6)
+            self.configure(width=self.frame.winfo_reqwidth() + 2,
+                           height=self.frame.winfo_reqheight() + 2)
         if 'state' in kwargs:
             state = kwargs.pop('state')
             if state == 'normal':
@@ -334,6 +334,8 @@ class Notebook(ttk.Frame):
         self._y = event.y_root   # current y mouse position on screen
         self._distance_to_dragged_border = widget.winfo_rootx() - event.x_root
         widget.bind_all('<Motion>', self._on_drag)
+        widget.bind_all('<Escape>', self._on_click)
+        widget.bind_all('<ButtonRelease-1>', self._on_click)
 
     def _on_drag(self, event):
         self._dragged_tab.place_configure(x=self._dragged_tab.winfo_x() + event.x_root + self._dx)
@@ -372,6 +374,8 @@ class Notebook(ttk.Frame):
         """Stop dragging."""
         if self._dragged_tab:
             self._dragged_tab.unbind_all('<Motion>')
+            self._dragged_tab.unbind_all('<Escape>')
+            self._dragged_tab.unbind_all('<<ButtonRelease-1>>')
             self._dragged_tab.grid(**self._dummy_frame.grid_info())
             self._dragged_tab = None
             self._dummy_frame.grid_forget()
@@ -500,6 +504,17 @@ class Notebook(ttk.Frame):
         keys = ttk.Frame.keys(self)
         return keys + ['closebutton', 'closecommand', 'tabmenu']
 
+    def busy(self, busy, tab=False):
+        if busy:
+            self.configure(cursor='watch')
+            if tab:
+                if self.current_tab >= 0:
+                    self._tabs[self.current_tab].busy(True)
+        else:
+            self.configure(cursor='')
+            if self.current_tab >= 0:
+                self._tabs[self.current_tab].busy(False)
+
     def add(self, widget, **kwargs):
         """
         Add widget (or redisplay it if it was hidden) in the notebook and return
@@ -553,14 +568,14 @@ class Notebook(ttk.Frame):
 
         For keyword options, see add method.
         """
-        existing = str(widget) in self._indexes
+        # existing = str(widget) in self._indexes
         index = self.add(widget, **kwargs)
         if where == 'end':
-            if not existing:
-                return
-        where = self.index(where)
+            where = len(self._visible_tabs)
+        print(self._visible_tabs)
         self._visible_tabs.remove(index)
         self._visible_tabs.insert(where, index)
+        print(self._visible_tabs)
         for i in range(where, len(self._visible_tabs)):
             ind = self._visible_tabs[i]
             self._tab_labels[ind].grid_configure(column=i)
@@ -636,13 +651,14 @@ class Notebook(ttk.Frame):
         tab = self.index(tab_id)
         if tab in self._visible_tabs:
             self._visible_tabs.remove(tab)
+            index = self._active_tabs.index(tab)
             if tab in self._active_tabs:
                 self._active_tabs.remove(tab)
             self._hidden_tabs.append(tab)
             self._tab_labels[tab].grid_remove()
             if self.current_tab == tab:
                 if self._active_tabs:
-                    self._show(self._active_tabs[0])
+                    self._show(self._active_tabs[max(index - 1, 0)])
                 else:
                     self.current_tab = -1
                 self._tabs[tab].grid_remove()
@@ -656,13 +672,14 @@ class Notebook(ttk.Frame):
         if tab in self._hidden_tabs:
             self._hidden_tabs.remove(tab)
         elif tab in self._visible_tabs:
+            index = self._active_tabs.index(tab)
             if tab in self._active_tabs:
                 self._active_tabs.remove(tab)
             self._visible_tabs.remove(tab)
             self._tab_labels[tab].grid_forget()
             if self.current_tab == tab:
                 if self._active_tabs:
-                    self._show(self._active_tabs[0])
+                    self._show(self._active_tabs[max(index - 1, 0)])
                 else:
                     self.current_tab = -1
                     if not self._visible_tabs and not self._hidden_tabs:

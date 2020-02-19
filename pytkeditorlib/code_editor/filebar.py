@@ -50,8 +50,6 @@ class FileBar(Canvas):
         self._highlight_img = Image.new('RGBA', (1, 1), "#ffffff88")
         self._highlight_photoimg = ImageTk.PhotoImage(self._highlight_img, master=self)
         self.highlight = self.create_image(0, 0, anchor='nw', image=self._highlight_photoimg)
-        # self.highlight = self.create_rectangle(0, 0, 0, 0, width=0,
-                                               # fill=self.option_get('fill', '*Canvas'))
         self.bind('<1>', self.on_click)
         self.bind('<Map>', self.update_positions)
 
@@ -69,12 +67,13 @@ class FileBar(Canvas):
         height = self.winfo_height()
         deb, fin = self.widget.yview()
         size = (self.winfo_width(), int((fin - deb) * height))
-        self._highlight_img = self._highlight_img.resize(size)
+        try:
+            self._highlight_img = self._highlight_img.resize(size)
+        except ValueError:
+            return
         self._highlight_photoimg = ImageTk.PhotoImage(self._highlight_img, master=self)
         self.itemconfigure(self.highlight, image=self._highlight_photoimg)
         self.coords(self.highlight, 0, int(deb * height))
-        # self.coords(self.highlight, 0, int(deb * height), self.winfo_width(),
-                    # int(fin * height))
         for l in self._marks.values():
             for iid, rely in l:
                 y = int(rely * self.winfo_height())
@@ -91,8 +90,6 @@ class FileBar(Canvas):
             h = (fin - deb)
             height = self.winfo_height()
             deb = max(0, frac - h / 2)
-            # self.coords(self.highlight, 0, int(deb * height), self.winfo_width(),
-                        # int((deb + h) * height))
             self.coords(self.highlight, 0, int(deb * height))
             self.widget.yview('moveto', deb)
 

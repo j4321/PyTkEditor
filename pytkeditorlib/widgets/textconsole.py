@@ -24,8 +24,9 @@ Python console text widget
 import tkinter as tk
 import sys
 import re
-from os import kill, remove
-from os.path import join, dirname
+from os import kill, remove, getcwd
+from os.path import join, dirname, sep, expanduser
+from glob import glob
 import socket
 import ssl
 from subprocess import Popen
@@ -35,32 +36,54 @@ from pygments import lex
 from pygments.lexers import Python3Lexer
 import jedi
 
-from pytkeditorlib.utils.constants import get_screen, load_style, CONFIG, SERVER_CERT, \
-    CLIENT_CERT
-from pytkeditorlib.dialogs import askyesno, CompListbox, Tooltip
+from pytkeditorlib.utils.constants import SERVER_CERT, CLIENT_CERT, \
+    MAGIC_COMMANDS, EXTERNAL_COMMANDS, get_screen, PathCompletion, glob_rel, \
+    magic_complete, parse_ansi, format_long_output
+from pytkeditorlib.dialogs import askyesno, Tooltip, CompListbox
 from pytkeditorlib.gui_utils import AutoHideScrollbar
-from .base_widget import BaseWidget
+from .base_widget import BaseWidget, RichText
 
 
-class TextConsole(tk.Text):
+class TextConsole(RichText):
+
     def __init__(self, master, history, **kw):
         kw.setdefault('width', 50)
         kw.setdefault('wrap', 'word')
         kw.setdefault('prompt1', '>>> ')
         kw.setdefault('prompt2', '... ')
+        kw.setdefault('undo', True)
+        kw.setdefault('autoseparators', False)
         banner = kw.pop('banner', f'Python {sys.version.splitlines()[0]}\n')
+        self._prompt1 = kw.pop('prompt1')
+        self._prompt2 = kw.pop('prompt2')
 
+        self.cwd = getcwd()  # console current working directory
+
+        # --- history
         self.history = history
         self._hist_item = self.history.get_length()
         self._hist_match = ''
 
-        self._syntax_highlighting_tags = []
+        RichText.__init__(self, master, **kw)
 
-        self._prompt1 = kw.pop('prompt1')
-        self._prompt2 = kw.pop('prompt2')
+        # --- regexp
+        ext_cmds = "|".join(EXTERNAL_COMMANDS)
+        magic_cmds = "|".join(MAGIC_COMMANDS)
+        pre_path = rf"(?:(?:(?:{ext_cmds}|cd|%run|%logstart) )|(?:\"|'))"
+        self._re_abspaths = re.compile(rf'{pre_path}((?:~\w*)?(?:\{sep}\w+)+\{sep}?)$')
+        self._re_relpaths = re.compile(rf'{pre_path}(\w+(?:\{sep}\w+)*\{sep}?)$')
+        self._re_console_cd = re.compile(r'^cd ?(.*)\n*$')
+        self._re_console_run = re.compile(r"^_console.run\('(.*)'\)$")
+        self._re_console_external = re.compile(rf'^({ext_cmds}) ?(.*)\n*$')
+        self._re_console_magic = re.compile(rf'^%({magic_cmds}) ?(.*)\n*$')
+        self._re_help = re.compile(r'([.\w]*)(\?{1,2})$')
+        self._re_expanduser = re.compile(r'(~\w*)')
+        self._re_trailing_spaces = re.compile(r' *$', re.MULTILINE)
+        self._re_prompt = re.compile(rf'^{re.escape(self._prompt2)}?', re.MULTILINE)
 
-        tk.Text.__init__(self, master, **kw)
-
+        self._jedi_comp_external = '\n'.join([f'\ndef {cmd}():\n    pass\n'
+                                              for cmd in EXTERNAL_COMMANDS])
+        self._jedi_comp_extra = ''
         self._comp = CompListbox(self)
         self._comp.set_callback(self._comp_sel)
 
@@ -72,12 +95,12 @@ class TextConsole(tk.Text):
         self._init_shell()
 
         # --- initialization
-        self.update_style()
-
         self.insert('end', banner, 'banner')
         self.prompt()
         self.mark_set('input', 'insert')
         self.mark_gravity('input', 'left')
+
+        self._poll_id = ""
 
         # --- bindings
         self.bind('<parenleft>', self._args_hint)
@@ -86,24 +109,54 @@ class TextConsole(tk.Text):
         self.bind('<KeyPress>', self.on_key_press)
         self.bind('<KeyRelease>', self.on_key_release)
         self.bind('<Tab>', self.on_tab)
+        self.bind('<ISO_Left_Tab>', self.unindent)
         self.bind('<Down>', self.on_down)
         self.bind('<Up>', self.on_up)
         self.bind('<Return>', self.on_return)
         self.bind('<BackSpace>', self.on_backspace)
         self.bind('<Control-c>', self.on_ctrl_c)
+        self.bind('<Control-y>', self.redo)
+        self.bind('<Control-z>', self.undo)
+        self.bind("<Control-w>", lambda e: "break")
+        self.bind("<Control-h>", lambda e: "break")
+        self.bind("<Control-i>", lambda e: "break")
+        self.bind("<Control-b>", lambda e: "break")
+        self.bind("<Control-t>", lambda e: "break")
         self.bind('<<Paste>>', self.on_paste)
         self.bind('<<Cut>>', self.on_cut)
         self.bind('<<LineStart>>', self.on_goto_linestart)
         self.bind('<Destroy>', self.quit)
         self.bind('<FocusOut>', self._on_focusout)
         self.bind("<ButtonPress>", self._on_press)
+        self.bind("<apostrophe>", self.auto_close_string)
+        self.bind("<quotedbl>", self.auto_close_string)
+        self.bind('<parenleft>', self.auto_close, True)
+        self.bind("<bracketleft>", self.auto_close)
+        self.bind("<braceleft>", self.auto_close)
+        self.bind("<parenright>", self.close_brackets)
+        self.bind("<bracketright>", self.close_brackets)
+        self.bind("<braceright>", self.close_brackets)
 
-    def quit(self, event=None):
-        self.history.save()
-        self.shell_client.shutdown(socket.SHUT_RDWR)
-        self.shell_client.close()
-        self.shell_socket.close()
+    def parse(self):
+        data = self.get('input', 'end')
+        print(data)
+        start = 'input'
+        while data and '\n' == data[0]:
+            start = self.index('%s+1c' % start)
+            data = data[1:]
+        self.mark_set('range_start', start)
+        for t in self._syntax_highlighting_tags:
+            self.tag_remove(t, start, "range_start +%ic" % len(data))
+        for token, content in lex(data, Python3Lexer()):
+            self.mark_set("range_end", "range_start + %ic" % len(content))
+            for t in token.split():
+                self.tag_add(str(t), "range_start", "range_end")
+            self.mark_set("range_start", "range_end")
 
+    def index_to_tuple(self, index):
+        return tuple(map(int, self.index(index).split(".")))
+
+    # --- remote python interpreter
     def _init_shell(self):
         context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
         context.verify_mode = ssl.CERT_REQUIRED
@@ -127,10 +180,14 @@ class TextConsole(tk.Text):
         rep = askyesno('Confirmation', 'Do you really want to restart the console?')
         if rep:
             kill(self.shell_pid, signal.SIGTERM)
-            self.shell_client.shutdown(socket.SHUT_RDWR)
-            self.shell_client.close()
-            self.shell_socket.close()
+            try:
+                self.shell_client.shutdown(socket.SHUT_RDWR)
+                self.shell_client.close()
+                self.shell_socket.close()
+            except OSError:
+                pass
             self.configure(state='normal')
+            self._jedi_comp_extra = ''
             self.history.new_session()
             self.shell_clear()
             self._init_shell()
@@ -140,61 +197,150 @@ class TextConsole(tk.Text):
         self.insert('insert', '\n')
         self.prompt()
 
-    def _on_focusout(self, event):
-        self._comp.withdraw()
-        self._tooltip.withdraw()
-
-    def _on_press(self, event):
-        self._comp.withdraw()
-        self._tooltip.withdraw()
-
+    # --- autocompletion / hints
     def _comp_sel(self):
         txt = self._comp.get()
         self._comp.withdraw()
         self.insert('insert', txt)
         self.parse()
 
-    def update_style(self):
-        FONT = (CONFIG.get("General", "fontfamily"),
-                CONFIG.getint("General", "fontsize"))
-        CONSOLE_BG, CONSOLE_HIGHLIGHT_BG, CONSOLE_SYNTAX_HIGHLIGHTING = load_style(CONFIG.get('Console', 'style'))
-        CONSOLE_FG = CONSOLE_SYNTAX_HIGHLIGHTING.get('Token.Name', {}).get('foreground', 'black')
+    def _jedi_script(self):
 
-        self._syntax_highlighting_tags = list(CONSOLE_SYNTAX_HIGHLIGHTING.keys())
-        self.configure(fg=CONSOLE_FG, bg=CONSOLE_BG, font=FONT,
-                       selectbackground=CONSOLE_HIGHLIGHT_BG,
-                       inactiveselectbackground=CONSOLE_HIGHLIGHT_BG,
-                       insertbackground=CONSOLE_FG)
-        CONSOLE_SYNTAX_HIGHLIGHTING['Token.Generic.Prompt'].setdefault('foreground', CONSOLE_FG)
-        self.tag_configure('prompt', **CONSOLE_SYNTAX_HIGHLIGHTING['Token.Generic.Prompt'])
-        self.tag_configure('output', foreground=CONSOLE_FG)
-        # --- syntax highlighting
-        tag_props = {key: '' for key in self.tag_configure('sel')}
-        for tag, opts in CONSOLE_SYNTAX_HIGHLIGHTING.items():
-            props = tag_props.copy()
-            props.update(opts)
-            self.tag_configure(tag, **props)
-        self.tag_raise('prompt')
+        lines = self.get('insert linestart + %ic' % len(self._prompt1), 'end').rstrip('\n')
 
-    def index_to_tuple(self, index):
-        return tuple(map(int, self.index(index).split(".")))
+        session_code = '\n\n'.join([self._jedi_comp_external, self._jedi_comp_extra] + self.history.get_session_hist()) + '\n\n'
 
-    def parse(self):
-        data = self.get('input', 'end')
-        start = 'input'
-        while data and '\n' == data[0]:
-            start = self.index('%s+1c' % start)
-            data = data[1:]
-        self.mark_set('range_start', start)
-        for t in self._syntax_highlighting_tags:
-            self.tag_remove(t, start, "range_start +%ic" % len(data))
-        for token, content in lex(data, Python3Lexer()):
-            self.mark_set("range_end", "range_start + %ic" % len(content))
-            for t in token.split():
-                self.tag_add(str(t), "range_start", "range_end")
-            self.mark_set("range_start", "range_end")
+        offset = len(session_code.splitlines())
+        r, c = self.index_to_tuple('insert')
+
+        script = jedi.Script(session_code + lines, offset + 1, c - len(self._prompt1),
+                             'completion.py')
+        return script
+
+    def _args_hint(self, event=None):
+        index = self.index('insert')
+        try:
+            script = self._jedi_script()
+            res = script.goto_definitions()
+        except Exception:
+            return
+        self.mark_set('insert', index)
+        if res:
+            try:
+                args = res[-1].docstring().splitlines()[0]
+            except Exception:
+                # usually caused by an exception raised in Jedi
+                return
+            self._tooltip.configure(text=args)
+            xb, yb, w, h = self.bbox('insert')
+            xr = self.winfo_rootx()
+            yr = self.winfo_rooty()
+            ht = self._tooltip.winfo_reqheight()
+            screen = get_screen(xr, yr)
+            y = yr + yb + h
+            x = xr + xb
+            if y + ht > screen[3]:
+                y = yr + yb - ht
+
+            self._tooltip.geometry('+%i+%i' % (x, y))
+            self._tooltip.deiconify()
+
+    def _comp_display(self):
+        self._comp.withdraw()
+        index = self.index('insert wordend')
+        if index[-2:] != '.0':
+            self.mark_set('insert', 'insert-1c wordend')
+        jedi_comp = False
+        line = self.get('insert linestart', 'insert')
+        # --- magic command
+        comp = magic_complete(line.split()[-1])
+        if not comp:
+            # --- path autocompletion
+            # absolute paths
+            match_path = self._re_abspaths.search(line)
+            if match_path:
+                before_completion = match_path.groups()[0]
+                if '~' in before_completion:
+                    before_completion = expanduser(before_completion)
+                paths = glob(before_completion + '*')
+                comp = [PathCompletion(before_completion, path) for path in paths]
+            # relative paths
+            if not comp:
+                match_path = self._re_relpaths.search(line)
+                if match_path:
+                    before_completion = match_path.groups()[0]
+                    paths = glob_rel(before_completion + '*', self.cwd)
+                    comp = [PathCompletion(before_completion, path) for path in paths]
+                    jedi_comp = sep not in before_completion
+            # --- jedi code autocompletion
+            if not comp or jedi_comp:
+                try:
+                    script = self._jedi_script()
+                    comp.extend(script.completions())
+                except Exception:
+                    # jedi raised an exception
+                    pass
+
+        if len(comp) == 1:
+            self.insert('insert', comp[0].complete)
+            self.parse()
+        elif len(comp) > 1:
+            self._comp.update(comp)
+            xb, yb, w, h = self.bbox('insert')
+            xr = self.winfo_rootx()
+            yr = self.winfo_rooty()
+            hcomp = self._comp.winfo_reqheight()
+            screen = self.winfo_screenheight()
+            y = yr + yb + h
+            x = xr + xb
+            if y + hcomp > screen:
+                y = yr + yb - hcomp
+            self._comp.geometry('+%i+%i' % (x, y))
+            self._comp.deiconify()
+
+    # --- bindings
+    def undo(self, event=None):
+        try:
+            self.edit_undo()
+        except tk.TclError:
+            pass
+        finally:
+            self.parse()
+        return "break"
+
+    def redo(self, event=None):
+        try:
+            self.edit_redo()
+        except tk.TclError:
+            pass
+        finally:
+            self.parse()
+        return "break"
+
+    def quit(self, event=None):
+        self.history.save()
+        try:
+            self.after_cancel(self._poll_id)
+        except ValueError:
+            pass
+        try:
+            self.shell_client.shutdown(socket.SHUT_RDWR)
+            self.shell_client.close()
+            self.shell_socket.close()
+        except OSError:
+            pass
+
+    def _on_focusout(self, event):
+        self._comp.withdraw()
+        self._tooltip.withdraw()
+
+    def _on_press(self, event):
+        self._clear_highlight()
+        self._comp.withdraw()
+        self._tooltip.withdraw()
 
     def on_goto_linestart(self, event):
+        self.edit_separator()
         self.mark_set('insert', 'insert linestart+%ic' % (len(self._prompt1)))
         return "break"
 
@@ -234,36 +380,16 @@ class TextConsole(tk.Text):
             self.delete('sel.first', 'sel.last')
         except tk.TclError:
             pass
+        self.edit_separator()
         txt = self.clipboard_get()
         self.insert("insert", txt)
         self.insert_cmd(self.get("input", "end"))
         self.parse()
         return 'break'
 
-    def insert_cmd(self, cmd):
-        input_index = self.index('input')
-        self.delete('input', 'end')
-        lines = cmd.splitlines()
-        if lines:
-            indent = len(re.search(r'^( )*', lines[0]).group())
-            self.insert('insert', lines[0][indent:])
-            for line in lines[1:]:
-                line = line[indent:]
-                self.insert('insert', '\n')
-                self.prompt(True)
-                self.insert('insert', line)
-                self.mark_set('input', input_index)
-        self.see('end')
-
-    def prompt(self, result=False):
-        if result:
-            self.insert('end', self._prompt2, 'prompt')
-        else:
-            self.insert('end', self._prompt1, 'prompt')
-        self.mark_set('input', 'end-1c')
-
     def on_key_press(self, event):
         self._tooltip.withdraw()
+        self._clear_highlight()
         if 'Control' not in event.keysym:
             try:
                 self.tag_remove('sel', 'sel.first', 'input')
@@ -285,6 +411,9 @@ class TextConsole(tk.Text):
             elif event.keysym not in ['Tab', 'Down', 'Up']:
                 self._comp.withdraw()
         else:
+            if (event.char in [' ', ':', ',', ';', '(', '[', '{', ')', ']', '}']
+               or event.keysym in ['BackSpace', 'Left', 'Right']):
+                self.edit_separator()
             self.parse()
 
     def on_up(self, event):
@@ -350,18 +479,138 @@ class TextConsole(tk.Text):
             end = str(self.index('sel.last'))
             start_line = int(start.split('.')[0])
             end_line = int(end.split('.')[0]) + 1
+            char = len(self._prompt1)
             for line in range(start_line, end_line):
-                self.insert('%i.0' % line, '    ')
+                self.insert(f'{line}.{char}', '    ')
         else:
-            txt = self.get('insert-1c')
-            if not txt.isalnum() and txt not in ['.', '_']:
+            txt = self.get(f'insert linestart+{len(self._prompt1)}c', 'insert')
+            if txt == ' ' * len(txt):
                 self.insert('insert', '    ')
             else:
                 self._comp_display()
         return "break"
 
+    def unindent(self, event=None):
+        self.edit_separator()
+        sel = self.tag_ranges('sel')
+        if sel:
+            start = str(self.index('sel.first'))
+            end = str(self.index('sel.last'))
+        else:
+            start = str(self.index('insert'))
+            end = str(self.index('insert'))
+        start_line = int(start.split('.')[0])
+        end_line = int(end.split('.')[0]) + 1
+        start_char = len(self._prompt1)
+        for line in range(start_line, end_line):
+            start = f"{line}.{start_char}"
+            if self.get(start, start + "+4c") == '    ':
+                self.delete(start, start + "+4c")
+        return "break"
+
+    def on_shift_return(self, event):
+        if self.compare('insert', '<', 'input'):
+            self.mark_set('insert', 'input lineend')
+            return 'break'
+        else:
+            self.mark_set('insert', 'end')
+            self.parse()
+            self.insert('insert', '\n')
+            self.insert('insert', self._prompt2, 'prompt')
+            self.see('end')
+            self.eval_current(True)
+
+    def on_return(self, event=None):
+        if self.compare('insert', '<', 'input'):
+            self.mark_set('insert', 'input lineend')
+            return 'break'
+        if self._comp.winfo_ismapped():
+            self._comp_sel()
+        else:
+            self.parse()
+            if self.index('end-1c linestart') == self.index('input linestart'):
+                self.eval_current(True)
+            else:
+                text = self._re_prompt.sub('', self.get('insert', 'end')).strip()
+                if text:
+                    self.insert('insert', '\n' + self._prompt2, 'prompt')
+                else:
+                    self.eval_current(True)
+            self.see('end')
+        return 'break'
+
+    def on_ctrl_return(self, event=None):
+        self.parse()
+        self.insert('insert', '\n')
+        self.insert('insert', self._prompt2, 'prompt')
+        self.see('end')
+        return 'break'
+
+    def on_backspace(self, event):
+        self._clear_highlight()
+        if self.compare('insert', '<=', 'input'):
+            self.mark_set('insert', 'input lineend')
+            return 'break'
+        self.edit_separator()
+        sel = self.tag_ranges('sel')
+        if sel:
+            self.delete('sel.first', 'sel.last')
+        else:
+            linestart = self.get('insert linestart', 'insert')
+            text = self.get('insert-1c', 'insert+1c')
+            if re.search(r'    $', linestart):
+                self.delete('insert-4c', 'insert')
+            elif linestart == self._prompt2:
+                self.delete("insert linestart -1c", "insert")
+            elif text in ["()", "[]", "{}"]:
+                self.delete('insert-1c', 'insert+1c')
+            elif text in ["''"]:
+                if 'Token.Literal.String.Single' not in self.tag_names('insert-2c'):
+                    # avoid situation where deleting the 2nd quote in '<text>'' result in deletion of both the 2nd and 3rd quotes
+                    self.delete('insert-1c', 'insert+1c')
+                else:
+                    self.delete('insert-1c')
+            elif text in ['""']:
+                if 'Token.Literal.String.Double' not in self.tag_names('insert-2c'):
+                    # avoid situation where deleting the 2nd quote in "<text>"" result in deletion of both the 2nd and 3rd quotes
+                    self.delete('insert-1c', 'insert+1c')
+                else:
+                    self.delete('insert-1c')
+            else:
+                self.delete('insert-1c')
+        self.parse()
+        self._find_matching_par()
+        return 'break'
+
+    # --- insert
+    def insert_cmd(self, cmd):
+        self.edit_separator()
+        input_index = self.index('input')
+        self.delete('input', 'end')
+        lines = cmd.splitlines()
+        if lines:
+            indent = len(re.search(r'^( )*', lines[0]).group())
+            self.insert('insert', lines[0][indent:])
+            for line in lines[1:]:
+                line = line[indent:]
+                self.insert('insert', '\n')
+                self.prompt(True)
+                self.insert('insert', line)
+                self.mark_set('input', input_index)
+        self.see('end')
+
+    def prompt(self, result=False):
+        if result:
+            self.edit_separator()
+            self.insert('end', self._prompt2, 'prompt')
+        else:
+            self.insert('end', self._prompt1, 'prompt')
+            self.edit_reset()
+        self.mark_set('input', 'end-1c')
+
+    # --- docstrings
     def get_docstring(self, obj):
-        session_code = '\n\n'.join(self.history.get_session_hist()) + '\n\n'
+        session_code = self._jedi_comp_extra + '\n\n'.join(self.history.get_session_hist()) + '\n\n'
         script = jedi.Script(session_code + obj,
                              len(session_code.splitlines()) + 1,
                              len(obj),
@@ -372,74 +621,7 @@ class TextConsole(tk.Text):
         else:
             return None
 
-    def _jedi_script(self):
-
-        index = self.index('insert wordend')
-        if index[-2:] != '.0':
-            line = self.get('insert wordstart', 'insert wordend')
-            i = len(line) - 1
-            while i > -1 and line[i] in [')', ']', '}']:
-                i -= 1
-            self.mark_set('insert', 'insert wordstart +%ic' % (i + 1))
-
-        lines = self.get('insert linestart + %ic' % len(self._prompt1), 'end').rstrip('\n')
-
-        session_code = '\n\n'.join(self.history.get_session_hist()) + '\n\n'
-
-        offset = len(session_code.splitlines())
-        r, c = self.index_to_tuple('insert')
-
-        script = jedi.Script(session_code + lines, offset + 1, c - len(self._prompt1),
-                             'completion.py')
-        return script
-
-    def _args_hint(self, event=None):
-        index = self.index('insert')
-        script = self._jedi_script()
-        res = script.goto_definitions()
-        self.mark_set('insert', index)
-        if res:
-            try:
-                args = res[-1].docstring().splitlines()[0]
-            except IndexError:
-                return
-            self._tooltip.configure(text=args)
-            xb, yb, w, h = self.bbox('insert')
-            xr = self.winfo_rootx()
-            yr = self.winfo_rooty()
-            ht = self._tooltip.winfo_reqheight()
-            screen = get_screen(xr, yr)
-            y = yr + yb + h
-            x = xr + xb
-            if y + ht > screen[3]:
-                y = yr + yb - ht
-
-            self._tooltip.geometry('+%i+%i' % (x, y))
-            self._tooltip.deiconify()
-
-    def _comp_display(self):
-        self._comp.withdraw()
-        script = self._jedi_script()
-
-        comp = script.completions()
-
-        if len(comp) == 1:
-            self.insert('insert', comp[0].complete)
-            self.parse()
-        elif len(comp) > 1:
-            self._comp.update(comp)
-            xb, yb, w, h = self.bbox('insert')
-            xr = self.winfo_rootx()
-            yr = self.winfo_rooty()
-            hcomp = self._comp.winfo_reqheight()
-            screen = self.winfo_screenheight()
-            y = yr + yb + h
-            x = xr + xb
-            if y + hcomp > screen:
-                y = yr + yb - hcomp
-            self._comp.geometry('+%i+%i' % (x, y))
-            self._comp.deiconify()
-
+    # --- execute
     def execute(self, cmd):
         self.delete('input', 'end')
         self.insert_cmd(cmd)
@@ -449,18 +631,73 @@ class TextConsole(tk.Text):
 
     def eval_current(self, auto_indent=False):
         index = self.index('input')
-        lines = self.get('input', 'insert lineend').splitlines()
+        code = self.get('input', 'insert lineend')
         self.mark_set('insert', 'insert lineend')
-        if lines:
-            lines = [lines[0].rstrip()] + [line[len(self._prompt2):].rstrip() for line in lines[1:]]
-            for i, l in enumerate(lines):
-                if l.endswith('?'):
-                    lines[i] = 'help(%s)' % l[:-1]
-            line = '\n'.join(lines)
+        if code:
+            add_to_hist = True
+            # remove trailing spaces
+            code = self._re_trailing_spaces.sub('', code)
+            # remove leading prompts
+            code = self._re_prompt.sub('', code)
+            # external cmds
+            match = self._re_console_external.search(code)
+            if match:
+                self.history.add_history(code)
+                self._hist_item = self.history.get_length()
+                exp_match = tuple(self._re_expanduser.finditer(code))
+                for m in reversed(exp_match):
+                    p = m.group()
+                    start, end = m.span()
+                    code = code[:start] + expanduser(p) + code[end:]
+                if match.groups()[1] in ['?', '??']:
+                    code = f"{code[:-1]} --help"
+                code = f"_console.external({code!r})"
+                add_to_hist = False
+            else:
+                # cd
+                match = self._re_console_cd.search(code)
+                if match:
+                    self.history.add_history(code)
+                    self._hist_item = self.history.get_length()
+                    if code in ['cd?', 'cd??']:
+                        code = "print(_console.cd.__doc__)"
+                    else:
+                        code = f"_console.cd({match.groups()[0]!r})"
+                    add_to_hist = False
+                else:
+                    # magic cmds
+                    match = self._re_console_magic.match(code)
+                    if match:
+                        self.history.add_history(code)
+                        self._hist_item = self.history.get_length()
+                        cmd, arg = match.groups()
+                        arg = arg.strip()
+                        if arg in ['?', '??']:
+                            code = f"_console.print_doc(_console.{cmd})"
+                        else:
+                            if cmd == 'pylab':
+                                self._jedi_comp_extra += '\nimport numpy\nimport matplotlib\nfrom matplotlib import pyplot as plt\nnp = numpy\n'
+                            code = f"_console.{cmd}({arg!r})"
+                        add_to_hist = False
+                    else:
+                        # help
+                        match = self._re_help.search(code)
+                        if match:
+                            self.history.add_history(code)
+                            self._hist_item = self.history.get_length()
+                            obj, h = match.groups()
+                            if obj:
+                                if h == '?':
+                                    code = f"_console.print_doc({obj})"
+                                else:  # h == '??'
+                                    code = f"help({obj})"
+                            else:
+                                code = "_console.print_doc()"
+                            add_to_hist = False
 
             self.insert('insert', '\n')
             try:
-                self.shell_client.send(line.encode())
+                self.shell_client.send(code.encode())
                 self.configure(state='disabled')
             except SystemExit:
                 self.history.new_session()
@@ -469,36 +706,71 @@ class TextConsole(tk.Text):
             except Exception as e:
                 print(e)
                 return
-
-            self.after(1, self._check_result, auto_indent, lines, index)
+            try:
+                self.after_cancel(self._poll_id)
+            except ValueError:
+                pass
+            self.after(1, self._check_result, auto_indent, code, index, add_to_hist)
         else:
             self.insert('insert', '\n')
             self.prompt()
 
-    def _check_result(self, auto_indent, lines, index):
+    def _poll_output(self):
+        """Get outputs coming in between """
         try:
             cmd = self.shell_client.recv(65536).decode()
         except socket.error:
-            self.after(10, self._check_result, auto_indent, lines, index)
+            self._poll_id = self.after(100, self._poll_output)
+        else:
+            if cmd:
+                res, output, err, wait, cwd = eval(cmd)
+                index = self.index('input linestart -1c')
+                if output.strip():
+                    output = format_long_output(output, self["width"])
+                    if '\x1b' in output:  # ansi formatting
+                        offset = int(index.split('.')[0]) + 1
+                        tag_ranges, text = parse_ansi(output, offset)
+                        self.insert(f'{index}+1c', text, 'output')
+                        for tag, r in tag_ranges.items():
+                            self.tag_add(tag, *r)
+                    else:
+                        self.insert(f'{index}+1c', output, 'output')
+                    self.see('end')
+            self._poll_id = self.after(10, self._poll_output)
+
+    def _check_result(self, auto_indent, code, index, add_to_hist=True):
+        try:
+            cmd = self.shell_client.recv(65536).decode()
+        except socket.error:
+            self.after(10, self._check_result, auto_indent, code, index, add_to_hist)
         else:
             if not cmd:
                 return
-            res, output, err, wait = eval(cmd)
+            res, output, err, wait, cwd = eval(cmd)
 
             if err == "Too long":
                 filename = output
                 with open(filename) as tmpfile:
-                    res, output, err, wait = eval(tmpfile.read())
+                    res, output, err, wait, cwd = eval(tmpfile.read())
                 remove(filename)
-
+            self.cwd = cwd
             if wait:
                 if output.strip():
-                    self.configure(state='normal')
-                    self.insert('end', output, 'output')
+                    output = format_long_output(output, self["width"])
+                    if '\x1b' in output:  # ansi formatting
+                        offset = int(self.index('end').split('.')[0]) - 1
+                        tag_ranges, text = parse_ansi(output, offset)
+                        self.configure(state='normal')
+                        self.insert('end', text, 'output')
+                        for tag, r in tag_ranges.items():
+                            self.tag_add(tag, *r)
+                    else:
+                        self.configure(state='normal')
+                        self.insert('end', output, 'output')
                     self.mark_set('input', 'end')
                     self.see('end')
                 self.configure(state='disabled')
-                self.after(1, self._check_result, auto_indent, lines, index)
+                self.after(1, self._check_result, auto_indent, code, index, add_to_hist)
                 return
 
             self.configure(state='normal')
@@ -514,7 +786,8 @@ class TextConsole(tk.Text):
             if not res and self.compare('insert linestart', '>', 'insert'):
                 self.insert('insert', '\n')
             self.prompt(res)
-            if auto_indent and lines:
+            if res and auto_indent and code:
+                lines = code.splitlines()
                 indent = re.search(r'^( )*', lines[-1]).group()
                 line = lines[-1].strip()
                 if line and line[-1] == ':':
@@ -523,52 +796,65 @@ class TextConsole(tk.Text):
             self.see('end')
             if res:
                 self.mark_set('input', index)
-            elif lines:
-                self.history.add_history('\n'.join(lines))
-                self._hist_item = self.history.get_length()
+            elif code:
+                match = self._re_console_run.match(code.strip())
+                if match:
+                    path = match.groups()[0]
+                    with open(path) as file:
+                        self._jedi_comp_extra += f"\n\n{file.read()}\n\n"
+                if add_to_hist:
+                    self.history.add_history(code)
+                    self._hist_item = self.history.get_length()
+            self._poll_id = self.after(100, self._poll_output)
 
-    def on_shift_return(self, event):
-        if self.compare('insert', '<', 'input'):
-            self.mark_set('insert', 'input lineend')
-            return 'break'
-        else:
-            self.mark_set('insert', 'end')
-            self.parse()
-            self.insert('insert', '\n')
-            self.insert('insert', self._prompt2, 'prompt')
-            self.eval_current(True)
-
-    def on_return(self, event=None):
-        if self.compare('insert', '<', 'input'):
-            self.mark_set('insert', 'input lineend')
-            return 'break'
-        if self._comp.winfo_ismapped():
-            self._comp_sel()
-        else:
-            self.parse()
-            self.eval_current(True)
-            self.see('end')
-        return 'break'
-
-    def on_ctrl_return(self, event=None):
-        self.parse()
-        self.insert('insert', '\n' + self._prompt2, 'prompt')
-        return 'break'
-
-    def on_backspace(self, event):
-        if self.compare('insert', '<=', 'input'):
-            self.mark_set('insert', 'input lineend')
-            return 'break'
+    # --- brackets
+    def auto_close(self, event):
         sel = self.tag_ranges('sel')
         if sel:
-            self.delete('sel.first', 'sel.last')
+            self.insert('sel.first', event.char)
+            self.insert('sel.last', self._autoclose[event.char])
+            self.mark_set('insert', 'sel.last+1c')
+            self.tag_remove('sel', 'sel.first', 'sel.last')
+            self.parse()
         else:
-            linestart = self.get('insert linestart', 'insert')
-            if re.search(r'    $', linestart):
-                self.delete('insert-4c', 'insert')
+            self._clear_highlight()
+            self.insert('insert', event.char, ['Token.Punctuation', 'matching_brackets'])
+            if not self._find_matching_par():
+                self.tag_remove('unmatched_bracket', 'insert-1c')
+                self.insert('insert', self._autoclose[event.char], ['Token.Punctuation', 'matching_brackets'])
+                self.mark_set('insert', 'insert-1c')
+        self.edit_separator()
+        return 'break'
+
+    def auto_close_string(self, event):
+        self._clear_highlight()
+        sel = self.tag_ranges('sel')
+        if sel:
+            text = self.get('sel.first', 'sel.last')
+            if len(text.splitlines()) > 1:
+                char = event.char * 3
             else:
-                self.delete('insert-1c')
+                char = event.char
+            self.insert('sel.first', char)
+            self.insert('sel.last', char)
+            self.mark_set('insert', 'sel.last+%ic' % (len(char)))
+            self.tag_remove('sel', 'sel.first', 'sel.last')
+        elif self.get('insert') == event.char:
+            self.mark_set('insert', 'insert+1c')
+        else:
+            self.insert('insert', event.char * 2)
+            self.mark_set('insert', 'insert-1c')
         self.parse()
+        self.edit_separator()
+        return 'break'
+
+    def close_brackets(self, event):
+        self._clear_highlight()
+        if self.get('insert') == event.char:
+            self.mark_set('insert', 'insert+1c')
+        else:
+            self.insert('insert', event.char, 'Token.Punctuation')
+        self._find_opening_par(event.char)
         return 'break'
 
 
@@ -589,3 +875,12 @@ class ConsoleFrame(BaseWidget):
         self.menu.add_command(label='Clear console', command=self.console.shell_clear)
         self.menu.add_command(label='Restart console', command=self.console.restart_shell)
 
+        self.update_style = self.console.update_style
+
+    def busy(self, busy):
+        if busy:
+            self.configure(cursor='watch')
+            self.console.configure(cursor='watch')
+        else:
+            self.console.configure(cursor='')
+            self.configure(cursor='')

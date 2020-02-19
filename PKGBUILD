@@ -1,11 +1,11 @@
 # Maintainer: Juliette Monsel <j_4321 at protonmail dot com>
 pkgname=pytkeditor-git
-pkgver=r177.16a1bdc
+pkgver=1.0.0a0
 pkgrel=1
 pkgdesc="Python IDE"
 arch=('any')
 license=('GPL3')
-makedepends=('python-setuptools' 'git')
+makedepends=('python-setuptools')
 depends=('tk'
          'desktop-file-utils'
          'python-pillow'
@@ -17,7 +17,10 @@ depends=('tk'
          'python-pyflakes'
          'python-pygments'
          'python-ewmh'
-         'python-pycodestyle')
+         'python-pdfkit'
+         'python-pycups'
+         'python-pycodestyle')      
+optdepends=('python-qtconsole: Run code in Jupyter QtConsole')
 source=("${pkgname}::git+https://gitlab.com/j_4321/PyTkEditor")
 sha512sums=('SKIP')
 

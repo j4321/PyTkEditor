@@ -205,9 +205,7 @@ class JupyterQtConsoleApp(JupyterApp, JupyterConsoleApp):
     widget_factory = Any(RichJupyterWidget)
 
     def _focus(self, *args):
-        print('focus')
         self.window.raise_()
-        # self.setWindowFlags(Qt.WindowStaysOnTopHint)
 
     def parse_command_line(self, argv=None):
         i = 0

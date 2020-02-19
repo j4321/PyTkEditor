@@ -11,15 +11,17 @@ APP_NAME = "pytkeditor"
 with open('README.rst', encoding='utf-8') as f:
     long_description = f.read()
 
-with open("pytkeditorlib/__init__.py") as file:
+with open("pytkeditorlib/utils/version.py") as file:
     exec(file.read())
 
-images = [os.path.join("pytkeditorlib/images/", img) for img in os.listdir("pytkeditorlib/images/")]
+images = [os.path.join("pytkeditorlib/images/", img) for img in os.listdir("pytkeditorlib/images/") if img != 'animation']
+anim = [os.path.join("pytkeditorlib/images/animation", img) for img in os.listdir("pytkeditorlib/images/animation")]
 ssl = [os.path.join("pytkeditorlib/ssl/", img) for img in os.listdir("pytkeditorlib/ssl/")]
 html = [os.path.join("pytkeditorlib/html/", img) for img in os.listdir("pytkeditorlib/html/")]
 
 data_files = [("/usr/share/applications", ["{}.desktop".format(APP_NAME)]),
               ("/usr/share/{}/images/".format(APP_NAME), images),
+              ("/usr/share/{}/images/animation".format(APP_NAME), anim),
               ("/usr/share/{}/ssl/".format(APP_NAME), ssl),
               ("/usr/share/{}/html/".format(APP_NAME), html),
               ("/usr/share/doc/{}/".format(APP_NAME), ["README.rst"]),
@@ -49,5 +51,5 @@ setup(name="pytkeditor",
       scripts=["pytkeditor"],
       install_requires=["jedi", "pygments", "pyflakes", "pycodestyle",
                         "tkfilebrowser", "ewmh", "python-xlib", "tkcolorpicker",
-                        "Pillow", "docutils"],
+                        "Pillow", "docutils", "pdfkit", "pycups"],
       extras_require={'Execute in Jupyter QtConsole': ["qtconsole"]})

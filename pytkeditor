@@ -24,8 +24,9 @@ import sys
 import os
 import signal
 import traceback
+import logging
 
-from pytkeditorlib.app import App
+from pytkeditorlib import App
 from pytkeditorlib.utils.constants import PIDFILE, OPENFILE_PATH
 from pytkeditorlib.dialogs import showerror
 
@@ -56,6 +57,7 @@ except Exception as e:
     showerror("Error", "{}: {}".format(type(e), e), msg)
 finally:
     try:
+        logging.shutdown()
         os.unlink(PIDFILE)
     except Exception:
         pass

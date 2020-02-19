@@ -31,6 +31,7 @@ from docutils.parsers.rst import Directive, directives
 from docutils.writers.html4css1 import Writer, HTMLTranslator
 
 from pytkeditorlib.utils.constants import TEMPLATE_PATH, CSS_PATH, CONFIG
+from pytkeditorlib.gui_utils import EntryHistory
 from .tkhtml import HtmlFrame
 from .base_widget import BaseWidget
 
@@ -135,17 +136,15 @@ class Help(BaseWidget):
         BaseWidget.__init__(self, master, 'Help', **kw)
 
         self.help_cmds = help_cmds  # {source: help_cmd}
-        self._source = tk.StringVar(self)
+        self._source = tk.StringVar(self, 'Console')
 
         top_bar = ttk.Frame(self)
 
         # --- code source
-        menu_source = tk.Menu(self, tearoff=False)
-        menu_source.add_radiobutton(label='Console', value='Console', variable=self._source)
-        menu_source.add_radiobutton(label='Editor', value='Editor', variable=self._source)
-        self.source = ttk.Menubutton(top_bar, textvariable=self._source,
-                                     menu=menu_source, padding=1, width=7)
-        self.entry = ttk.Combobox(top_bar, width=15)
+        self.source = ttk.Combobox(top_bar, width=7, textvariable=self._source,
+                                   values=['Console', 'Editor'],
+                                   state='readonly')
+        self.entry = EntryHistory(top_bar, width=15)
         self.entry.bind('<Return>', self.show_help)
         self.entry.bind('<<ComboboxSelected>>', self.show_help)
         ttk.Label(top_bar, text='Source').pack(side='left', padx=4, pady=4)
@@ -177,7 +176,7 @@ class Help(BaseWidget):
             print(type(e), e)
             jedi_def = None
         if jedi_def:
-            self.entry['values'] = [obj] + list(self.entry['values'])
+            self.entry.add_to_history(obj)
             txt = get_docstring(jedi_def)
         else:
             txt = ''

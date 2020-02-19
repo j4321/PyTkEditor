@@ -22,7 +22,7 @@ Python interpreter to execute the commands from the TextConsole
 """
 
 from code import InteractiveConsole
-from contextlib import redirect_stdout
+from contextlib import redirect_stdout, redirect_stderr
 from io import StringIO
 import socket
 import ssl
@@ -30,19 +30,296 @@ import sys
 import signal
 import tkinter
 import time
+import timeit
+from datetime import datetime
+from os import chdir, getcwd
+from os.path import dirname, expanduser, join
 from tempfile import mkstemp
+from subprocess import run
+from textwrap import dedent
+import logging
+from logging import handlers
+import argparse
 
-from constants import CLIENT_CERT, SERVER_CERT
+
+from constants import CLIENT_CERT, SERVER_CERT, CONSOLE_HELP
+
+GUI = ['', 'tk']
+try:
+    from PyQt5.QtWidgets import QApplication
+except ImportError:
+    pass
+else:
+    GUI.append('qt')
+try:
+    import gi
+    gi.require_version('Gtk', '3.0')
+    from gi.repository import Gtk
+except ImportError:
+    pass
+else:
+    GUI.append('gtk')
 
 
-class Stdout(StringIO):
+class TimestampFilter(logging.Filter):
+
+    def filter(self, record):
+        if record.levelname == "DEBUG":
+            record.timestamp = ""
+        else:
+            record.timestamp = f"# {datetime.now()}\n"
+        return True
+
+
+class OutputFilter(logging.Filter):
+    log_output = False
+
+    def filter(self, record):
+        output = record.getMessage().startswith('#[Out] ')
+        if output:
+            record.timestamp = ""
+        return self.log_output or not output
+
+
+class Stdout:
     def __init__(self, send_cmd, *args):
-        StringIO.__init__(self, *args)
         self.send_cmd = send_cmd
 
     def write(self, line):
-        StringIO.write(self, line)
         self.send_cmd(line)
+
+
+class ConsoleMethods:
+    def __init__(self, locals):
+        self.current_gui = ''
+        self.locals = locals
+        sys.path.insert(0, '.')
+        # log
+        self.logger = logging.getLogger("pytkeditor_log")
+        self.logger.setLevel(logging.DEBUG)
+        self.logger.propagate = False
+        self._hist = StringIO()
+        hist_handler = logging.StreamHandler(self._hist)
+        hist_handler.setLevel(logging.INFO)
+        hist_handler.setFormatter(logging.Formatter('%(message)s'))
+        self.logger.addHandler(hist_handler)
+        self.handler = None
+        self.output_filter = OutputFilter('output_filter')
+        self.timestamp_filter = TimestampFilter("timestamp_filter")
+        self._log_state = 'Logging is not active'
+        self._logstart_parser = argparse.ArgumentParser(prog="%logstart")
+        self._logstart_parser.add_argument('filename', nargs='?', default=None, action="store")
+        self._logstart_parser.add_argument('-o', dest='output', action='store_true')
+        self._logstart_parser.add_argument('-t', dest='timestamps', action='store_true')
+        self._logstart_parser.add_argument('log_mode', nargs='?', default='append',
+                                           action="store",
+                                           choices=['append', 'overwrite', 'rotate'])
+
+    @staticmethod
+    def print_doc(obj=None):
+        if obj is None:
+            print(CONSOLE_HELP)
+        else:
+            print(dedent(obj.__doc__))
+
+    def external(self, cmd):
+        cmd = cmd.split()
+        res = run(cmd, capture_output=True)
+        err = res.stderr.decode()
+        if err:
+            sys.stderr.write(err)
+        else:
+            print(res.stdout.decode())
+
+    def cd(self, path):
+        "Change the current working directory."
+        if '~' in path:
+            path = expanduser(path)
+        chdir(path)
+        print(getcwd())
+
+    # --- magic commands
+    def magic(self, arg):
+        """
+        Console magic commands
+        ======================
+
+        * %magic
+
+            Show this message.
+
+        * %gui [gui]
+
+            Enable or disable the console GUI event loop integration.
+            Available GUIs are tk (Tkinter), gtk (GTK+) and qt (PyQt5).
+
+        * %logstate
+
+            Print logging status.
+
+        * %logstart [-o|-t] [filename [log_mode]]
+
+            Start logging session (including history) in file 'filename'.
+            If 'filename' is not given, uses 'pytkeditor_log.py' in console
+            working directory.
+
+        * %logstop
+
+            Stop logging.
+
+        * %pylab [gui]
+
+            Load numpy and matplotlib interactively. Use gui, if provided,
+            as matplotlib backend.
+
+        * %run filename
+
+            Set working directory to filename's directory and run filename.
+
+        """
+        print(dedent(self.magic.__doc__))
+
+    def pylab(self, gui=''):
+        """
+        Load numpy and matplotlib interactively.
+
+        Set matplotlib backend to the one corresponding to gui (tk, qt, gtk)
+        if provided and start the gui event loop.
+
+        The following imports are made:
+
+            import numpy
+            import matplotlib
+            from matplotlib import pyplot as plt
+            np = numpy
+        """
+        import numpy
+        import matplotlib
+
+        if gui not in GUI:
+            raise ValueError(f"should be in {', '.join(GUI)}")
+        if gui == 'tk':
+            matplotlib_backend = 'TkAgg'
+        elif gui == 'qt':
+            matplotlib_backend = 'Qt5Agg'
+        elif gui == 'gtk':
+            matplotlib_backend = 'Gtk3Agg'
+        else:
+            matplotlib_backend = None
+        if gui:
+            self.current_gui = gui
+
+        if matplotlib_backend is not None:
+            matplotlib.use(matplotlib_backend)
+
+        from matplotlib import pyplot as plt
+        plt.interactive(True)
+
+        self.locals['numpy'] = numpy
+        self.locals['matplotlib'] = matplotlib
+        self.locals['plt'] = plt
+        self.locals['np'] = numpy
+
+    def timeit(self, code):
+        """Benchmark a single line statement."""
+        locs = self.locals.copy()
+        timer = timeit.Timer(lambda: exec(code, locs, locs))
+        nb, t_tot = timer.autorange()
+        print(f"average time {t_tot/nb} s over {nb} executions")
+
+    def run(self, filename):
+        """Set working directory to filename's directory and run filename."""
+        wdir = dirname(filename)
+        with open(filename) as file:
+            code = file.read()
+        chdir(wdir)
+        exec(code, self.locals, self.locals)
+
+    def gui(self, gui):
+        """
+        Enable or disable the console GUI event loop integration.
+
+        The following GUI toolkits are supported: Tkinter, GTK 3, PyQt5
+
+            %gui tk   - enable Tkinter event loop integration
+            %gui qt   - enable PyQt5 event loop integration
+            %gui gtk  - enable GTK 3 event loop integration
+            %gui      - disable event loop integration
+        """
+        if gui not in GUI:
+            raise ValueError(f"should be in {', '.join(GUI)}")
+        self.current_gui = gui
+
+    def logstart(self, arg):
+        """
+        %logstart [-o|-t] [filename [log_mode]]
+
+        Start logging session (including history).
+
+        Arguments:
+
+            filename: file in which the log is written, if not given, the file
+                      'pytkeditor_log.py' in console working directory is used.
+
+            log_mode: logging mode
+
+                append     - append log to existing file (default).
+                overwrite  - overwrite existing file.
+                rotate     - create a rotating log.
+
+        Options:
+            -o   - log also command outputs as comments
+            -t   - put timestamps as comments before each output
+
+        """
+        try:
+            args = self._logstart_parser.parse_args(arg.split())
+        except SystemExit:
+            return
+
+        if self.handler is not None:
+            print("Log is already active")
+            return
+        if not args.filename:
+            args.filename = join(self.locals['_cwd'], 'pytkeditor_log.py')
+        if args.log_mode == 'rotate':
+            self.handler = handlers.RotatingFileHandler(args.filename, backupCount=100)
+            self.handler.doRollover()
+        elif args.log_mode == 'append':
+            self.handler = logging.FileHandler(args.filename, mode='a')
+        elif args.log_mode == 'overwrite':
+            self.handler = logging.FileHandler(args.filename, mode='w+')
+        else:
+            raise ValueError(f"wrong log_mode {args.log_mode!r}: should be 'append', 'overwrite' or 'rotate'")
+        self.output_filter.log_output = args.output
+        self.handler.setLevel(logging.DEBUG)
+        if args.timestamps:
+            formatter = logging.Formatter('%(timestamp)s%(message)s')
+            self.handler.addFilter(self.timestamp_filter)
+        else:
+            formatter = logging.Formatter('%(message)s')
+        self.handler.addFilter(self.output_filter)
+        self._log_state = f"""Filename   : {args.filename}
+Mode       : {args.log_mode}
+Log output : {args.output}
+Timestamp  : {args.timestamps}"""
+        self.handler.setFormatter(formatter)
+        self.logger.addHandler(self.handler)
+        self.logger.debug(f'## PyTkEditor log - {datetime.now()} ##\n')
+        hist = self._hist.getvalue()
+        if hist:
+            self.logger.debug(hist + "\n")
+
+    def logstop(self, arg):
+        """Stop logging."""
+        self.logger.removeHandler(self.handler)
+        self.handler.close()
+        self.handler = None
+        self._log_state = 'Logging is not active'
+
+    def logstate(self, arg):
+        """Print logging status."""
+        print(self._log_state)
 
 
 class SocketConsole(InteractiveConsole):
@@ -50,8 +327,14 @@ class SocketConsole(InteractiveConsole):
         InteractiveConsole.__init__(self, locals, filename)
         self.stdout = Stdout(self.send_cmd)
         self.stderr = StringIO()
+
+        self.cm = ConsoleMethods(self.locals)
+        self._log_output = ""
         self.locals['exit'] = self._exit
         self.locals['quit'] = self._exit
+        self.locals['_console'] = self.cm
+        self.locals['_getcwd'] = getcwd
+        self.locals['_cwd'] = getcwd()
         self._initial_locals = self.locals.copy()
         signal.signal(signal.SIGINT, self.interrupt)
         context = ssl.create_default_context(ssl.Purpose.SERVER_AUTH, cafile=SERVER_CERT)
@@ -73,6 +356,11 @@ class SocketConsole(InteractiveConsole):
         raise SystemExit
 
     def write(self, data):
+        lines = data.splitlines()
+        if lines:
+            self._log_output += f"\n#[Out] {lines[0]}"
+            if len(lines) > 1:
+                self._log_output += "\n#      " + '\n#      '.join(lines[1:])
         self.stderr.write(data)
 
     def runcode(self, code):
@@ -103,52 +391,76 @@ class SocketConsole(InteractiveConsole):
         return False
 
     def send_cmd(self, line):
-        msg = 'False, %r, "", True' % (line + '\n')
+        lines = line.strip().splitlines()
+        if lines:
+            if len(lines) > 1:
+                self._log_output += f"\n#[Out] {lines[0]}\n#      " + '\n#      '.join(lines[1:])
+            elif lines[0].strip():
+                self._log_output += f"\n#[Out] {lines[0]}"
+        msg = 'False, {!r}, "", True, {!r}'.format(line + '\n', self.locals["_cwd"])
         if len(msg) > 16300:
             fileno, filename = mkstemp(text=True)
             with open(filename, 'w') as tmpfile:
                 tmpfile.write(msg)
-                msg = 'False, %r, "Too long", True' % (filename)
+                msg = f'False, {filename!r}, "Too long", True, {self.locals["_cwd"]!r}'
         self.socket.send(msg.encode())
+
+    def _gui_loop(self):
+        gui = self.locals['_console'].current_gui
+        if gui == 'tk':
+            if tkinter._default_root is not None:
+                tkinter._default_root.update()
+        elif gui == 'gtk':
+            while Gtk.events_pending():
+                Gtk.main_iteration()
+        elif gui == 'qt':
+            app = QApplication.instance()
+            if app:
+                app.processEvents()
 
     def interact(self):
         self.socket.setblocking(False)
-        while True:
-            try:
-                line = self.socket.recv(65536).decode()
-                if self.buffer:
-                    self.resetbuffer()
-                with redirect_stdout(self.stdout):
+        with redirect_stdout(self.stdout):
+            while True:
+                try:
+                    line = self.socket.recv(65536).decode()
+                    if self.buffer:
+                        self.resetbuffer()
                     try:
-                        res = self.push(line)
+                        with redirect_stderr(self.stderr):
+                            res = self.push(line)
                     except SystemExit:
                         self.write('SystemExit\n')
                         res = False
                     except KeyboardInterrupt:
                         self.write('KeyboardInterrupt\n')
                         res = False
-                # output = self.stdout.getvalue()
-                err = self.stderr.getvalue()
-                msg = '%s, %r, %r, %s' % (res, '', err, False)
-                if len(msg) > 16300:
-                    fileno, filename = mkstemp(text=True)
-                    with open(filename, 'w') as tmpfile:
-                        tmpfile.write(msg)
-                    msg = '%s, %r, "Too long"' % (res, filename)
-                self.socket.send(msg.encode())
-                self.stdout.close()
-                self.stderr.close()
-                self.stdout = Stdout(self.send_cmd)
-                self.stderr = StringIO()
-            except BrokenPipeError:
-                self.socket.close()
-                break
-            except socket.error as e:
-                if e.errno != 2:
-                    print('%r' % e, type(e), e)
-                if tkinter._default_root is not None:
-                    tkinter._default_root.update()
-                time.sleep(0.05)
+                    err = self.stderr.getvalue()
+                    if not res:
+                        if line.strip():
+                            self.cm.logger.info(line.strip())
+                        if self._log_output[1:]:
+                            self.cm.logger.info(self._log_output[1:])
+                        self._log_output = ""
+                    if not res and not err:
+                        self.push('_cwd = _getcwd()')
+                    msg = f'{res}, "", {err!r}, False, {self.locals["_cwd"]!r}'
+                    if len(msg) > 16300:
+                        fileno, filename = mkstemp(text=True)
+                        with open(filename, 'w') as tmpfile:
+                            tmpfile.write(msg)
+                        msg = f'{res}, {filename!r}, "Too long", True, {self.locals["_cwd"]!r}'
+                    self.socket.send(msg.encode())
+                    self.stderr.close()
+                    self.stderr = StringIO()
+                except BrokenPipeError:
+                    self.socket.close()
+                    break
+                except socket.error as e:
+                    if e.errno != 2:
+                        print('%r' % e, type(e), e)
+                    self._gui_loop()
+                    time.sleep(0.05)
 
 
 if __name__ == '__main__':

@@ -27,24 +27,24 @@ import pickle
 from pygments import lex
 from pygments.lexers import Python3Lexer
 
-from pytkeditorlib.utils.constants import load_style, CONFIG, HISTFILE
+from pytkeditorlib.utils.constants import CONFIG, HISTFILE
 from pytkeditorlib.gui_utils import AutoHideScrollbar
 from pytkeditorlib.dialogs import showinfo
-from .base_widget import BaseWidget
+from .base_widget import BaseWidget, RichText
 
 
-class History(tk.Text):
+class History(RichText):
     """Python console command history."""
 
-    def __init__(self, master=None, histfile=HISTFILE, **kw):
+    def __init__(self, master=None, histfile=HISTFILE, current_session=False, **kw):
         """ Crée un historique vide """
         kw.setdefault('width', 1)
-        tk.Text.__init__(self, master, **kw)
-        self._syntax_highlighting_tags = []
-        self.update_style()
+        RichText.__init__(self, master, **kw)
+
         self.histfile = histfile
         self.maxsize = CONFIG.getint('History', 'max_size', fallback=10000)
         self.history = []
+        self.current_session = current_session
 
         # --- bindings
         self.bind('<1>', lambda e: self.focus_set())
@@ -58,9 +58,7 @@ class History(tk.Text):
             self._session_start = len(self.history)
         except (FileNotFoundError, pickle.UnpicklingError, EOFError):
             self._session_start = 0
-        self.insert('1.0', '\n'.join(self.history) + '\n')
-        self.parse()
-        self.configure(state='disabled')
+        self.reset_text(init=True)
 
     def new_session(self):
         self._session_start = len(self.history)
@@ -70,32 +68,11 @@ class History(tk.Text):
         return "break"
 
     def update_style(self):
+        RichText.update_style(self)
         self.maxsize = CONFIG.getint('History', 'max_size', fallback=10000)
-        FONT = (CONFIG.get("General", "fontfamily"),
-                CONFIG.getint("General", "fontsize"))
-        CONSOLE_BG, CONSOLE_HIGHLIGHT_BG, CONSOLE_SYNTAX_HIGHLIGHTING = load_style(CONFIG.get('Console', 'style'))
-        CONSOLE_FG = CONSOLE_SYNTAX_HIGHLIGHTING.get('Token.Name', {}).get('foreground', 'black')
 
-        self._syntax_highlighting_tags = list(CONSOLE_SYNTAX_HIGHLIGHTING.keys())
-        self.configure(fg=CONSOLE_FG, bg=CONSOLE_BG, font=FONT,
-                       selectbackground=CONSOLE_HIGHLIGHT_BG,
-                       inactiveselectbackground=CONSOLE_HIGHLIGHT_BG,
-                       insertbackground=CONSOLE_FG)
-        self.tag_configure('error', background=CONSOLE_BG)
-        self.tag_configure('output', foreground=CONSOLE_FG,
-                           background=CONSOLE_BG)
-        # --- syntax highlighting
-        tags = list(self.tag_names())
-        tags.remove('sel')
-        tag_props = {key: '' for key in self.tag_configure('sel')}
-        for tag in tags:
-            self.tag_configure(tag, **tag_props)
-        for tag, opts in CONSOLE_SYNTAX_HIGHLIGHTING.items():
-            self.tag_configure(tag, **opts)
-
-    def parse(self):
-        data = self.get('1.0', 'end')
-        start = '1.0'
+    def parse(self, start='1.0'):
+        data = self.get(start, 'end')
         while data and '\n' == data[0]:
             start = self.index('%s+1c' % start)
             data = data[1:]
@@ -125,27 +102,36 @@ class History(tk.Text):
 
     def add_history(self, line):
         self.history.append(line)
+        index = self.index('end-1c')
         self.configure(state='normal')
         self.insert('end', line + '\n')
-        self.parse()
+        self.parse(index)
         self.configure(state='disabled')
         self.see('end')
 
-    def replace_history_item(self, pos, line):
-        self.history[pos] = line
+    def reset_text(self, init=False):
+        if not init:
+            self.winfo_toplevel().busy(True)
+        self.update_idletasks()
         self.configure(state='normal')
         self.delete('1.0', 'end')
-        self.insert('1.0', '\n'.join(self.history))
+        if self.current_session:
+            self.insert('1.0', '\n'.join(self.history[self._session_start:]))
+        else:
+            self.insert('1.0', '\n'.join(self.history))
         self.parse()
         self.configure(state='disabled')
+        if not init:
+            self.winfo_toplevel().busy(False)
+
+    def replace_history_item(self, pos, line):
+        self.history[pos] = line
+
+        self.reset_text()
 
     def remove_history_item(self, pos):
         del self.history[pos]
-        self.configure(state='normal')
-        self.delete('1.0', 'end')
-        self.insert('1.0', '\n'.join(self.history))
-        self.parse()
-        self.configure(state='disabled')
+        self.reset_text()
 
     def get_history_item(self, pos):
         try:
@@ -169,13 +155,31 @@ class HistoryFrame(BaseWidget):
 
         self._search_count = tk.IntVar(self)
 
+        current_session = CONFIG.getboolean('History', 'current_session', fallback=False)
+        self._current_session = tk.BooleanVar(self, current_session)
+        # --- menu
+        self.menu = tk.Menu(self)
+        self.menu.add_checkbutton(label='Current session only',
+                                  image='img_menu_dummy_cb',
+                                  selectimage='img_selected',
+                                  indicatoron=False,
+                                  compound='left',
+                                  command=self._current_session_toggle,
+                                  variable=self._current_session)
+        self.menu.add_command(label='Find',
+                              command=self.find,
+                              image='img_menu_dummy',
+                              compound='left')
+
         syh = AutoHideScrollbar(self, orient='vertical')
-        self.history = History(self, HISTFILE,
+
+        self.history = History(self, HISTFILE, current_session,
                                yscrollcommand=syh.set,
                                relief='flat', borderwidth=0, highlightthickness=0)
         syh.configure(command=self.history.yview)
 
         # --- search bar
+        self._highlighted = ''
         self.frame_search = ttk.Frame(self, padding=2)
         self.frame_search.columnconfigure(1, weight=1)
         self.entry_search = ttk.Entry(self.frame_search)
@@ -195,6 +199,10 @@ class HistoryFrame(BaseWidget):
         self.full_word = ttk.Checkbutton(search_buttons, text='[-]')
         self.full_word.state(['!selected', '!alternate'])
         self.full_word.pack(side='left', padx=2, pady=4)
+        self._highlight_btn = ttk.Checkbutton(search_buttons, image='img_highlight',
+                                              padding=0, style='toggle.TButton',
+                                              command=self.highlight_all)
+        self._highlight_btn.pack(side='left', padx=2, pady=4)
 
         frame_find = ttk.Frame(self.frame_search)
         ttk.Button(frame_find, padding=0,
@@ -216,6 +224,21 @@ class HistoryFrame(BaseWidget):
 
         self.update_style = self.history.update_style
 
+    def _current_session_toggle(self):
+        val = self._current_session.get()
+        self.history.current_session = val
+        self.history.reset_text()
+        CONFIG.set('History', 'current_session', str(val))
+        CONFIG.save()
+
+    def busy(self, busy):
+        if busy:
+            self.configure(cursor='watch')
+            self.history.configure(cursor='watch')
+        else:
+            self.history.configure(cursor='')
+            self.configure(cursor='')
+
     def find(self, event=None):
         self.frame_search.grid()
         self.entry_search.focus_set()
@@ -225,6 +248,35 @@ class HistoryFrame(BaseWidget):
             self.entry_search.insert(0, self.history.get('sel.first', 'sel.last'))
         self.entry_search.selection_range(0, 'end')
         return "break"
+
+    def highlight_all(self):
+        if 'selected' in self._highlight_btn.state():
+            pattern = self.entry_search.get()
+
+            if not pattern:
+                self._highlight_btn.state(['!selected'])
+                return
+            if self._highlighted == pattern and self.history.tag_ranges('highlight_find'):
+                return
+
+            self._highlighted = pattern
+            self.history.tag_remove('highlight_find', '1.0', 'end')
+
+            full_word = 'selected' in self.full_word.state()
+            options = {'regexp': 'selected' in self.regexp.state(),
+                       'nocase': 'selected' not in self.case_sensitive.state(),
+                       'count': self._search_count, 'stopindex': 'end'}
+
+            if full_word:
+                pattern = r'\y%s\y' % pattern
+                options['regexp'] = True
+            res = self.history.search(pattern, '1.0', **options)
+            while res:
+                end = f"{res}+{self._search_count.get()}c"
+                self.history.tag_add('highlight_find', res, end)
+                res = self.history.search(pattern, end, **options)
+        else:
+            self.history.tag_remove('highlight_find', '1.0', 'end')
 
     def search(self, event=None, backwards=False, notify_no_match=True, **kw):
         pattern = self.entry_search.get()
@@ -238,6 +290,7 @@ class HistoryFrame(BaseWidget):
         else:  # forwards
             options['forwards'] = True
 
+        self.highlight_all()
         res = self.history.search(pattern, 'insert', **options)
 
         if res and full_word:
