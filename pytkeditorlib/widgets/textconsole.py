@@ -59,6 +59,8 @@ class TextConsole(RichText):
 
         self._line_height = 17
 
+        self._inspect_obj = '', None
+
         self.cwd = getcwd()  # console current working directory
 
         # --- history
@@ -124,9 +126,11 @@ class TextConsole(RichText):
         self.bind('<Control-z>', self.undo)
         self.bind("<Control-w>", lambda e: "break")
         self.bind("<Control-h>", lambda e: "break")
-        self.bind("<Control-i>", lambda e: "break")
+        self.bind("<Control-i>", self.inspect)
         self.bind("<Control-b>", lambda e: "break")
+        self.bind("<Control-f>", lambda e: "break")
         self.bind("<Control-t>", lambda e: "break")
+        self.bind("<Control-l>", self.shell_clear)
         self.bind('<<Paste>>', self.on_paste)
         self.bind('<<Cut>>', self.on_cut)
         self.bind('<<LineStart>>', self.on_goto_linestart)
@@ -142,6 +146,7 @@ class TextConsole(RichText):
         self.bind("<bracketright>", self.close_brackets)
         self.bind("<braceright>", self.close_brackets)
         self.bind("<Configure>", self._on_configure)
+        self.bind("<Shift-Escape>", lambda e: self.delete("input", "input_end"))
 
     def update_style(self):
         RichText.update_style(self)
@@ -201,7 +206,7 @@ class TextConsole(RichText):
             self.shell_clear()
             self._init_shell()
 
-    def shell_clear(self):
+    def shell_clear(self, event=None):
         self.delete('banner.last', 'end')
         self.insert('insert', '\n')
         self.prompt()
@@ -675,6 +680,14 @@ class TextConsole(RichText):
         self.mark_set('input', 'input_end')
 
     # --- docstrings
+    def inspect(self, event):
+        try:
+            self._inspect_obj = self.get('sel.first', "sel.last"), "Console"
+        except tk.TclError:
+            return "break"
+        self.event_generate('<<Inspect>>')
+        return "break"
+
     def get_docstring(self, obj):
         session_code = self._jedi_comp_extra + '\n\n'.join(self.history.get_session_hist()) + '\n\n'
         script = jedi.Script(session_code + obj,
@@ -936,12 +949,18 @@ class ConsoleFrame(BaseWidget):
         sy.configure(command=self.console.yview)
         sy.grid(row=0, column=1, sticky='ns')
         self.console.grid(row=0, column=0, sticky='nswe')
+        self.console.bind("<Control-Tab>", self.traversal_next)
+        self.console.bind('<Shift-Control-ISO_Left_Tab>', self.traversal_prev)
 
         self.menu = tk.Menu(self)
-        self.menu.add_command(label='Clear console', command=self.console.shell_clear)
+        self.menu.add_command(label='Clear console', accelerator='Ctrl+L',
+                              command=self.console.shell_clear)
         self.menu.add_command(label='Restart console', command=self.console.restart_shell)
 
         self.update_style = self.console.update_style
+
+    def focus_set(self):
+        self.console.focus_set()
 
     def busy(self, busy):
         if busy:

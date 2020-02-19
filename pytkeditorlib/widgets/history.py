@@ -231,6 +231,9 @@ class HistoryFrame(BaseWidget):
         CONFIG.set('History', 'current_session', str(val))
         CONFIG.save()
 
+    def focus_set(self):
+        self.history.focus_set()
+
     def busy(self, busy):
         if busy:
             self.configure(cursor='watch')

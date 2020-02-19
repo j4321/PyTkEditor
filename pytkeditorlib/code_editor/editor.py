@@ -199,7 +199,7 @@ class Editor(ttk.Frame):
         self.text.bind("<braceright>", self.close_brackets)
         self.text.bind("<Control-w>", lambda e: "break")
         self.text.bind("<Control-h>", lambda e: "break")
-        self.text.bind("<Control-i>", lambda e: "break")
+        self.text.bind("<Control-i>", self.inspect)
         self.text.bind("<Control-b>", lambda e: "break")
         self.text.bind("<Control-t>", lambda e: "break")
         self.text.bind("<Control-z>", self.undo)
@@ -219,6 +219,8 @@ class Editor(ttk.Frame):
         self.text.bind('<Control-f>', self.find)
         self.text.bind('<Control-r>', self.replace)
         self.text.bind('<Control-l>', self.goto_line)
+        self.text.bind('<Control-Down>', self.goto_next_cell)
+        self.text.bind('<Control-Up>', self.goto_prev_cell)
         self.text.bind('<Control-e>', self.toggle_comment)
         self.text.bind('<Configure>', self.filebar.update_positions)
         self.text.bind('<4>', self._on_b4)
@@ -985,6 +987,32 @@ class Editor(ttk.Frame):
         self.text.tag_remove('sel', '1.0', 'end')
         self.text.tag_add('sel', start, end)
 
+    def goto_prev_cell(self, event):
+        if not self.cells:
+            return
+        line = int(str(self.text.index('insert')).split('.')[0])
+        i = 0
+        while i < len(self.cells) and self.cells[i] < line:
+            i += 1
+        if i == 1:
+            self.text.mark_set('insert', "1.0")
+        elif i > 1:
+            self.text.mark_set('insert', f"{self.cells[i - 2]}.0 + 1 lines")
+            self.text.see('insert')
+        return "break"
+
+    def goto_next_cell(self, event):
+        if not self.cells:
+            return
+        line = int(str(self.text.index('insert')).split('.')[0])
+        i = 0
+        while i < len(self.cells) and self.cells[i] < line:
+            i += 1
+        if i < len(self.cells):
+            self.text.mark_set('insert', f"{self.cells[i]}.0 + 1 lines")
+            self.text.see('insert')
+        return "break"
+
     # --- get
     def get(self, strip=True):
         txt = self.text.get('1.0', 'end')
@@ -1028,20 +1056,10 @@ class Editor(ttk.Frame):
     def get_end(self):
         return str(self.text.index('end'))
 
-    def get_docstring(self, obj):
-        txt = self.text.get('1.0', 'end')
-        script = jedi.Script(txt + obj, len(txt.splitlines()) + 1,
-                             len(obj), self.file)
-        res = script.goto_definitions()
-        if res:
-            return res[-1]
-        else:
-            return None
-
     def get_cell(self, goto_next=False):
-        line = int(str(self.text.index('insert')).split('.')[0])
         if not self.cells:
             return ''
+        line = int(str(self.text.index('insert')).split('.')[0])
         i = 0
         while i < len(self.cells) and self.cells[i] < line:
             i += 1
@@ -1057,6 +1075,25 @@ class Editor(ttk.Frame):
         if goto_next:
             self.text.mark_set('insert', f"{end} + 1 lines")
         return self.text.get(start, end)
+
+    # --- docstrings
+    def get_docstring(self, obj):
+        txt = self.text.get('1.0', 'end')
+        script = jedi.Script(txt + obj, len(txt.splitlines()) + 1,
+                             len(obj), self.file)
+        res = script.goto_definitions()
+        if res:
+            return res[-1]
+        else:
+            return None
+
+    def inspect(self, event):
+        try:
+            self._inspect_obj = self.text.get('sel.first', "sel.last"), "Editor"
+        except tk.TclError:
+            return "break"
+        self.event_generate('<<Inspect>>')
+        return "break"
 
     # --- text edit
     def delete(self, index1, index2=None):

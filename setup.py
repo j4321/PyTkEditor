@@ -24,7 +24,7 @@ data_files = [("/usr/share/applications", ["{}.desktop".format(APP_NAME)]),
               ("/usr/share/{}/images/animation".format(APP_NAME), anim),
               ("/usr/share/{}/ssl/".format(APP_NAME), ssl),
               ("/usr/share/{}/html/".format(APP_NAME), html),
-              ("/usr/share/doc/{}/".format(APP_NAME), ["README.rst"]),
+              ("/usr/share/doc/{}/".format(APP_NAME), ["README.rst", "pytkeditorlib/doc/DOC.rst"]),
               ("/usr/share/man/man1", ["{}.1.gz".format(APP_NAME)]),
               ("/usr/share/pixmaps", ["{}.svg".format(APP_NAME)])]
 

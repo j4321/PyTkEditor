@@ -40,7 +40,7 @@ settings.case_insensitive_completion = False
 os.environ['PYFLAKES_BUILTINS'] = '_'
 
 APP_NAME = 'PyTkEditor'
-REPORT_URL = "https://gitlab.com/j_4321/{}/issues".format(APP_NAME)
+REPORT_URL = f"https://gitlab.com/j_4321/{APP_NAME}/issues"
 
 
 class MyLexer(Python3Lexer):
@@ -59,6 +59,7 @@ if os.access(PATH, os.W_OK) and os.path.exists(os.path.join(PATH, "images")):
     # local directory containing config files
     LOCAL_PATH = os.path.join(PATH, 'config')
     # PATH_LOCALE = os.path.join(PATH, "locale")
+    PATH_DOC = os.path.join(PATH, 'doc', "DOC.rst")
     PATH_HTML = os.path.join(PATH, 'html')
     PATH_SSL = os.path.join(PATH, 'ssl')
     PATH_IMG = os.path.join(PATH, 'images')
@@ -66,6 +67,7 @@ else:
     # local directory containing config files
     LOCAL_PATH = os.path.join(os.path.expanduser("~"), ".pytkeditor")
     # PATH_LOCALE = "/usr/share/locale"
+    PATH_DOC = "/usr/share/doc/pytkeditor/DOC.rst"
     PATH_HTML = "/usr/share/pytkeditor/html"
     PATH_SSL = "/usr/share/pytkeditor/ssl"
     PATH_IMG = "/usr/share/pytkeditor/images"

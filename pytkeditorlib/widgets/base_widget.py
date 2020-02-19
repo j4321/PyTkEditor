@@ -41,6 +41,14 @@ class BaseWidget(Frame):
         self.visible = BooleanVar(self)
         self.visible.trace_add('write', self._visibility_trace)
 
+    def traversal_next(self, event):
+        self.master.traversal_next(event)
+        return "break"
+
+    def traversal_prev(self, event):
+        self.master.traversal_prev(event)
+        return "break"
+
     def update_style(self):
         pass  # to be overriden in subclass
 
@@ -192,6 +200,8 @@ class WidgetNotebook(Notebook):
         Notebook.__init__(self, master, tabmenu=False, closecommand=self.close, **kw)
         self.bind('<Destroy>', self._save_order)
         self._manager = master
+        self.bind("<Control-Tab>", self.traversal_next)
+        self.bind('<Shift-Control-ISO_Left_Tab>', self.traversal_prev)
 
     @property
     def manager(self):
@@ -206,6 +216,14 @@ class WidgetNotebook(Notebook):
                 pass
             new_manager.insert('end', self, weight=2)
         self._manager = new_manager
+
+    def traversal_next(self, event):
+        self.select_next(True)
+        return "break"
+
+    def traversal_prev(self, event):
+        self.select_prev(True)
+        return "break"
 
     def _save_order(self, event):
         for i, tab in enumerate(self._visible_tabs):
@@ -235,3 +253,11 @@ class WidgetNotebook(Notebook):
     def select_first_tab(self):
         if self._visible_tabs:
             self.select(self._visible_tabs[0])
+
+    def select(self, tab_id=None):
+        tab = Notebook.select(self, tab_id)
+        if tab:
+            return tab
+        self._tabs[self.index(tab_id)].visible.set(True)
+
+

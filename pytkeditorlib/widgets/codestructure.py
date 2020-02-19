@@ -218,6 +218,9 @@ class CodeStructure(BaseWidget):
     def _reset_goto(self, event):
         self._goto_index = 0
 
+    def focus_set(self):
+        self.goto_entry.focus_set()
+
     def hide(self):
         try:
             layout = CONFIG.get("General", "layout")

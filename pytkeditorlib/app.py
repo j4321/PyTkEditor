@@ -40,8 +40,9 @@ from PIL import Image, ImageTk
 from pytkeditorlib.code_editor import EditorNotebook
 from pytkeditorlib.utils.constants import IMAGES, CONFIG, IM_CLOSE, IM_SELECTED
 from pytkeditorlib.utils import constants as cst
-from pytkeditorlib.utils.syntax_check import check_file
-from pytkeditorlib.dialogs import showerror, About, Config, SearchDialog, PrintDialog
+from pytkeditorlib.utils import check_file
+from pytkeditorlib.dialogs import showerror, About, Config, SearchDialog, \
+    PrintDialog, HelpDialog, askyesno
 from pytkeditorlib.widgets import WidgetNotebook, Help, HistoryFrame, \
     ConsoleFrame, Filebrowser, CodeStructure
 from pytkeditorlib.gui_utils import LongMenu
@@ -82,13 +83,14 @@ class App(tk.Tk):
         self.menu_doc = tk.Menu(self.menu)
         menu_run = tk.Menu(self.menu)
         menu_consoles = tk.Menu(self.menu)
+        menu_help = tk.Menu(self.menu)
         menu_view = tk.Menu(self.menu)
         menu_widgets = tk.Menu(menu_view)
         menu_layouts = tk.Menu(menu_view)
         menu_filetype = tk.Menu(self.menu_doc)
         self.menu_errors = LongMenu(self.menu_doc, 40)
 
-        self._submenus = [self.menu_file, self.menu_recent_files,
+        self._submenus = [self.menu_file, self.menu_recent_files, menu_help,
                           self.menu_edit, menu_search, self.menu_doc,
                           menu_run, menu_consoles, menu_layouts, menu_widgets,
                           menu_view, self.menu_errors, menu_filetype]
@@ -195,6 +197,7 @@ class App(tk.Tk):
                                    command=self.editor.closeall,
                                    accelerator='Ctrl+Shift+W')
         self.menu_file.add_command(label='Quit', command=self.quit,
+                                   accelerator='Ctrl+Shift+Q',
                                    image='img_quit', compound='left')
         # --- --- --- recent
         for f in self.recent_files:
@@ -272,7 +275,7 @@ class App(tk.Tk):
                                 compound='left', command=self.search,
                                 accelerator='Ctrl+Shift+R',)
         menu_search.add_separator()
-        menu_search.add_command(label='Goto line', accelerator='Ctrl+L', compound='left',
+        menu_search.add_command(label='Go to line', accelerator='Ctrl+L', compound='left',
                                 command=self.editor.goto_line, image='img_menu_dummy')
 
         # --- --- doc
@@ -362,15 +365,6 @@ class App(tk.Tk):
                                          compound='left',
                                          variable=self.widgets.get(name, self.codestruct).visible)
 
-        self.menu.add_cascade(label='File', underline=0, menu=self.menu_file)
-        self.menu.add_cascade(label='Edit', underline=0, menu=self.menu_edit)
-        self.menu.add_cascade(label='Search', underline=0, menu=menu_search)
-        self.menu.add_cascade(label='Document', underline=0, menu=self.menu_doc)
-        self.menu.add_cascade(label='Run', underline=0, menu=menu_run)
-        self.menu.add_cascade(label='Consoles', underline=0, menu=menu_consoles)
-        self.menu.add_cascade(label='View', underline=0, menu=menu_view)
-        self.menu.add_command(label='About', underline=0,
-                              command=lambda: About(self))
         # --- --- --- layouts
         menu_layouts.add_radiobutton(label='Horizontal split',
                                      variable=self.layout,
@@ -393,6 +387,23 @@ class App(tk.Tk):
                                      value='pvertical',
                                      image='img_view_pvertical', compound='left')
 
+        # --- --- help
+        menu_help.add_command(label='About', command=lambda: About(self),
+                              image='img_about', compound='left')
+        menu_help.add_command(label='Help', command=lambda: HelpDialog(self),
+                              image='img_help', compound='left')
+
+        # --- --- menu bar
+        self.menu.add_cascade(label='File', underline=0, menu=self.menu_file)
+        self.menu.add_cascade(label='Edit', underline=0, menu=self.menu_edit)
+        self.menu.add_cascade(label='Search', underline=0, menu=menu_search)
+        self.menu.add_cascade(label='Document', underline=0, menu=self.menu_doc)
+        self.menu.add_cascade(label='Run', underline=0, menu=menu_run)
+        self.menu.add_cascade(label='Consoles', underline=0, menu=menu_consoles)
+        self.menu.add_cascade(label='View', underline=0, menu=menu_view)
+        self.menu.add_cascade(label='Help', underline=0, menu=menu_help)
+
+
         self.toggle_menubar()
 
         # --- bindings
@@ -408,6 +419,9 @@ class App(tk.Tk):
         self.editor.bind('<<Modified>>', lambda e: self._edit_modified())
         self.editor.bind('<<Reload>>', self.reload)
         self.editor.bind('<<SetConsoleWDir>>', self.set_console_wdir)
+        self.bind('<<Inspect>>', self.show_help)
+
+        #~self.console.bind('<<Inspect>>', lambda e: self.show_help(e, "Console"))
 
         self.widgets['File browser'].bind('<Map>', self.filebrowser_populate)
 
@@ -420,8 +434,15 @@ class App(tk.Tk):
         self.bind('<Control-Shift-W>', self.editor.closeall)
         self.bind('<Control-Shift-R>', self.search)
         self.bind('<Control-Shift-S>', self.saveall)
-        self.bind('<Control-Shift-P>', self.print)
         self.bind('<Control-Alt-s>', self.saveas)
+        self.bind('<Control-Alt-P>', self.print)
+        self.bind('<Control-Shift-E>', self.switch_to_editor)
+        self.bind('<Control-Shift-P>', lambda e: self.switch_to_widget(e, self.widgets['Console']))
+        self.bind('<Control-Shift-H>', lambda e: self.switch_to_widget(e, self.widgets['Help']))
+        self.bind('<Control-Shift-I>', lambda e: self.switch_to_widget(e, self.widgets['History']))
+        self.bind('<Control-Shift-F>', lambda e: self.switch_to_widget(e, self.widgets['File browser']))
+        self.bind('<Control-Shift-G>', lambda e: self.switch_to_widget(e, self.codestruct))
+        self.bind('<Control-Shift-Q>', self.quit)
         self.bind('<<CtrlReturn>>', self.run_cell)
         self.bind('<<ShiftReturn>>', lambda e: self.run_cell(goto_next=True))
         self.bind('<F5>', self.run)
@@ -837,6 +858,29 @@ class App(tk.Tk):
             self.editor.busy(False)
             self.codestruct.configure(cursor='')
 
+    def switch_to_editor(self, event):
+        try:
+            event.widget.mark_set('insert', 'sel.first')
+            event.widget.tag_remove('sel', '1.0', 'end')
+        except (tk.TclError, AttributeError):
+            pass
+        self.editor.focus_tab()
+
+    def switch_to_widget(self, event, widget):
+        try:
+            if event.keysym == "P":
+                event.widget.mark_set('insert', 'sel.last')
+            elif event.keysym == "F":
+                event.widget.mark_set('insert', 'sel.first')
+            event.widget.tag_remove('sel', '1.0', 'end')
+        except (tk.TclError, AttributeError):
+            pass
+        try:
+            self.right_nb.select(widget)
+        except ValueError:
+            pass
+        widget.focus_set()
+
     def toggle_fullscreen(self, event=None):
         val = self.fullscreen.get()
         if event:
@@ -1006,6 +1050,15 @@ class App(tk.Tk):
         path = os.path.dirname(self.editor.files[self.editor.current_tab])
         self.console.execute(f"cd {path}")
         self.widgets['File browser'].populate(path)
+
+    # --- docstrings
+    def show_help(self, event):
+        help = self.widgets['Help']
+        try:
+            help.inspect(*event.widget._inspect_obj)
+        except AttributeError:
+            return
+        self.right_nb.select(help)
 
     # --- open
     def restore_last_closed(self, event=None):

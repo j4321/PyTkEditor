@@ -22,6 +22,7 @@ from .about import About
 from .colorpicker import ColorPicker
 from .complistbox import CompListbox
 from .config import Config
+from .help import HelpDialog
 from .messagebox import showerror, showinfo, askokcancel, askyesno, askyesnocancel, askoptions
 from .print import PrintDialog
 from .search import SearchDialog

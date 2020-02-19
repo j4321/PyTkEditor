@@ -19,3 +19,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 Utils and scripts
 """
 from .version import __version__
+from .rst2html import doc2html
+from .syntax_check import check_file
+from . import constants
