@@ -145,7 +145,6 @@ class History(RichText):
     def get_session_hist(self):
         return self.history[self._session_start:]
 
-
 class HistoryFrame(BaseWidget):
 
     def __init__(self, master=None, histfile=HISTFILE, **kw):

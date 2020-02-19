@@ -89,7 +89,24 @@ class CodeTree(Treeview):
         if self.callback is not None and sel:
             self.callback(*self.item(sel[0], 'values'))
 
-    def populate(self, text):
+    def _get_opened(self):
+        opened = []
+
+        def rec(item):
+            if self.item(item, 'open'):
+                opened.append(self.item(item, 'tags'))
+                for child in self.get_children(item):
+                    rec(child)
+
+        for item in self.get_children():
+            rec(item)
+        return opened
+
+    def populate(self, text, reset):
+        if reset:
+            opened = []
+        else:
+            opened = self._get_opened()
         self.delete(*self.get_children())
         tokens = tokenize.tokenize(BytesIO(text.encode()).readline)
         names = set()
@@ -141,8 +158,9 @@ class CodeTree(Treeview):
                 tree_index += 1
                 parent = tree.insert('I-%i' % tree_index, indent)
                 max_length = max(max_length, self.font.measure(name) + 20 + (indent//4 + 1) * 20)
+                tags = (obj_type, name)
                 self.insert(parent, 'end', f'I-{tree_index}', text=name,
-                            tags=(obj_type, name),
+                            tags=tags, open=tags in opened,
                             values=('%i.%i' % token.start, '%i.%i' % token.end))
 
         self.column('#0', width=max_length, minwidth=max_length)
@@ -265,11 +283,12 @@ class CodeStructure(BaseWidget):
         self.filename.configure(text='')
 
     def populate(self, title, text):
+        reset = self.filename.cget('text') != title
         self.filename.configure(text=title)
         self._sx.timer = self._sx.threshold + 1
         self._sy.timer = self._sy.threshold + 1
         try:
-            names = list(self.codetree.populate(text))
+            names = list(self.codetree.populate(text, reset))
         except TclError:
             logging.exception('CodeStructure Error')
             self.codetree.delete(*self.codetree.get_children())
