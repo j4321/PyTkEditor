@@ -192,7 +192,7 @@ class CodeStructure(BaseWidget):
         self.goto_frame = Frame(self)
         Label(self.goto_frame, text='Go to:').pack(side='left')
         self.goto_entry = AutoCompleteCombobox2(self.goto_frame, completevalues=[])
-        self.goto_entry.pack(side='left', fill='x', pady=4, padx=4)
+        self.goto_entry.pack(side='left', fill='x', expand=True, pady=4, padx=4)
         self._goto_index = 0
 
         self.codetree.configure(xscrollcommand=self._sx.set,
