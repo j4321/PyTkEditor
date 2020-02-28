@@ -80,7 +80,7 @@ class EditorNotebook(Notebook):
                     self.save(tab=tab)
                     self.edit_modified(False, tab=tab, generate=True)
                 self._files_mtime[tab] = os.stat(file).st_mtime
-        except FileNotFoundError:
+        except (FileNotFoundError, NotADirectoryError):
             # the file has been deleted
             try:
                 if self._files_check_deletion[tab]:
