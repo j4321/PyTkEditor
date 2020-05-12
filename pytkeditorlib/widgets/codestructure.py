@@ -124,7 +124,7 @@ class CodeTree(Treeview):
             add = False
             if token.type == tokenize.NAME and token.string in ['class', 'def']:
                 obj_type = token.string
-                indent = token.start[1]
+                indent = token.start[1] + 4
                 token = tokens.send(None)
                 name = token.string
                 names.add(name)
@@ -134,14 +134,14 @@ class CodeTree(Treeview):
             elif token.type == tokenize.COMMENT:
                 if token.string[:5] == '# ---' or 'TODO' in token.string:
                     obj_type = '#'
-                    indent = token.start[1]
+                    indent = token.start[1] + 4
                     name = token.string[1:]
                     add = True
                 else:
                     match = re.match(r'^# In(\[.*\].*)$', token.string)
                     if match:
                         obj_type = 'cell'
-                        indent = token.start[1]
+                        indent = 0
                         name = match.groups()[0].strip()
                         add = True
                         self.cells.append(token.start[0])
@@ -149,7 +149,7 @@ class CodeTree(Treeview):
                         match = re.match(r'^# ?%% ?(.*)$', token.string)
                         if match:
                             obj_type = 'cell'
-                            indent = token.start[1]
+                            indent = 0
                             name = match.groups()[0].strip()
                             add = True
                             self.cells.append(token.start[0])
