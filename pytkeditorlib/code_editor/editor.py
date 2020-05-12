@@ -1074,6 +1074,7 @@ class Editor(ttk.Frame):
             end = '%i.0' % self.cells[i]
         if goto_next:
             self.text.mark_set('insert', f"{end} + 1 lines")
+            self.text.see("insert")
         return self.text.get(start, end)
 
     # --- docstrings
