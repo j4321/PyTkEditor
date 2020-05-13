@@ -246,6 +246,21 @@ class Editor(ttk.Frame):
             for tag in self.text.tag_names():
                 self.text.tag_remove(tag, '1.0', 'end')
 
+    def update_cells(self):
+        count = tk.IntVar(self)
+        pattern = r'^#( In\[.*\]| ?%%).*$'
+        options = {'regexp': True,
+                   'nocase': False,
+                   'count': count,
+                   'stopindex': 'end'}
+        cells = []
+        res = self.text.search(pattern, '1.0', **options)
+        while res:
+            cells.append(int(res.split(".")[0]))
+            end = f"{res}+{count.get()}c"
+            res = self.text.search(pattern, end, **options)
+        self.set_cells(cells)
+
     def set_cells(self, cells):
         self.cells = cells
         self.filebar.clear_cells()
@@ -1057,6 +1072,7 @@ class Editor(ttk.Frame):
         return str(self.text.index('end'))
 
     def get_cell(self, goto_next=False):
+        self.update_cells()
         if not self.cells:
             return ''
         line = int(str(self.text.index('insert')).split('.')[0])
