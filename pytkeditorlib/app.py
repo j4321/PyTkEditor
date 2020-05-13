@@ -26,7 +26,7 @@ import traceback
 import os
 import signal
 import logging
-from subprocess import Popen
+from subprocess import Popen, PIPE
 from getpass import getuser
 from datetime import datetime
 
@@ -1318,10 +1318,12 @@ class App(tk.Tk):
             self._qtconsole_process = Popen(['python', '-m', 'pytkeditorlib.custom_qtconsole',
                                              '--JupyterWidget.include_other_output=True',
                                              '--JupyterWidget.other_output_prefix=[editor]',
+                                             '--JupyterWidget.banner="PyTkEditor -- "',
                                              f'--PyTkEditor.pid={self.pid}',
                                              '-f', cst.JUPYTER_KERNEL_PATH])
             return True
         else:
+            os.kill(self._qtconsole_process.pid, signal.SIGUSR1)  # focus on console
             return False
 
     def _signal_exec_jupyter(self, *args):

@@ -44,7 +44,8 @@ REPORT_URL = f"https://gitlab.com/j_4321/{APP_NAME}/issues"
 
 
 class MyLexer(Python3Lexer):
-    tokens = Python3Lexer.tokens.copy()
+    name = "PyTkPython"
+    tokens = {key: val.copy() for key, val in Python3Lexer.tokens.items()}
     tokens['root'].insert(4, (r'^#( In\[.*\]| ?%%).*$', Comment.Cell))
 
 
