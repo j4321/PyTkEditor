@@ -1292,8 +1292,11 @@ class App(tk.Tk):
     def run_cell(self, event=None, goto_next=False):
         code = self.editor.get_cell(goto_next=goto_next)
         if code:
-            self._make_console_visible()
-            self.console.execute(code)
+            if CONFIG.get('Run', 'cell', fallback="console") == "console":
+                self._make_console_visible()
+                self.console.execute(code)
+            else:  # in jupyter
+                self.execute_in_jupyter(code=code, focus=False)
             self.editor.focus_tab()
 
     # --- jupyter
@@ -1308,7 +1311,7 @@ class App(tk.Tk):
         self.jupyter_kernel.load_connection_file()
         self.jupyter_kernel.start_channels()
 
-    def start_jupyter(self):
+    def start_jupyter(self, focus=True):
         """Return true if new instance was started"""
         if not cst.JUPYTER:
             return
@@ -1323,7 +1326,8 @@ class App(tk.Tk):
                                              '-f', cst.JUPYTER_KERNEL_PATH])
             return True
         else:
-            os.kill(self._qtconsole_process.pid, signal.SIGUSR1)  # focus on console
+            if focus:
+                os.kill(self._qtconsole_process.pid, signal.SIGUSR1)  # focus on console
             return False
 
     def _signal_exec_jupyter(self, *args):
@@ -1333,25 +1337,27 @@ class App(tk.Tk):
 
         self.after(200, ready)
 
-    def _wait_execute_in_jupyter(self, code):
+    def _wait_execute_in_jupyter(self, code, focus=True):
         if self._qtconsole_ready:
             self.jupyter_kernel.execute(code)
-            os.kill(self._qtconsole_process.pid, signal.SIGUSR1)
+            if focus:
+                os.kill(self._qtconsole_process.pid, signal.SIGUSR1)
         else:
             self.after(1000, lambda: self._wait_execute_in_jupyter(code))
 
-    def execute_in_jupyter(self, event=None, code=None):
+    def execute_in_jupyter(self, event=None, code=None, focus=True):
         if not cst.JUPYTER:
             return
         if code is None:
             code = self.editor.get_selection()
         if not code:
             return
-        if self.start_jupyter():
-            self._wait_execute_in_jupyter(code)
+        if self.start_jupyter(False):
+            self._wait_execute_in_jupyter(code, focus)
         else:
             self.jupyter_kernel.execute(code)
-            os.kill(self._qtconsole_process.pid, signal.SIGUSR1)
+            if focus:
+                os.kill(self._qtconsole_process.pid, signal.SIGUSR1)
         return "break"
 
     # --- syntax check

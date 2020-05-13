@@ -198,6 +198,7 @@ if not CONFIG.read(PATH_CONFIG):
     CONFIG.set('Run', 'console', "external")
     CONFIG.set('Run', 'external_interactive', "True")
     CONFIG.set('Run', 'external_console', external_console)
+    CONFIG.set('Run', 'cell', "console")
     CONFIG.add_section('Dark Theme')
     CONFIG.set('Dark Theme', 'bg', '#454545')
     CONFIG.set('Dark Theme', 'activebg', '#525252')

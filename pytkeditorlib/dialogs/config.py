@@ -284,7 +284,8 @@ class Config(tk.Toplevel):
                                                                                sticky='e',
                                                                                padx=4, pady=4)
         self.history_size.grid(row=0, column=1, sticky='w', padx=4, pady=4)
-        ttk.Separator(frame_console, orient='horizontal').grid(row=1, columnspan=2, sticky='ew', pady=4)
+        ttk.Separator(frame_console, orient='horizontal').grid(row=1, columnspan=2,
+                                                               sticky='ew', pady=4)
         ttk.Label(frame_console,
                   text='Syntax Highlighting:').grid(row=2, columnspan=2,
                                                     sticky='w', pady=4, padx=4)
@@ -296,7 +297,7 @@ class Config(tk.Toplevel):
         self.notebook.add(frame_run, text='Run')
 
         frame_run.columnconfigure(2, weight=1)
-
+        # --- run
         self.run_console = tk.StringVar(self, CONFIG.get('Run', 'console'))
 
         self.external_interactive = ttk.Checkbutton(frame_run,
@@ -323,10 +324,26 @@ class Config(tk.Toplevel):
                               command=self._run_setting,
                               variable=self.run_console)
         jqt.grid(row=3, column=1, pady=4, sticky='w')
-        if not JUPYTER:
-            jqt.state(['disabled'])
         self.external_console.grid(row=1, column=2, sticky='ew', padx=(0, 4), pady=4)
         self.external_interactive.grid(row=4, columnspan=3, padx=4, pady=4, sticky='w')
+
+        ttk.Separator(frame_run, orient='horizontal').grid(row=5, columnspan=3,
+                                                           sticky='ew', pady=4)
+        # --- run cell
+        self.run_cell_in = tk.StringVar(self, CONFIG.get('Run', 'cell', fallback="console"))
+        ttk.Label(frame_run, text='Execute cells in:').grid(row=6, column=0,
+                                                            padx=(4, 8), pady=4, sticky='w')
+        ttk.Radiobutton(frame_run, text='embedded console', value='console',
+                        variable=self.run_cell_in).grid(row=6, column=1,
+                                                        pady=4, sticky='w')
+
+        jqt2 = ttk.Radiobutton(frame_run, text='Jupyter QtConsole', value='qtconsole',
+                               variable=self.run_cell_in)
+        jqt2.grid(row=7, column=1, pady=4, sticky='w')
+
+        if not JUPYTER:
+            jqt.state(['disabled'])
+            jqt2.state(['disabled'])
 
     def _run_setting(self):
         if self.run_console.get() == 'external':
@@ -388,6 +405,7 @@ class Config(tk.Toplevel):
                    str('selected' in self.external_interactive.state()))
         external_console = self.external_console.get()
         CONFIG.set('Run', 'external_console', external_console)
+        CONFIG.set('Run', 'cell', self.run_cell_in.get())
         if not external_console and console:
             ans = askokcancel("Warning",
                               'No external terminal is set so executing code in an external terminal will fail.',

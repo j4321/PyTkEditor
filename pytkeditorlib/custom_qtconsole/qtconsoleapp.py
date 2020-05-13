@@ -83,6 +83,7 @@ class PyTkQtConsoleApp(JupyterQtConsoleApp):
 
     def _focus(self, *args):
         self.window.raise_()
+        self.window.update()
 
     def parse_command_line(self, argv=None):
         i = 0
