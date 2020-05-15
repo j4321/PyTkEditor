@@ -1318,12 +1318,18 @@ class App(tk.Tk):
         if (self._qtconsole_process is None) or (self._qtconsole_process.poll() is not None):
             self._init_kernel()
             self._qtconsole_ready = False
-            self._qtconsole_process = Popen(['python', '-m', 'pytkeditorlib.custom_qtconsole',
-                                             '--JupyterWidget.include_other_output=True',
-                                             '--JupyterWidget.other_output_prefix=[editor]',
-                                             '--JupyterWidget.banner="PyTkEditor -- "',
-                                             f'--PyTkEditor.pid={self.pid}',
-                                             '-f', cst.JUPYTER_KERNEL_PATH])
+            cmd = ['python', '-m', 'pytkeditorlib.custom_qtconsole',
+                   '--JupyterWidget.include_other_output=True',
+                   '--JupyterWidget.other_output_prefix=[editor]',
+                   '--JupyterWidget.banner="PyTkEditor -- "',
+                   f'--PyTkEditor.pid={self.pid}',
+                   '-f', cst.JUPYTER_KERNEL_PATH]
+            extra_options = CONFIG.get('Console', 'jupyter_options', fallback='').strip().split()
+            while '' in extra_options:
+                extra_options.remove('')
+            cmd.extend(extra_options)
+            self._qtconsole_process = Popen(cmd, stderr=PIPE)
+            self.after(1000, self._check_qtconsole_stderr)
             return True
         else:
             if focus:
@@ -1358,7 +1364,15 @@ class App(tk.Tk):
             self.jupyter_kernel.execute(code)
             if focus:
                 os.kill(self._qtconsole_process.pid, signal.SIGUSR1)
+        self.after(1000, self._check_qtconsole_stderr)
         return "break"
+
+    def _check_qtconsole_stderr(self):
+        if self._qtconsole_process.poll() is not None:
+            err = self._qtconsole_process.stderr.read().decode()
+            if err:
+                logging.error(err)
+                showerror('Error', 'Error in Jupyter QtConsole.', err, False)
 
     # --- syntax check
     def check_syntax(self, tab=None):

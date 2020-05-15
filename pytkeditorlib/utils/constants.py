@@ -183,6 +183,7 @@ if not CONFIG.read(PATH_CONFIG):
     CONFIG.set('Console', 'order', "0")
     CONFIG.set('Console', 'matching_brackets', '#00B100;;bold')  # fg;bg;font formatting
     CONFIG.set('Console', 'unmatched_bracket', '#FF0000;;bold')  # fg;bg;font formatting
+    CONFIG.set('Console', 'jupyter_options', '')
     CONFIG.add_section('History')
     CONFIG.set('History', 'max_size', "10000")
     CONFIG.set('History', 'visible', "True")
@@ -217,7 +218,6 @@ if not CONFIG.read(PATH_CONFIG):
     CONFIG.set('Dark Theme', 'disabledfg', '#666666')
     CONFIG.set('Dark Theme', 'disabledbg', '#454545')
     CONFIG.set('Dark Theme', 'tooltip_bg', '#131313')
-
     CONFIG.add_section('Light Theme')
     CONFIG.set('Light Theme', 'bg', '#dddddd')
     CONFIG.set('Light Theme', 'activebg', '#efefef')

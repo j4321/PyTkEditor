@@ -278,6 +278,15 @@ class Config(tk.Toplevel):
         ttk.Label(frame_s_h, text='Unmatched bracket:').grid(row=4, column=0, columnspan=2, sticky='w', pady=(8, 0))
         self.console_unmatched_bracket.grid(row=5, column=0, columnspan=2, sticky='w', padx=4)
 
+        # --- Jupyter QtConsole
+        frame_qtconsole = ttk.Frame(frame_console)
+        ttk.Label(frame_qtconsole, text='options to pass to jupyter-qtconsole').pack(side='left')
+        self.jupyter_options = ttk.Entry(frame_qtconsole)
+        self.jupyter_options.pack(side='right', fill='x', expand=True, padx=(4, 0))
+        self.jupyter_options.insert(0, CONFIG.get('Console', 'jupyter_options', fallback=''))
+        if not JUPYTER:
+            self.jupyter_options.state(['disabled'])
+
         # --- placement
         ttk.Label(frame_console,
                   text='Maximum history size (truncated when quitting):').grid(row=0, column=0,
@@ -290,6 +299,13 @@ class Config(tk.Toplevel):
                   text='Syntax Highlighting:').grid(row=2, columnspan=2,
                                                     sticky='w', pady=4, padx=4)
         frame_s_h.grid(row=3, columnspan=2, sticky='ew', pady=(4, 8), padx=12)
+
+        ttk.Separator(frame_console, orient='horizontal').grid(row=4, columnspan=2,
+                                                               sticky='ew', pady=4)
+        ttk.Label(frame_console,
+                  text='Jupyter Qtconsole:').grid(row=5, columnspan=2,
+                                                  sticky='w', pady=4, padx=4)
+        frame_qtconsole.grid(row=6, columnspan=2, sticky='ew', pady=(4, 8), padx=12)
 
 
     def _init_run(self):
@@ -398,6 +414,7 @@ class Config(tk.Toplevel):
             CONFIG.set('Console', 'style', cstyle)
         CONFIG.set('Console', 'matching_brackets', self.console_matching_brackets.get_formatting())
         CONFIG.set('Console', 'unmatched_bracket', self.console_unmatched_bracket.get_formatting())
+        CONFIG.set('Console', 'jupyter_options', self.jupyter_options.get())
         # --- run
         console = self.run_console.get()
         CONFIG.set('Run', 'console', console)
