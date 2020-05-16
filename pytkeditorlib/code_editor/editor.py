@@ -223,10 +223,14 @@ class Editor(ttk.Frame):
         self.text.bind('<Control-Up>', self.goto_prev_cell)
         self.text.bind('<Control-e>', self.toggle_comment)
         self.text.bind('<Configure>', self.filebar.update_positions)
+        # vertical scrolling
         self.text.bind('<4>', self._on_b4)
         self.line_nb.bind('<4>', self._on_b4)
         self.text.bind('<5>', self._on_b5)
         self.line_nb.bind('<5>', self._on_b5)
+        # horizontal scrolling
+        self.text.bind('<Shift-4>', self._on_sb4)
+        self.text.bind('<Shift-5>', self._on_sb5)
         self.bind('<FocusOut>', self._on_focusout)
 
         self.text.focus_set()
@@ -292,6 +296,14 @@ class Editor(ttk.Frame):
 
     def _on_b5(self, event):
         self.yview('scroll', 3, 'units')
+        return "break"
+
+    def _on_sb4(self, event):
+        self.text.xview('scroll', -3, 'units')
+        return "break"
+
+    def _on_sb5(self, event):
+        self.text.xview('scroll', 3, 'units')
         return "break"
 
     def undo(self, event=None):
