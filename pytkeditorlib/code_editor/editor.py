@@ -547,10 +547,10 @@ class Editor(ttk.Frame):
             self.syntax_checks.configure(cursor='watch')
             self.filebar.configure(cursor='watch')
         else:
-            self.text.configure(cursor='')
+            self.text.configure(cursor='xterm')
             self.line_nb.configure(cursor='arrow')
             self.syntax_checks.configure(cursor='arrow')
-            self.filebar.configure(cursor='')
+            self.filebar.configure(cursor='arrow')
 
     def update_style(self):
         FONT = (CONFIG.get("General", "fontfamily"),

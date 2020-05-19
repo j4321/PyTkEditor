@@ -238,7 +238,7 @@ class HistoryFrame(BaseWidget):
             self.configure(cursor='watch')
             self.history.configure(cursor='watch')
         else:
-            self.history.configure(cursor='')
+            self.history.configure(cursor='xterm')
             self.configure(cursor='')
 
     def find(self, event=None):

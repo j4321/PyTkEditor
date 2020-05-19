@@ -967,5 +967,5 @@ class ConsoleFrame(BaseWidget):
             self.configure(cursor='watch')
             self.console.configure(cursor='watch')
         else:
-            self.console.configure(cursor='')
+            self.console.configure(cursor='xterm')
             self.configure(cursor='')
