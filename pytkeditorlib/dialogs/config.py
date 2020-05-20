@@ -126,7 +126,7 @@ class Config(tk.Toplevel):
     def __init__(self, master):
         tk.Toplevel.__init__(self, master)
         self.transient(master)
-        self.resizable(False, False)
+        self.minsize(529, 381)
         self.grab_set()
         self.configure(padx=8, pady=4)
         self.title('PyTkEditor - Settings')
