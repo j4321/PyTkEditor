@@ -42,7 +42,7 @@ from pytkeditorlib.utils.constants import IMAGES, CONFIG, IM_CLOSE, IM_SELECTED
 from pytkeditorlib.utils import constants as cst
 from pytkeditorlib.utils import check_file
 from pytkeditorlib.dialogs import showerror, About, Config, SearchDialog, \
-    PrintDialog, HelpDialog, askyesno
+    PrintDialog, HelpDialog, SelectKernel, askyesno
 from pytkeditorlib.widgets import WidgetNotebook, Help, HistoryFrame, \
     ConsoleFrame, Filebrowser, CodeStructure
 from pytkeditorlib.gui_utils import LongMenu
@@ -112,7 +112,9 @@ class App(tk.Tk):
         # --- jupyter kernel
         self._qtconsole_process = None
         self._qtconsole_ready = False
-        self._init_kernel()
+        self.jupyter_kernel = None
+        self.jupyter_kernel_existing = False
+        #~self._init_kernel()
 
         # --- GUI elements
         self._horizontal_pane = ttk.PanedWindow(self._frame, orient='horizontal')
@@ -328,6 +330,10 @@ class App(tk.Tk):
             menu_consoles.add_command(label='Start Jupyter QtConsole',
                                       command=self.start_jupyter,
                                       image='img_qtconsole',
+                                      compound='left')
+            menu_consoles.add_command(label='Connect to existing kernel',
+                                      command=self.start_jupyter_existing_kernel,
+                                      image='img_menu_dummy',
                                       compound='left')
 
         # --- --- view
@@ -1028,6 +1034,7 @@ class App(tk.Tk):
             res = self.editor.closeall()
             if res:
                 self.save_layout()
+                self._kernel_disconnect()
                 self.destroy()
                 self.splash.terminate()
                 self.splash.wait()
@@ -1300,16 +1307,31 @@ class App(tk.Tk):
             self.editor.focus_tab()
 
     # --- jupyter
-    def _init_kernel(self):
+    def _init_kernel(self, file=None):
         """Initialize Jupyter kernel"""
         if not cst.JUPYTER:
             return
+        self._kernel_disconnect()
         # launch new kernel
-        cfm = cst.ConnectionFileMixin(connection_file=cst.JUPYTER_KERNEL_PATH)
-        cfm.write_connection_file()
-        self.jupyter_kernel = cst.BlockingKernelClient(connection_file=cst.JUPYTER_KERNEL_PATH)
+        if file is None:
+            cfm = cst.ConnectionFileMixin(connection_file=cst.JUPYTER_KERNEL_PATH)
+            cfm.write_connection_file()
+            self.jupyter_kernel = cst.BlockingKernelClient(connection_file=cst.JUPYTER_KERNEL_PATH)
+            self.jupyter_kernel_existing = False
+        else:
+            self.jupyter_kernel = cst.BlockingKernelClient(connection_file=file)
+            self.jupyter_kernel_existing = True
         self.jupyter_kernel.load_connection_file()
         self.jupyter_kernel.start_channels()
+
+    def _kernel_disconnect(self):
+        """Close the Qtconsole connected to the editor."""
+        if self.jupyter_kernel is not None:
+            if self.jupyter_kernel_existing:  # don't shutdown pre-existing kernel
+                if self._qtconsole_process is not None:
+                    self._qtconsole_process.terminate()
+            else:
+                self.jupyter_kernel.shutdown()
 
     def start_jupyter(self, focus=True):
         """Return true if new instance was started"""
@@ -1321,20 +1343,69 @@ class App(tk.Tk):
             cmd = ['python', '-m', 'pytkeditorlib.custom_qtconsole',
                    '--JupyterWidget.include_other_output=True',
                    '--JupyterWidget.other_output_prefix=[editor]',
-                   '--JupyterWidget.banner="PyTkEditor -- "',
+                   '--JupyterWidget.banner=PyTkEditor\n',
                    f'--PyTkEditor.pid={self.pid}',
                    '-f', cst.JUPYTER_KERNEL_PATH]
             extra_options = CONFIG.get('Console', 'jupyter_options', fallback='').strip().split()
             while '' in extra_options:
                 extra_options.remove('')
             cmd.extend(extra_options)
-            self._qtconsole_process = Popen(cmd, stderr=PIPE)
+            env = os.environ.copy()
+            home = os.path.expanduser('~')
+            env['IPYTHONDIR'] = CONFIG.get('Console', 'ipython_dir',
+                                           fallback=os.path.join(home, '.ipython'))
+            env['JUPYTER_CONFIG_DIR'] = CONFIG.get('Console', 'jupyter_config_dir',
+                                                   fallback=os.path.join(home, '.jupyter'))
+            self._qtconsole_process = Popen(cmd, stderr=PIPE, env=env)
             self.after(1000, self._check_qtconsole_stderr)
             return True
         else:
             if focus:
                 os.kill(self._qtconsole_process.pid, signal.SIGUSR1)  # focus on console
             return False
+
+    def start_jupyter_existing_kernel(self):
+        """Return true if new instance was started"""
+        if not cst.JUPYTER:
+            return
+        ans = True
+        if (self._qtconsole_process is not None) and (self._qtconsole_process.poll() is None):
+            # a kernel is already running
+            ans = askyesno('Confirmation', 'A kernel is already connected to PyTkEditor. Do you want to connect a different kernel?')
+        if ans:
+            sk = SelectKernel(self)
+            self.wait_window(sk)
+            kernel = sk.selected_kernel
+            if not kernel:
+                return
+            try:
+                filepath = cst.find_connection_file(kernel)
+            except OSError:
+                showerror('Error', f'Unable to connect to {filepath}.')
+
+            self._init_kernel(filepath)
+            self._qtconsole_ready = False
+            cmd = ['python', '-m', 'pytkeditorlib.custom_qtconsole',
+                   '--JupyterWidget.include_other_output=True',
+                   '--JupyterWidget.other_output_prefix=[remote]',
+                   '--JupyterWidget.banner=PyTkEditor\n',
+                   f'--PyTkEditor.pid={self.pid}',
+                   f'--existing={filepath}']
+            extra_options = CONFIG.get('Console', 'jupyter_options', fallback='').strip().split()
+            while '' in extra_options:
+                extra_options.remove('')
+            cmd.extend(extra_options)
+            env = os.environ.copy()
+            home = os.path.expanduser('~')
+            env['IPYTHONDIR'] = CONFIG.get('Console', 'ipython_dir',
+                                           fallback=os.path.join(home, '.ipython'))
+            env['JUPYTER_CONFIG_DIR'] = CONFIG.get('Console', 'jupyter_config_dir',
+                                                   fallback=os.path.join(home, '.jupyter'))
+            self._qtconsole_process = Popen(cmd, stderr=PIPE, env=env)
+            self.after(1000, self._check_qtconsole_stderr)
+        else:
+            os.kill(self._qtconsole_process.pid, signal.SIGUSR1)
+        return ans
 
     def _signal_exec_jupyter(self, *args):
 

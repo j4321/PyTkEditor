@@ -183,6 +183,8 @@ if not CONFIG.read(PATH_CONFIG):
     CONFIG.set('Console', 'order', "0")
     CONFIG.set('Console', 'matching_brackets', '#00B100;;bold')  # fg;bg;font formatting
     CONFIG.set('Console', 'unmatched_bracket', '#FF0000;;bold')  # fg;bg;font formatting
+    CONFIG.set('Console', 'jupyter_config_dir', os.path.join(os.path.expanduser('~'), '.jupyter'))
+    CONFIG.set('Console', 'ipython_dir', os.path.join(os.path.expanduser('~'), '.ipython'))
     CONFIG.set('Console', 'jupyter_options', '')
     CONFIG.add_section('History')
     CONFIG.set('History', 'max_size', "10000")

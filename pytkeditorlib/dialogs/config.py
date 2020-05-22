@@ -20,13 +20,14 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 Config dialog
 """
-
+import os
 import tkinter as tk
 from tkinter import ttk
 from tkinter import font
 
 from pygments.styles import get_all_styles
 from tkcolorpicker import askcolor
+from tkfilebrowser import askopendirname
 
 from pytkeditorlib.utils.constants import CONFIG, PATH_TEMPLATE, JUPYTER
 from pytkeditorlib.gui_utils import AutoCompleteCombobox
@@ -280,8 +281,29 @@ class Config(tk.Toplevel):
 
         # --- Jupyter QtConsole
         frame_qtconsole = ttk.Frame(frame_console)
-        ttk.Label(frame_qtconsole, text='options to pass to jupyter-qtconsole').pack(side='left')
-        self.jupyter_options = ttk.Entry(frame_qtconsole)
+        f1 = ttk.Frame(frame_qtconsole)
+        f1.columnconfigure(1, weight=1)
+        f2 = ttk.Frame(frame_qtconsole)
+        f1.pack(anchor='w', fill='x')
+        f2.pack(anchor='w', fill='x')
+
+        ttk.Label(f1, text='IPYTHONDIR').grid(sticky='e', row=0, column=0, pady=4, padx=(0, 4))
+        ttk.Label(f1, text='JUPYTER_CONFIG_DIR').grid(sticky='e', row=1, column=0, pady=4, padx=(0, 4))
+        self.ipythondir = ttk.Entry(f1)
+        home = os.path.expanduser('~')
+        self.ipythondir.insert(0, CONFIG.get('Console', 'ipython_dir', fallback=f'{home}/.ipython'))
+        self.ipythondir.grid(row=0, column=1, sticky='ew', pady=4)
+        self.jupyterdir = ttk.Entry(f1)
+        self.jupyterdir.insert(0, CONFIG.get('Console', 'jupyter_config_dir', fallback=f'{home}/.jupyter'))
+        self.jupyterdir.grid(row=1, column=1, sticky='ew', pady=4)
+        ttk.Button(f1, text='...', width=2,
+                   command=lambda: self.select_dir(self.ipythondir),
+                   padding=0).grid(row=0, column=2, sticky='ns', pady=4)
+        ttk.Button(f1, text='...', width=2,
+                   command=lambda: self.select_dir(self.jupyterdir),
+                   padding=0).grid(row=1, column=2, sticky='ns', pady=4)
+        ttk.Label(f2, text='options to pass to jupyter-qtconsole').pack(side='left')
+        self.jupyter_options = ttk.Entry(f2)
         self.jupyter_options.pack(side='right', fill='x', expand=True, padx=(4, 0))
         self.jupyter_options.insert(0, CONFIG.get('Console', 'jupyter_options', fallback=''))
         if not JUPYTER:
@@ -370,6 +392,14 @@ class Config(tk.Toplevel):
     def edit_template(self):
         self.master.open(PATH_TEMPLATE)
 
+    def select_dir(self, entry):
+        initialdir, initialfile = os.path.split(entry.get())
+        file = askopendirname(self, 'Select directory', initialdir=initialdir,
+                              initialfile=initialfile)
+        if file:
+            entry.delete(0, 'end')
+            entry.insert(0, file)
+
     def validate(self):
         # --- general
         CONFIG.set('General', 'theme', self.theme.get())
@@ -414,6 +444,8 @@ class Config(tk.Toplevel):
             CONFIG.set('Console', 'style', cstyle)
         CONFIG.set('Console', 'matching_brackets', self.console_matching_brackets.get_formatting())
         CONFIG.set('Console', 'unmatched_bracket', self.console_unmatched_bracket.get_formatting())
+        CONFIG.set('Console', 'ipython_dir', self.ipythondir.get())
+        CONFIG.set('Console', 'jupyter_config_dir', self.jupyterdir.get())
         CONFIG.set('Console', 'jupyter_options', self.jupyter_options.get())
         # --- run
         console = self.run_console.get()
