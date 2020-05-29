@@ -194,10 +194,19 @@ class Config(tk.Toplevel):
 
         frame_editor.columnconfigure(1, weight=1)
 
-
-        # --- --- comment marker
+        # --- comments
         self.comment_marker = ttk.Entry(frame_editor, width=3)
         self.comment_marker.insert(0, CONFIG.get("Editor", "comment_marker", fallback="~"))
+        self.comment_toggle_mode = tk.StringVar(self, CONFIG.get('Editor',
+                                                                 'toggle_comment_mode',
+                                                                 fallback='line_by_line'))
+        rbtn_frame = ttk.Frame(frame_editor)
+        ttk.Radiobutton(rbtn_frame, text='Line by line',
+                        variable=self.comment_toggle_mode,
+                        value='line_by_line').pack(side='left', padx=4, pady=4)
+        ttk.Radiobutton(rbtn_frame, text='Block',
+                        variable=self.comment_toggle_mode,
+                        value='block').pack(side='left', padx=4, pady=4)
 
         # --- code checking
         self.code_check = ttk.Checkbutton(frame_editor, text='Check code')
@@ -238,15 +247,18 @@ class Config(tk.Toplevel):
                   text='Comment toggle marker:').grid(row=0, column=0, sticky='e', padx=4, pady=4)
         self.comment_marker.grid(row=0, column=1, sticky='w', padx=4, pady=4)
         ttk.Label(frame_editor,
-                  text='Code checking (on file saving):').grid(row=1, column=0,
-                                                               sticky='e', padx=4, pady=4)
-        self.code_check.grid(row=1, column=1, sticky='w', padx=3, pady=4)
-        self.style_check.grid(row=2, column=1, sticky='w', padx=3, pady=4)
-        ttk.Separator(frame_editor, orient='horizontal').grid(row=3, columnspan=2, sticky='ew', pady=4)
+                  text='Comment toggle mode:').grid(row=1, column=0, sticky='e', padx=4, pady=4)
+        rbtn_frame.grid(row=1, column=1, sticky='w')
         ttk.Label(frame_editor,
-                  text='Syntax Highlighting:').grid(row=4, columnspan=2,
+                  text='Code checking (on file saving):').grid(row=2, column=0,
+                                                               sticky='e', padx=4, pady=4)
+        self.code_check.grid(row=2, column=1, sticky='w', padx=3, pady=4)
+        self.style_check.grid(row=3, column=1, sticky='w', padx=3, pady=4)
+        ttk.Separator(frame_editor, orient='horizontal').grid(row=4, columnspan=2, sticky='ew', pady=4)
+        ttk.Label(frame_editor,
+                  text='Syntax Highlighting:').grid(row=5, columnspan=2,
                                                     sticky='w', pady=4, padx=4)
-        frame_s_h.grid(row=5, columnspan=2, sticky='ew', pady=(4, 8), padx=12)
+        frame_s_h.grid(row=6, columnspan=2, sticky='ew', pady=(4, 8), padx=12)
 
     def _init_console(self):
         frame_console = ttk.Frame(self.notebook, padding=4)
@@ -417,6 +429,9 @@ class Config(tk.Toplevel):
                    str('selected' in self.confirm_quit.state()))
 
         # --- editor
+        # --- --- comments
+        CONFIG.set('Editor', 'toggle_comment_mode', self.comment_toggle_mode.get())
+        CONFIG.set('Editor', 'comment_marker', self.comment_marker.get())
         # --- --- syntax highlighting
         estyle = self.editor_style.get()
         if estyle:

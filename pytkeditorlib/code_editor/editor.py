@@ -50,9 +50,9 @@ class Editor(ttk.Frame):
         self._re_paths = re.compile(rf'("|\')(\{sep}\w+)+\{sep}?$')
         self._re_empty = re.compile(r'^ *$')
         self._re_indent = re.compile(r'^( *)')
+        self._re_indents = re.compile(r'^( *)(?=.*\S+.*$)', re.MULTILINE)
         self._re_tab = re.compile(r' {4}$')
         self._re_colon = re.compile(r':( *)$')
-        self._re_trailing_spaces = re.compile(r' +$', re.MULTILINE)
 
         self._filetype = filetype
 
@@ -379,29 +379,66 @@ class Editor(ttk.Frame):
         self.see('insert')
         return "break"
 
+
     def toggle_comment(self, event=None):
+        if CONFIG.get('Editor', 'toggle_comment_mode', fallback='line_by_line') == 'line_by_line':
+            self.toggle_comment_linebyline()
+        else:
+            self.toggle_comment_block()
+
+    def toggle_comment_linebyline(self):
         self.text.edit_separator()
         sel = self.text.tag_ranges('sel')
         if sel:
-            lines = self.text.get('sel.first linestart', 'sel.last lineend').splitlines()
+            text = self.text.get('sel.first linestart', 'sel.last lineend')
             index = self.text.index('sel.first linestart')
             self.text.delete('sel.first linestart', 'sel.last lineend')
         else:
-            lines = self.text.get('insert linestart', 'insert lineend').splitlines()
+            text = self.text.get('insert linestart', 'insert lineend')
             index = self.text.index('insert linestart')
             self.text.delete('insert linestart', 'insert lineend')
 
         marker = CONFIG.get('Editor', 'comment_marker', fallback='~')
-        re_comment = re.compile(rf'^( *)#{re.escape(marker)}(.*)')
-        for i, line in enumerate(lines):
-            res = re_comment.match(line)
-            if res:
-                lines[i] = "{}{}".format(*res.groups())
-            elif not self._re_empty.match(line):
-                lines[i] = self._re_indent.sub(rf"\1#{marker}", line)
-        txt = '\n'.join(lines)
-        self.text.insert(index, txt)
-        self.parse(txt, index)
+        re_comment = re.compile(rf'^( *)(?=.*\S+.*$)(?P<comment>#{re.escape(marker)})?', re.MULTILINE)
+
+        def subs(match):
+            indent = match.group(1)
+            return indent if match.group('comment') else rf'{indent}#{marker}'
+
+        text = re_comment.sub(subs, text)
+
+        self.text.insert(index, text)
+        self.parse(text, index)
+
+    def toggle_comment_block(self):
+        self.text.edit_separator()
+        sel = self.text.tag_ranges('sel')
+        if sel:
+            text = self.text.get('sel.first linestart', 'sel.last lineend')
+            index = self.text.index('sel.first linestart')
+            self.text.delete('sel.first linestart', 'sel.last lineend')
+        else:
+            text = self.text.get('insert linestart', 'insert lineend')
+            index = self.text.index('insert linestart')
+            self.text.delete('insert linestart', 'insert lineend')
+
+        marker = CONFIG.get('Editor', 'comment_marker', fallback='~')
+        re_comments = re.compile(rf'^( *)(#{re.escape(marker)}|$)', re.MULTILINE)
+        lines = text.rstrip().splitlines()
+        if len(re_comments.findall(text.rstrip())) == len(lines):
+            # fully commented block -> uncomment
+            text = re_comments.sub(r'\1', text)
+        else:
+            # at least one line is not commented: comment block
+            try:
+                indent = min(self._re_indents.findall(text))
+            except ValueError:
+                indent = ''
+            re_com = re.compile(rf'^{indent}(?=.*\S+.*$)', re.MULTILINE)
+            pref = rf'{indent}#{marker}'
+            text = re_com.sub(pref, text)
+        self.text.insert(index, text)
+        self.parse(text, index)
 
     def duplicate_lines(self, event=None):
         self.text.edit_separator()
