@@ -175,6 +175,7 @@ if not CONFIG.read(PATH_CONFIG):
     CONFIG.set('Editor', 'matching_brackets', '#00B100;;bold')  # fg;bg;font formatting
     CONFIG.set('Editor', 'unmatched_bracket', '#FF0000;;bold')  # fg;bg;font formatting
     CONFIG.set('Editor', 'comment_marker', '~')
+    CONFIG.set('Editor', 'toggle_comment_mode', 'line_by_line')
     CONFIG.add_section('Code structure')
     CONFIG.set('Code structure', 'visible', "True")
     CONFIG.add_section('Console')
