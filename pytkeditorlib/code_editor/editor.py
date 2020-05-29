@@ -52,6 +52,7 @@ class Editor(ttk.Frame):
         self._re_indent = re.compile(r'^( *)')
         self._re_tab = re.compile(r' {4}$')
         self._re_colon = re.compile(r':( *)$')
+        self._re_trailing_spaces = re.compile(r' +$', re.MULTILINE)
 
         self._filetype = filetype
 
@@ -311,9 +312,9 @@ class Editor(ttk.Frame):
             self.text.edit_undo()
         except tk.TclError:
             pass
-        finally:
+        else:
             self.update_nb_line()
-            self.parse_all()
+            self.parse_part(nblines=100)
         return "break"
 
     def redo(self, event=None):
@@ -321,9 +322,9 @@ class Editor(ttk.Frame):
             self.text.edit_redo()
         except tk.TclError:
             pass
-        finally:
+        else:
             self.update_nb_line()
-            self.parse_all()
+            self.parse_part(nblines=100)
         return "break"
 
     def on_down(self, event):
@@ -373,7 +374,8 @@ class Editor(ttk.Frame):
         txt = self.clipboard_get()
         self.text.insert("insert", txt)
         self.update_nb_line()
-        self.parse_all()
+        lines = len(txt.splitlines())//2
+        self.parse_part(f'insert linestart - {lines} lines', nblines=lines + 10)
         self.see('insert')
         return "break"
 
@@ -487,7 +489,7 @@ class Editor(ttk.Frame):
         self.text.insert('insert', '\n' + indent)
         self.update_nb_line()
         # update whole syntax highlighting
-        self.parse_all()
+        self.parse_part()
         self.see('insert')
         return "break"
 
@@ -627,8 +629,23 @@ class Editor(ttk.Frame):
                     self.text.insert("range_end", " " * (79 - col), "Token.Comment.Cell")
             self.text.mark_set("range_start", "range_end")
 
+    def parse_part(self, current='insert', nblines=10):
+        start = f"{current} - {nblines} lines linestart"
+        text = self.text.get(start, f"{current} + {nblines} lines lineend")
+        if '"""' in text or "'''" in text:
+            self.parse_all()
+        else:
+            self.parse(text, start)
+
     def parse_all(self):
         self.parse(self.text.get('1.0', 'end'), '1.0')
+
+    def strip(self):
+        res = self.text.search(r' +$', '1.0', regexp=True)
+        while res:
+            end = f"{res} lineend"
+            self.text.delete(res, end)
+            res = self.text.search(r' +$', end, regexp=True)
 
     # --- brackets
     def _clear_highlight(self):
@@ -673,7 +690,7 @@ class Editor(ttk.Frame):
         else:
             self.text.insert('insert', event.char * 2)
             self.text.mark_set('insert', 'insert-1c')
-        self.parse_all()
+        self.parse_part()
         self.text.edit_separator()
         return 'break'
 
@@ -1044,17 +1061,8 @@ class Editor(ttk.Frame):
     def get(self, strip=True):
         txt = self.text.get('1.0', 'end')
         if strip:
-            yview = self.text.yview()[0]
-            index = self.text.index('insert')
-            txt = txt.splitlines()
-            for i, line in enumerate(txt):
-                txt[i] = line.rstrip(' ')
-            txt = '\n'.join(txt)
-            self.text.delete('1.0', 'end')
-            self.text.insert('1.0', txt)
-            self.parse_all()
-            self.text.mark_set('insert', index)
-            self.yview('moveto', yview)
+            self.parse_part()
+            self.strip()
         self.text.edit_separator()
         return txt
 
@@ -1129,7 +1137,7 @@ class Editor(ttk.Frame):
         self.text.edit_separator()
         self.text.delete(index1, index2=index2)
         self.update_nb_line()
-        self.parse_all()
+        self.parse_part()
 
     def insert(self, index, text, replace_sel=False):
         self.text.edit_separator()
@@ -1139,7 +1147,8 @@ class Editor(ttk.Frame):
                 self.text.delete('sel.first', 'sel.last')
         self.text.insert(index, text)
         self.update_nb_line()
-        self.parse_all()
+        lines = len(text.splitlines())//2
+        self.parse_part(f'insert linestart - {lines} lines', nblines=lines + 10)
 
     def choose_color(self, event=None):
 
@@ -1210,3 +1219,4 @@ class Editor(ttk.Frame):
                 self.syntax_issues_menuentries.append((category, m, lambda l=line: self.show_line(l)))
         self.syntax_checks.configure(state='disabled')
         self.syntax_checks.yview_moveto(self.line_nb.yview()[0])
+
