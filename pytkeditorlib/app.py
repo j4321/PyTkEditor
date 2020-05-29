@@ -1332,6 +1332,7 @@ class App(tk.Tk):
                     self._qtconsole_process.terminate()
             else:
                 self.jupyter_kernel.shutdown()
+                self._qtconsole_process.terminate()
 
     def start_jupyter(self, focus=True):
         """Return true if new instance was started"""
