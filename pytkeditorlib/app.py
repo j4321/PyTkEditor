@@ -26,7 +26,7 @@ import traceback
 import os
 import signal
 import logging
-from subprocess import Popen
+from subprocess import Popen, PIPE
 from getpass import getuser
 from datetime import datetime
 
@@ -40,8 +40,9 @@ from PIL import Image, ImageTk
 from pytkeditorlib.code_editor import EditorNotebook
 from pytkeditorlib.utils.constants import IMAGES, CONFIG, IM_CLOSE, IM_SELECTED
 from pytkeditorlib.utils import constants as cst
-from pytkeditorlib.utils.syntax_check import check_file
-from pytkeditorlib.dialogs import showerror, About, Config, SearchDialog, PrintDialog
+from pytkeditorlib.utils import check_file
+from pytkeditorlib.dialogs import showerror, About, Config, SearchDialog, \
+    PrintDialog, HelpDialog, SelectKernel, askyesno
 from pytkeditorlib.widgets import WidgetNotebook, Help, HistoryFrame, \
     ConsoleFrame, Filebrowser, CodeStructure
 from pytkeditorlib.gui_utils import LongMenu
@@ -82,13 +83,14 @@ class App(tk.Tk):
         self.menu_doc = tk.Menu(self.menu)
         menu_run = tk.Menu(self.menu)
         menu_consoles = tk.Menu(self.menu)
+        menu_help = tk.Menu(self.menu)
         menu_view = tk.Menu(self.menu)
         menu_widgets = tk.Menu(menu_view)
         menu_layouts = tk.Menu(menu_view)
         menu_filetype = tk.Menu(self.menu_doc)
         self.menu_errors = LongMenu(self.menu_doc, 40)
 
-        self._submenus = [self.menu_file, self.menu_recent_files,
+        self._submenus = [self.menu_file, self.menu_recent_files, menu_help,
                           self.menu_edit, menu_search, self.menu_doc,
                           menu_run, menu_consoles, menu_layouts, menu_widgets,
                           menu_view, self.menu_errors, menu_filetype]
@@ -110,7 +112,9 @@ class App(tk.Tk):
         # --- jupyter kernel
         self._qtconsole_process = None
         self._qtconsole_ready = False
-        self._init_kernel()
+        self.jupyter_kernel = None
+        self.jupyter_kernel_existing = False
+        #~self._init_kernel()
 
         # --- GUI elements
         self._horizontal_pane = ttk.PanedWindow(self._frame, orient='horizontal')
@@ -195,6 +199,7 @@ class App(tk.Tk):
                                    command=self.editor.closeall,
                                    accelerator='Ctrl+Shift+W')
         self.menu_file.add_command(label='Quit', command=self.quit,
+                                   accelerator='Ctrl+Shift+Q',
                                    image='img_quit', compound='left')
         # --- --- --- recent
         for f in self.recent_files:
@@ -272,7 +277,7 @@ class App(tk.Tk):
                                 compound='left', command=self.search,
                                 accelerator='Ctrl+Shift+R',)
         menu_search.add_separator()
-        menu_search.add_command(label='Goto line', accelerator='Ctrl+L', compound='left',
+        menu_search.add_command(label='Go to line', accelerator='Ctrl+L', compound='left',
                                 command=self.editor.goto_line, image='img_menu_dummy')
 
         # --- --- doc
@@ -326,6 +331,10 @@ class App(tk.Tk):
                                       command=self.start_jupyter,
                                       image='img_qtconsole',
                                       compound='left')
+            menu_consoles.add_command(label='Connect to existing kernel',
+                                      command=self.start_jupyter_existing_kernel,
+                                      image='img_menu_dummy',
+                                      compound='left')
 
         # --- --- view
         menu_view.add_cascade(label='Panes', menu=menu_widgets,
@@ -362,15 +371,6 @@ class App(tk.Tk):
                                          compound='left',
                                          variable=self.widgets.get(name, self.codestruct).visible)
 
-        self.menu.add_cascade(label='File', underline=0, menu=self.menu_file)
-        self.menu.add_cascade(label='Edit', underline=0, menu=self.menu_edit)
-        self.menu.add_cascade(label='Search', underline=0, menu=menu_search)
-        self.menu.add_cascade(label='Document', underline=0, menu=self.menu_doc)
-        self.menu.add_cascade(label='Run', underline=0, menu=menu_run)
-        self.menu.add_cascade(label='Consoles', underline=0, menu=menu_consoles)
-        self.menu.add_cascade(label='View', underline=0, menu=menu_view)
-        self.menu.add_command(label='About', underline=0,
-                              command=lambda: About(self))
         # --- --- --- layouts
         menu_layouts.add_radiobutton(label='Horizontal split',
                                      variable=self.layout,
@@ -393,6 +393,23 @@ class App(tk.Tk):
                                      value='pvertical',
                                      image='img_view_pvertical', compound='left')
 
+        # --- --- help
+        menu_help.add_command(label='About', command=lambda: About(self),
+                              image='img_about', compound='left')
+        menu_help.add_command(label='Help', command=lambda: HelpDialog(self),
+                              image='img_help', compound='left')
+
+        # --- --- menu bar
+        self.menu.add_cascade(label='File', underline=0, menu=self.menu_file)
+        self.menu.add_cascade(label='Edit', underline=0, menu=self.menu_edit)
+        self.menu.add_cascade(label='Search', underline=0, menu=menu_search)
+        self.menu.add_cascade(label='Document', underline=0, menu=self.menu_doc)
+        self.menu.add_cascade(label='Run', underline=0, menu=menu_run)
+        self.menu.add_cascade(label='Consoles', underline=0, menu=menu_consoles)
+        self.menu.add_cascade(label='View', underline=0, menu=menu_view)
+        self.menu.add_cascade(label='Help', underline=0, menu=menu_help)
+
+
         self.toggle_menubar()
 
         # --- bindings
@@ -408,6 +425,9 @@ class App(tk.Tk):
         self.editor.bind('<<Modified>>', lambda e: self._edit_modified())
         self.editor.bind('<<Reload>>', self.reload)
         self.editor.bind('<<SetConsoleWDir>>', self.set_console_wdir)
+        self.bind('<<Inspect>>', self.show_help)
+
+        #~self.console.bind('<<Inspect>>', lambda e: self.show_help(e, "Console"))
 
         self.widgets['File browser'].bind('<Map>', self.filebrowser_populate)
 
@@ -420,8 +440,15 @@ class App(tk.Tk):
         self.bind('<Control-Shift-W>', self.editor.closeall)
         self.bind('<Control-Shift-R>', self.search)
         self.bind('<Control-Shift-S>', self.saveall)
-        self.bind('<Control-Shift-P>', self.print)
         self.bind('<Control-Alt-s>', self.saveas)
+        self.bind('<Control-Alt-P>', self.print)
+        self.bind('<Control-Shift-E>', self.switch_to_editor)
+        self.bind('<Control-Shift-P>', lambda e: self.switch_to_widget(e, self.widgets['Console']))
+        self.bind('<Control-Shift-H>', lambda e: self.switch_to_widget(e, self.widgets['Help']))
+        self.bind('<Control-Shift-I>', lambda e: self.switch_to_widget(e, self.widgets['History']))
+        self.bind('<Control-Shift-F>', lambda e: self.switch_to_widget(e, self.widgets['File browser']))
+        self.bind('<Control-Shift-G>', lambda e: self.switch_to_widget(e, self.codestruct))
+        self.bind('<Control-Shift-Q>', self.quit)
         self.bind('<<CtrlReturn>>', self.run_cell)
         self.bind('<<ShiftReturn>>', lambda e: self.run_cell(goto_next=True))
         self.bind('<F5>', self.run)
@@ -837,6 +864,29 @@ class App(tk.Tk):
             self.editor.busy(False)
             self.codestruct.configure(cursor='')
 
+    def switch_to_editor(self, event):
+        try:
+            event.widget.mark_set('insert', 'sel.first')
+            event.widget.tag_remove('sel', '1.0', 'end')
+        except (tk.TclError, AttributeError):
+            pass
+        self.editor.focus_tab()
+
+    def switch_to_widget(self, event, widget):
+        try:
+            if event.keysym == "P":
+                event.widget.mark_set('insert', 'sel.last')
+            elif event.keysym == "F":
+                event.widget.mark_set('insert', 'sel.first')
+            event.widget.tag_remove('sel', '1.0', 'end')
+        except (tk.TclError, AttributeError):
+            pass
+        try:
+            self.right_nb.select(widget)
+        except ValueError:
+            pass
+        widget.focus_set()
+
     def toggle_fullscreen(self, event=None):
         val = self.fullscreen.get()
         if event:
@@ -973,15 +1023,21 @@ class App(tk.Tk):
         self.destroy()
 
     def quit(self, *args):
-        files = ', '.join(self.editor.get_open_files())
-        CONFIG.set('General', 'opened_files', files)
-        CONFIG.save()
-        res = self.editor.closeall()
-        if res:
-            self.save_layout()
-            self.destroy()
-            self.splash.terminate()
-            self.splash.wait()
+        if CONFIG.getboolean('General', 'confirm_quit', fallback=False):
+            ans = askyesno('Confirmation', 'Do you really want to quit?')
+        else:
+            ans = True
+        if ans:
+            files = ', '.join(self.editor.get_open_files())
+            CONFIG.set('General', 'opened_files', files)
+            CONFIG.save()
+            res = self.editor.closeall()
+            if res:
+                self.save_layout()
+                self._kernel_disconnect()
+                self.destroy()
+                self.splash.terminate()
+                self.splash.wait()
 
     def new(self, event=None):
         try:
@@ -1006,6 +1062,15 @@ class App(tk.Tk):
         path = os.path.dirname(self.editor.files[self.editor.current_tab])
         self.console.execute(f"cd {path}")
         self.widgets['File browser'].populate(path)
+
+    # --- docstrings
+    def show_help(self, event):
+        help = self.widgets['Help']
+        try:
+            help.inspect(*event.widget._inspect_obj)
+        except AttributeError:
+            return
+        self.right_nb.select(help)
 
     # --- open
     def restore_last_closed(self, event=None):
@@ -1234,37 +1299,114 @@ class App(tk.Tk):
     def run_cell(self, event=None, goto_next=False):
         code = self.editor.get_cell(goto_next=goto_next)
         if code:
-            self._make_console_visible()
-            self.console.execute(code)
+            if CONFIG.get('Run', 'cell', fallback="console") == "console":
+                self._make_console_visible()
+                self.console.execute(code)
+            else:  # in jupyter
+                self.execute_in_jupyter(code=code, focus=False)
             self.editor.focus_tab()
 
     # --- jupyter
-    def _init_kernel(self):
+    def _init_kernel(self, file=None):
         """Initialize Jupyter kernel"""
         if not cst.JUPYTER:
             return
+        self._kernel_disconnect()
         # launch new kernel
-        cfm = cst.ConnectionFileMixin(connection_file=cst.JUPYTER_KERNEL_PATH)
-        cfm.write_connection_file()
-        self.jupyter_kernel = cst.BlockingKernelClient(connection_file=cst.JUPYTER_KERNEL_PATH)
+        if file is None:
+            cfm = cst.ConnectionFileMixin(connection_file=cst.JUPYTER_KERNEL_PATH)
+            cfm.write_connection_file()
+            self.jupyter_kernel = cst.BlockingKernelClient(connection_file=cst.JUPYTER_KERNEL_PATH)
+            self.jupyter_kernel_existing = False
+        else:
+            self.jupyter_kernel = cst.BlockingKernelClient(connection_file=file)
+            self.jupyter_kernel_existing = True
         self.jupyter_kernel.load_connection_file()
         self.jupyter_kernel.start_channels()
 
-    def start_jupyter(self):
+    def _kernel_disconnect(self):
+        """Close the Qtconsole connected to the editor."""
+        if self.jupyter_kernel is not None:
+            if self.jupyter_kernel_existing:  # don't shutdown pre-existing kernel
+                if self._qtconsole_process is not None:
+                    self._qtconsole_process.terminate()
+            else:
+                self.jupyter_kernel.shutdown()
+                self._qtconsole_process.terminate()
+
+    def start_jupyter(self, focus=True):
         """Return true if new instance was started"""
         if not cst.JUPYTER:
             return
         if (self._qtconsole_process is None) or (self._qtconsole_process.poll() is not None):
             self._init_kernel()
             self._qtconsole_ready = False
-            self._qtconsole_process = Popen(['python', '-m', 'pytkeditorlib.custom_qtconsole',
-                                             '--JupyterWidget.include_other_output=True',
-                                             '--JupyterWidget.other_output_prefix=[editor]',
-                                             f'--PyTkEditor.pid={self.pid}',
-                                             '-f', cst.JUPYTER_KERNEL_PATH])
+            cmd = ['python', '-m', 'pytkeditorlib.custom_qtconsole',
+                   '--JupyterWidget.include_other_output=True',
+                   '--JupyterWidget.other_output_prefix=[editor]',
+                   '--JupyterWidget.banner=PyTkEditor\n',
+                   f'--PyTkEditor.pid={self.pid}',
+                   '-f', cst.JUPYTER_KERNEL_PATH]
+            extra_options = CONFIG.get('Console', 'jupyter_options', fallback='').strip().split()
+            while '' in extra_options:
+                extra_options.remove('')
+            cmd.extend(extra_options)
+            env = os.environ.copy()
+            home = os.path.expanduser('~')
+            env['IPYTHONDIR'] = CONFIG.get('Console', 'ipython_dir',
+                                           fallback=os.path.join(home, '.ipython'))
+            env['JUPYTER_CONFIG_DIR'] = CONFIG.get('Console', 'jupyter_config_dir',
+                                                   fallback=os.path.join(home, '.jupyter'))
+            self._qtconsole_process = Popen(cmd, stderr=PIPE, env=env)
+            self.after(1000, self._check_qtconsole_stderr)
             return True
         else:
+            if focus:
+                os.kill(self._qtconsole_process.pid, signal.SIGUSR1)  # focus on console
             return False
+
+    def start_jupyter_existing_kernel(self):
+        """Return true if new instance was started"""
+        if not cst.JUPYTER:
+            return
+        ans = True
+        if (self._qtconsole_process is not None) and (self._qtconsole_process.poll() is None):
+            # a kernel is already running
+            ans = askyesno('Confirmation', 'A kernel is already connected to PyTkEditor. Do you want to connect a different kernel?')
+        if ans:
+            sk = SelectKernel(self)
+            self.wait_window(sk)
+            kernel = sk.selected_kernel
+            if not kernel:
+                return
+            try:
+                filepath = cst.find_connection_file(kernel)
+            except OSError:
+                showerror('Error', f'Unable to connect to {filepath}.')
+
+            self._init_kernel(filepath)
+            self._qtconsole_ready = False
+            cmd = ['python', '-m', 'pytkeditorlib.custom_qtconsole',
+                   '--JupyterWidget.include_other_output=True',
+                   '--JupyterWidget.other_output_prefix=[remote]',
+                   '--JupyterWidget.banner=PyTkEditor\n',
+                   f'--PyTkEditor.pid={self.pid}',
+                   f'--existing={filepath}']
+            extra_options = CONFIG.get('Console', 'jupyter_options', fallback='').strip().split()
+            while '' in extra_options:
+                extra_options.remove('')
+            cmd.extend(extra_options)
+            env = os.environ.copy()
+            home = os.path.expanduser('~')
+            env['IPYTHONDIR'] = CONFIG.get('Console', 'ipython_dir',
+                                           fallback=os.path.join(home, '.ipython'))
+            env['JUPYTER_CONFIG_DIR'] = CONFIG.get('Console', 'jupyter_config_dir',
+                                                   fallback=os.path.join(home, '.jupyter'))
+            self._qtconsole_process = Popen(cmd, stderr=PIPE, env=env)
+            self.after(1000, self._check_qtconsole_stderr)
+        else:
+            os.kill(self._qtconsole_process.pid, signal.SIGUSR1)
+        return ans
 
     def _signal_exec_jupyter(self, *args):
 
@@ -1273,26 +1415,36 @@ class App(tk.Tk):
 
         self.after(200, ready)
 
-    def _wait_execute_in_jupyter(self, code):
+    def _wait_execute_in_jupyter(self, code, focus=True):
         if self._qtconsole_ready:
             self.jupyter_kernel.execute(code)
-            os.kill(self._qtconsole_process.pid, signal.SIGUSR1)
+            if focus:
+                os.kill(self._qtconsole_process.pid, signal.SIGUSR1)
         else:
             self.after(1000, lambda: self._wait_execute_in_jupyter(code))
 
-    def execute_in_jupyter(self, event=None, code=None):
+    def execute_in_jupyter(self, event=None, code=None, focus=True):
         if not cst.JUPYTER:
             return
         if code is None:
             code = self.editor.get_selection()
         if not code:
             return
-        if self.start_jupyter():
-            self._wait_execute_in_jupyter(code)
+        if self.start_jupyter(False):
+            self._wait_execute_in_jupyter(code, focus)
         else:
             self.jupyter_kernel.execute(code)
-            os.kill(self._qtconsole_process.pid, signal.SIGUSR1)
+            if focus:
+                os.kill(self._qtconsole_process.pid, signal.SIGUSR1)
+        self.after(1000, self._check_qtconsole_stderr)
         return "break"
+
+    def _check_qtconsole_stderr(self):
+        if self._qtconsole_process.poll() is not None:
+            err = self._qtconsole_process.stderr.read().decode()
+            if err:
+                logging.error(err)
+                showerror('Error', 'Error in Jupyter QtConsole.', err, False)
 
     # --- syntax check
     def check_syntax(self, tab=None):

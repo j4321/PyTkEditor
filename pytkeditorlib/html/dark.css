@@ -1,7 +1,7 @@
 /*
 :Authors: Ian Bicking, Michael Foord, Juliette Monsel
 :Contact: fuzzyman@voidspace.org.uk
-:Date: 2005/08/26 
+:Date: 2005/08/26
 :Version: 0.1.0
 :Copyright: This stylesheet has been placed in the public domain.
 
@@ -49,6 +49,23 @@ a:hover
 {
     font-style: italic;
     border-bottom: 1px solid #006FFF;
+}
+
+blockquote{
+  margin-left: 0px;
+}
+
+ul{
+  margin-left: 0px;
+  line-height: 1.4;
+}
+
+ul ul{
+  margin-left: 0px;
+}
+
+ul ul ul{
+  margin-left: 0px;
 }
 
 div.hint, div.note, div.tip {
@@ -103,7 +120,7 @@ h1 {
   font-size: large;
 }
 
-h1 a.toc-backref, h2 a.toc-backref { 
+h1 a.toc-backref, h2 a.toc-backref {
   color: #ffffff;
 }
 
@@ -111,6 +128,7 @@ h2 {
   background-color: #4F4F4F;
   color: #ffffff;
   border: medium solid #7A7A7A;
+  font-size: medium;
 }
 
 h3, h4, h5, h6 {
@@ -118,8 +136,8 @@ h3, h4, h5, h6 {
   color: white;
 }
 
-h3 a.toc-backref, h4 a.toc-backref, h5 a.toc-backref, 
-h6 a.toc-backref { 
+h3 a.toc-backref, h4 a.toc-backref, h5 a.toc-backref,
+h6 a.toc-backref {
   color: #000000;
 }
 
@@ -140,6 +158,9 @@ table.citation {
   padding-left: 0.5ex
 }
 
+th.field-name {
+  text-align: right;
+}
 
 .image img { border-style : solid;
             border-width : 2px;
@@ -149,18 +170,34 @@ h1 tt, h2 tt, h3 tt, h4 tt, h5 tt, h6 tt {
   font-size: 100%;
 }
 
+span.kbd {
+  padding-top: 3px;
+  padding-left: 2px;
+  padding-right: 2px;
+  padding-bottom: 0px;
+  background-color: #494949;
+  font-weight: bold;
+  color: #C5C5C5;
+  border: 1px solid #848484;
+}
+
 tt {
-  font-family: FreeMono;
+  font-family: monospace;
   background-color: #494949;
   color: white;
-  padding: 1px;
+  padding-top: 5px;
+  padding-left: 3px;
+  padding-right: 3px;
+  padding-bottom: 0px;
   border: 1px solid #848484;
 }
 
 span.data, span.exc, span.func, span.class, span.const, span.attr, span.meth, span.mod, span.obj, span.py_data, span.py_exc, span.py_func, span.py_class, span.py_const, span.py_attr, span.py_meth, span.py_mod, span.py_obj {
-  font-family: FreeMono;
-  padding: 1px;
-  border: 1px solid #848484;
+  font-family: monospace;
+  padding-top: 5px;
+  padding-left: 3px;
+  padding-right: 3px;
+  padding-bottom: 0px;  border: 1px solid #848484;
   background-color: #303030;
 }
 
@@ -170,10 +207,24 @@ pre, code
     padding-left: 10px;
     background-color: #494949;
     color: white;
-    font-family: FreeMono;
+    font-family: monospace;
     line-height: 1.4;
     margin: 0px;
     border: 1px solid #848484;
+}
+
+div.leftside {
+  width: 150px;
+  text-align: right;
+  padding: 5px;
+  float: left;
+}
+
+div.rightside {
+  padding: 5px;
+  margin-left: 5px;
+  text-align: left;
+  /* float: right; */
 }
 
 .code .comment                     { color: #008800; font-style: italic }

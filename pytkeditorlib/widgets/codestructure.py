@@ -89,7 +89,24 @@ class CodeTree(Treeview):
         if self.callback is not None and sel:
             self.callback(*self.item(sel[0], 'values'))
 
-    def populate(self, text):
+    def _get_opened(self):
+        opened = []
+
+        def rec(item):
+            if self.item(item, 'open'):
+                opened.append(self.item(item, 'tags'))
+                for child in self.get_children(item):
+                    rec(child)
+
+        for item in self.get_children():
+            rec(item)
+        return opened
+
+    def populate(self, text, reset):
+        if reset:
+            opened = []
+        else:
+            opened = self._get_opened()
         self.delete(*self.get_children())
         tokens = tokenize.tokenize(BytesIO(text.encode()).readline)
         names = set()
@@ -107,7 +124,7 @@ class CodeTree(Treeview):
             add = False
             if token.type == tokenize.NAME and token.string in ['class', 'def']:
                 obj_type = token.string
-                indent = token.start[1]
+                indent = token.start[1] + 4
                 token = tokens.send(None)
                 name = token.string
                 names.add(name)
@@ -117,14 +134,14 @@ class CodeTree(Treeview):
             elif token.type == tokenize.COMMENT:
                 if token.string[:5] == '# ---' or 'TODO' in token.string:
                     obj_type = '#'
-                    indent = token.start[1]
+                    indent = token.start[1] + 4
                     name = token.string[1:]
                     add = True
                 else:
                     match = re.match(r'^# In(\[.*\].*)$', token.string)
                     if match:
                         obj_type = 'cell'
-                        indent = token.start[1]
+                        indent = 0
                         name = match.groups()[0].strip()
                         add = True
                         self.cells.append(token.start[0])
@@ -132,7 +149,7 @@ class CodeTree(Treeview):
                         match = re.match(r'^# ?%% ?(.*)$', token.string)
                         if match:
                             obj_type = 'cell'
-                            indent = token.start[1]
+                            indent = 0
                             name = match.groups()[0].strip()
                             add = True
                             self.cells.append(token.start[0])
@@ -141,8 +158,9 @@ class CodeTree(Treeview):
                 tree_index += 1
                 parent = tree.insert('I-%i' % tree_index, indent)
                 max_length = max(max_length, self.font.measure(name) + 20 + (indent//4 + 1) * 20)
+                tags = (obj_type, name)
                 self.insert(parent, 'end', f'I-{tree_index}', text=name,
-                            tags=(obj_type, name),
+                            tags=tags, open=tags in opened,
                             values=('%i.%i' % token.start, '%i.%i' % token.end))
 
         self.column('#0', width=max_length, minwidth=max_length)
@@ -174,7 +192,7 @@ class CodeStructure(BaseWidget):
         self.goto_frame = Frame(self)
         Label(self.goto_frame, text='Go to:').pack(side='left')
         self.goto_entry = AutoCompleteCombobox2(self.goto_frame, completevalues=[])
-        self.goto_entry.pack(side='left', fill='x', pady=4, padx=4)
+        self.goto_entry.pack(side='left', fill='x', expand=True, pady=4, padx=4)
         self._goto_index = 0
 
         self.codetree.configure(xscrollcommand=self._sx.set,
@@ -217,6 +235,9 @@ class CodeStructure(BaseWidget):
 
     def _reset_goto(self, event):
         self._goto_index = 0
+
+    def focus_set(self):
+        self.goto_entry.focus_set()
 
     def hide(self):
         try:
@@ -262,11 +283,12 @@ class CodeStructure(BaseWidget):
         self.filename.configure(text='')
 
     def populate(self, title, text):
+        reset = self.filename.cget('text') != title
         self.filename.configure(text=title)
         self._sx.timer = self._sx.threshold + 1
         self._sy.timer = self._sy.threshold + 1
         try:
-            names = list(self.codetree.populate(text))
+            names = list(self.codetree.populate(text, reset))
         except TclError:
             logging.exception('CodeStructure Error')
             self.codetree.delete(*self.codetree.get_children())

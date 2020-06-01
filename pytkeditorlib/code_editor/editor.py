@@ -50,6 +50,7 @@ class Editor(ttk.Frame):
         self._re_paths = re.compile(rf'("|\')(\{sep}\w+)+\{sep}?$')
         self._re_empty = re.compile(r'^ *$')
         self._re_indent = re.compile(r'^( *)')
+        self._re_indents = re.compile(r'^( *)(?=.*\S+.*$)', re.MULTILINE)
         self._re_tab = re.compile(r' {4}$')
         self._re_colon = re.compile(r':( *)$')
 
@@ -199,7 +200,7 @@ class Editor(ttk.Frame):
         self.text.bind("<braceright>", self.close_brackets)
         self.text.bind("<Control-w>", lambda e: "break")
         self.text.bind("<Control-h>", lambda e: "break")
-        self.text.bind("<Control-i>", lambda e: "break")
+        self.text.bind("<Control-i>", self.inspect)
         self.text.bind("<Control-b>", lambda e: "break")
         self.text.bind("<Control-t>", lambda e: "break")
         self.text.bind("<Control-z>", self.undo)
@@ -219,12 +220,18 @@ class Editor(ttk.Frame):
         self.text.bind('<Control-f>', self.find)
         self.text.bind('<Control-r>', self.replace)
         self.text.bind('<Control-l>', self.goto_line)
+        self.text.bind('<Control-Down>', self.goto_next_cell)
+        self.text.bind('<Control-Up>', self.goto_prev_cell)
         self.text.bind('<Control-e>', self.toggle_comment)
         self.text.bind('<Configure>', self.filebar.update_positions)
+        # vertical scrolling
         self.text.bind('<4>', self._on_b4)
         self.line_nb.bind('<4>', self._on_b4)
         self.text.bind('<5>', self._on_b5)
         self.line_nb.bind('<5>', self._on_b5)
+        # horizontal scrolling
+        self.text.bind('<Shift-4>', self._on_sb4)
+        self.text.bind('<Shift-5>', self._on_sb5)
         self.bind('<FocusOut>', self._on_focusout)
 
         self.text.focus_set()
@@ -243,6 +250,21 @@ class Editor(ttk.Frame):
         else:
             for tag in self.text.tag_names():
                 self.text.tag_remove(tag, '1.0', 'end')
+
+    def update_cells(self):
+        count = tk.IntVar(self)
+        pattern = r'^#( In\[.*\]| ?%%).*$'
+        options = {'regexp': True,
+                   'nocase': False,
+                   'count': count,
+                   'stopindex': 'end'}
+        cells = []
+        res = self.text.search(pattern, '1.0', **options)
+        while res:
+            cells.append(int(res.split(".")[0]))
+            end = f"{res}+{count.get()}c"
+            res = self.text.search(pattern, end, **options)
+        self.set_cells(cells)
 
     def set_cells(self, cells):
         self.cells = cells
@@ -277,14 +299,22 @@ class Editor(ttk.Frame):
         self.yview('scroll', 3, 'units')
         return "break"
 
+    def _on_sb4(self, event):
+        self.text.xview('scroll', -3, 'units')
+        return "break"
+
+    def _on_sb5(self, event):
+        self.text.xview('scroll', 3, 'units')
+        return "break"
+
     def undo(self, event=None):
         try:
             self.text.edit_undo()
         except tk.TclError:
             pass
-        finally:
+        else:
             self.update_nb_line()
-            self.parse_all()
+            self.parse_part(nblines=100)
         return "break"
 
     def redo(self, event=None):
@@ -292,9 +322,9 @@ class Editor(ttk.Frame):
             self.text.edit_redo()
         except tk.TclError:
             pass
-        finally:
+        else:
             self.update_nb_line()
-            self.parse_all()
+            self.parse_part(nblines=100)
         return "break"
 
     def on_down(self, event):
@@ -344,33 +374,71 @@ class Editor(ttk.Frame):
         txt = self.clipboard_get()
         self.text.insert("insert", txt)
         self.update_nb_line()
-        self.parse_all()
+        lines = len(txt.splitlines())//2
+        self.parse_part(f'insert linestart - {lines} lines', nblines=lines + 10)
         self.see('insert')
         return "break"
 
+
     def toggle_comment(self, event=None):
+        if CONFIG.get('Editor', 'toggle_comment_mode', fallback='line_by_line') == 'line_by_line':
+            self.toggle_comment_linebyline()
+        else:
+            self.toggle_comment_block()
+
+    def toggle_comment_linebyline(self):
         self.text.edit_separator()
         sel = self.text.tag_ranges('sel')
         if sel:
-            lines = self.text.get('sel.first linestart', 'sel.last lineend').splitlines()
+            text = self.text.get('sel.first linestart', 'sel.last lineend')
             index = self.text.index('sel.first linestart')
             self.text.delete('sel.first linestart', 'sel.last lineend')
         else:
-            lines = self.text.get('insert linestart', 'insert lineend').splitlines()
+            text = self.text.get('insert linestart', 'insert lineend')
             index = self.text.index('insert linestart')
             self.text.delete('insert linestart', 'insert lineend')
 
         marker = CONFIG.get('Editor', 'comment_marker', fallback='~')
-        re_comment = re.compile(rf'^( *)#{re.escape(marker)}(.*)')
-        for i, line in enumerate(lines):
-            res = re_comment.match(line)
-            if res:
-                lines[i] = "{}{}".format(*res.groups())
-            elif not self._re_empty.match(line):
-                lines[i] = self._re_indent.sub(rf"\1#{marker}", line)
-        txt = '\n'.join(lines)
-        self.text.insert(index, txt)
-        self.parse(txt, index)
+        re_comment = re.compile(rf'^( *)(?=.*\S+.*$)(?P<comment>#{re.escape(marker)})?', re.MULTILINE)
+
+        def subs(match):
+            indent = match.group(1)
+            return indent if match.group('comment') else rf'{indent}#{marker}'
+
+        text = re_comment.sub(subs, text)
+
+        self.text.insert(index, text)
+        self.parse(text, index)
+
+    def toggle_comment_block(self):
+        self.text.edit_separator()
+        sel = self.text.tag_ranges('sel')
+        if sel:
+            text = self.text.get('sel.first linestart', 'sel.last lineend')
+            index = self.text.index('sel.first linestart')
+            self.text.delete('sel.first linestart', 'sel.last lineend')
+        else:
+            text = self.text.get('insert linestart', 'insert lineend')
+            index = self.text.index('insert linestart')
+            self.text.delete('insert linestart', 'insert lineend')
+
+        marker = CONFIG.get('Editor', 'comment_marker', fallback='~')
+        re_comments = re.compile(rf'^( *)(#{re.escape(marker)}|$)', re.MULTILINE)
+        lines = text.rstrip().splitlines()
+        if len(re_comments.findall(text.rstrip())) == len(lines):
+            # fully commented block -> uncomment
+            text = re_comments.sub(r'\1', text)
+        else:
+            # at least one line is not commented: comment block
+            try:
+                indent = min(self._re_indents.findall(text))
+            except ValueError:
+                indent = ''
+            re_com = re.compile(rf'^{indent}(?=.*\S+.*$)', re.MULTILINE)
+            pref = rf'{indent}#{marker}'
+            text = re_com.sub(pref, text)
+        self.text.insert(index, text)
+        self.parse(text, index)
 
     def duplicate_lines(self, event=None):
         self.text.edit_separator()
@@ -458,7 +526,7 @@ class Editor(ttk.Frame):
         self.text.insert('insert', '\n' + indent)
         self.update_nb_line()
         # update whole syntax highlighting
-        self.parse_all()
+        self.parse_part()
         self.see('insert')
         return "break"
 
@@ -518,10 +586,10 @@ class Editor(ttk.Frame):
             self.syntax_checks.configure(cursor='watch')
             self.filebar.configure(cursor='watch')
         else:
-            self.text.configure(cursor='')
+            self.text.configure(cursor='xterm')
             self.line_nb.configure(cursor='arrow')
             self.syntax_checks.configure(cursor='arrow')
-            self.filebar.configure(cursor='')
+            self.filebar.configure(cursor='arrow')
 
     def update_style(self):
         FONT = (CONFIG.get("General", "fontfamily"),
@@ -598,8 +666,19 @@ class Editor(ttk.Frame):
                     self.text.insert("range_end", " " * (79 - col), "Token.Comment.Cell")
             self.text.mark_set("range_start", "range_end")
 
+    def parse_part(self, current='insert', nblines=10):
+        start = f"{current} - {nblines} lines linestart"
+        self.parse(self.text.get(start, f"{current} + {nblines} lines lineend"), start)
+
     def parse_all(self):
         self.parse(self.text.get('1.0', 'end'), '1.0')
+
+    def strip(self):
+        res = self.text.search(r' +$', '1.0', regexp=True)
+        while res:
+            end = f"{res} lineend"
+            self.text.delete(res, end)
+            res = self.text.search(r' +$', end, regexp=True)
 
     # --- brackets
     def _clear_highlight(self):
@@ -644,7 +723,7 @@ class Editor(ttk.Frame):
         else:
             self.text.insert('insert', event.char * 2)
             self.text.mark_set('insert', 'insert-1c')
-        self.parse_all()
+        self.parse_part()
         self.text.edit_separator()
         return 'break'
 
@@ -985,21 +1064,37 @@ class Editor(ttk.Frame):
         self.text.tag_remove('sel', '1.0', 'end')
         self.text.tag_add('sel', start, end)
 
+    def goto_prev_cell(self, event):
+        if not self.cells:
+            return
+        line = int(str(self.text.index('insert')).split('.')[0])
+        i = 0
+        while i < len(self.cells) and self.cells[i] < line:
+            i += 1
+        if i == 1:
+            self.text.mark_set('insert', "1.0")
+        elif i > 1:
+            self.text.mark_set('insert', f"{self.cells[i - 2]}.0 + 1 lines")
+            self.text.see('insert')
+        return "break"
+
+    def goto_next_cell(self, event):
+        if not self.cells:
+            return
+        line = int(str(self.text.index('insert')).split('.')[0])
+        i = 0
+        while i < len(self.cells) and self.cells[i] < line:
+            i += 1
+        if i < len(self.cells):
+            self.text.mark_set('insert', f"{self.cells[i]}.0 + 1 lines")
+            self.text.see('insert')
+        return "break"
+
     # --- get
     def get(self, strip=True):
         txt = self.text.get('1.0', 'end')
         if strip:
-            yview = self.text.yview()[0]
-            index = self.text.index('insert')
-            txt = txt.splitlines()
-            for i, line in enumerate(txt):
-                txt[i] = line.rstrip(' ')
-            txt = '\n'.join(txt)
-            self.text.delete('1.0', 'end')
-            self.text.insert('1.0', txt)
-            self.parse_all()
-            self.text.mark_set('insert', index)
-            self.yview('moveto', yview)
+            self.strip()
         self.text.edit_separator()
         return txt
 
@@ -1028,20 +1123,11 @@ class Editor(ttk.Frame):
     def get_end(self):
         return str(self.text.index('end'))
 
-    def get_docstring(self, obj):
-        txt = self.text.get('1.0', 'end')
-        script = jedi.Script(txt + obj, len(txt.splitlines()) + 1,
-                             len(obj), self.file)
-        res = script.goto_definitions()
-        if res:
-            return res[-1]
-        else:
-            return None
-
     def get_cell(self, goto_next=False):
-        line = int(str(self.text.index('insert')).split('.')[0])
+        self.update_cells()
         if not self.cells:
             return ''
+        line = int(str(self.text.index('insert')).split('.')[0])
         i = 0
         while i < len(self.cells) and self.cells[i] < line:
             i += 1
@@ -1056,14 +1142,34 @@ class Editor(ttk.Frame):
             end = '%i.0' % self.cells[i]
         if goto_next:
             self.text.mark_set('insert', f"{end} + 1 lines")
+            self.text.see("insert")
         return self.text.get(start, end)
+
+    # --- docstrings
+    def get_docstring(self, obj):
+        txt = self.text.get('1.0', 'end')
+        script = jedi.Script(txt + obj, len(txt.splitlines()) + 1,
+                             len(obj), self.file)
+        res = script.goto_definitions()
+        if res:
+            return res[-1]
+        else:
+            return None
+
+    def inspect(self, event):
+        try:
+            self._inspect_obj = self.text.get('sel.first', "sel.last"), "Editor"
+        except tk.TclError:
+            return "break"
+        self.event_generate('<<Inspect>>')
+        return "break"
 
     # --- text edit
     def delete(self, index1, index2=None):
         self.text.edit_separator()
         self.text.delete(index1, index2=index2)
         self.update_nb_line()
-        self.parse_all()
+        self.parse_part()
 
     def insert(self, index, text, replace_sel=False):
         self.text.edit_separator()
@@ -1073,7 +1179,8 @@ class Editor(ttk.Frame):
                 self.text.delete('sel.first', 'sel.last')
         self.text.insert(index, text)
         self.update_nb_line()
-        self.parse_all()
+        lines = len(text.splitlines())//2
+        self.parse_part(f'insert linestart - {lines} lines', nblines=lines + 10)
 
     def choose_color(self, event=None):
 

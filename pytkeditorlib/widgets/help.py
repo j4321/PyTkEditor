@@ -18,92 +18,16 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
-GUI widget to display the help
+GUI widget to display the help about objects in the console or the editor
 """
 import tkinter as tk
 from tkinter import ttk
 from textwrap import dedent
 
-from docutils.core import publish_string
-from docutils.parsers.rst import roles
-from docutils.nodes import TextElement, Inline
-from docutils.parsers.rst import Directive, directives
-from docutils.writers.html4css1 import Writer, HTMLTranslator
-
-from pytkeditorlib.utils.constants import TEMPLATE_PATH, CSS_PATH, CONFIG
-from pytkeditorlib.gui_utils import EntryHistory
-from .tkhtml import HtmlFrame
+from pytkeditorlib.utils.constants import CSS_PATH, CONFIG
+from pytkeditorlib.gui_utils import EntryHistory, HtmlFrame
+from pytkeditorlib.utils import doc2html
 from .base_widget import BaseWidget
-
-
-sproles = ['data', 'exc', 'func', 'class', 'const', 'attr', 'meth', 'mod', 'obj',
-           'py:data', 'py:exc', 'py:func', 'py:class', 'py:const', 'py:attr',
-           'py:meth', 'py:mod', 'py:obj', 'any', 'ref', 'doc', 'download', 'numref',
-           'envvar', 'token', 'keyword', 'option', 'term', 'eq', 'abbr', 'command',
-           'dfn', 'file', 'guilabel', 'kbd', 'mailheader', 'makevar', 'manpage',
-           'menuselection', 'mimetype', 'newsgroup', 'program', 'regexp', 'samp',
-           'pep', 'rfc']
-
-
-def run(self):
-    thenode = type(self._role, (Inline, TextElement), {})(text=self.arguments[0])
-    return [thenode]
-
-
-for role in sproles:
-    roles.register_generic_role(role, type(role, (Inline, TextElement), {}))
-    directives.register_directive(role,
-                                  type(role.capitalize(),
-                                       (Directive,),
-                                       {'required_arguments': 1,
-                                        'optional_arguments': 0,
-                                        'has_content': None,
-                                        '_role': role,
-                                        'run': run}))
-
-
-def _visit(self, node, name):
-    # don't start tags; use
-    #     self.starttag(node, tagname, suffix, empty, **attributes)
-    # keyword arguments (attributes) are turned into html tag key/value
-    # pairs, e.g. `{'style':'background:red'} => 'style="background:red"'`
-    self.body.append(self.starttag(node, 'span', '', CLASS=name.replace(':', '_')))
-
-
-def _depart(self, node):
-    self.body.append('</span>')
-
-
-attributes = {'visit_' + role: lambda self, node, name=role: _visit(self, node, name) for role in sproles}
-attributes.update({'depart_' + role: _depart for role in sproles})
-
-MyHTMLTranslator = type('MyHTMLTranslator', (HTMLTranslator,), attributes)
-
-html_writer = Writer()
-html_writer.translator_class = MyHTMLTranslator
-
-
-def doc2html(doc):
-    rst_opts = {
-        'no_generator': True,
-        'no_source_link': True,
-        'tab_width': 4,
-        'file_insertion_enabled': False,
-        'raw_enabled': False,
-        'stylesheet_path': None,
-        'traceback': True,
-        'halt_level': 5,
-        'template': TEMPLATE_PATH
-    }
-
-    if not doc:
-        doc = """
-              .. error::
-                    No documentation available
-              """
-    out = publish_string(source=doc, writer=html_writer, settings_overrides=rst_opts)
-
-    return out.decode()
 
 
 def get_docstring(jedi_def):
@@ -160,6 +84,9 @@ class Help(BaseWidget):
         top_bar.pack(fill='x')
         self.html.pack(fill='both', expand=True)
 
+    def focus_set(self):
+        self.entry.focus_set()
+
     def update_style(self):
         with open(CSS_PATH.format(theme=CONFIG.get('General', 'theme'))) as f:
             self.stylesheet = f.read()
@@ -167,6 +94,13 @@ class Help(BaseWidget):
             self.html.set_style(self.stylesheet)
         except tk.TclError:
             pass
+
+    def inspect(self, obj, source=None):
+        if source is not None:
+            self._source.set(source)
+        self.entry.delete(0, 'end')
+        self.entry.insert(0, obj)
+        self.show_help()
 
     def show_help(self, event=None):
         obj = self.entry.get()

@@ -145,7 +145,6 @@ class History(RichText):
     def get_session_hist(self):
         return self.history[self._session_start:]
 
-
 class HistoryFrame(BaseWidget):
 
     def __init__(self, master=None, histfile=HISTFILE, **kw):
@@ -231,12 +230,15 @@ class HistoryFrame(BaseWidget):
         CONFIG.set('History', 'current_session', str(val))
         CONFIG.save()
 
+    def focus_set(self):
+        self.history.focus_set()
+
     def busy(self, busy):
         if busy:
             self.configure(cursor='watch')
             self.history.configure(cursor='watch')
         else:
-            self.history.configure(cursor='')
+            self.history.configure(cursor='xterm')
             self.configure(cursor='')
 
     def find(self, event=None):

@@ -52,7 +52,6 @@ class EditorNotebook(Notebook):
                               command=self.close_tabs_right)
         self.menu.add_command(label='Close tabs to the left',
                               command=self.close_tabs_left)
-
         self._files_mtime = {}           # file_path: mtime
         self._files_check_deletion = {}  # file_path: bool
 
@@ -81,7 +80,7 @@ class EditorNotebook(Notebook):
                     self.save(tab=tab)
                     self.edit_modified(False, tab=tab, generate=True)
                 self._files_mtime[tab] = os.stat(file).st_mtime
-        except FileNotFoundError:
+        except (FileNotFoundError, NotADirectoryError):
             # the file has been deleted
             try:
                 if self._files_check_deletion[tab]:
@@ -501,7 +500,17 @@ the external terminal configuration in the settings.",
         self._tabs[tab].file = file
         self.wrapper.add_tooltip(tab, file if file else title)
         editor.text.bind('<<Modified>>', lambda e: self.edit_modified(widget=editor, generate=True))
+        editor.text.bind('<Control-Tab>', self._select_next)
+        editor.text.bind('<Shift-Control-ISO_Left_Tab>', self._select_prev)
         editor.busy(False)
+
+    def _select_next(self, event):
+        self.select_next(True)
+        return "break"
+
+    def _select_prev(self, event):
+        self.select_prev(True)
+        return "break"
 
     def file_switch(self, event=None):
 
@@ -532,6 +541,7 @@ the external terminal configuration in the settings.",
         c.listbox.bind('<Return>', ok)
         c.bind('<<ItemSelect>>', sel)
         c.focus_set()
+        return "break"
 
     def choose_color(self):
         tab = self.current_tab

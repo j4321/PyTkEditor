@@ -49,6 +49,7 @@ class ColorPicker(colorpicker.ColorPicker):
         ttk.Button(button_frame, text="Insert",
                    command=self.insert).pack(side="right", padx=10)
         self.grab_release()
+        self.bind('<Escape>', lambda e: self.destroy())
 
     def insert(self):
         rgb, hsv, hexa = self.square.get()

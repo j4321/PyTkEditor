@@ -20,7 +20,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 Modified version of the qtconsole module of the Jupyter Project
 <https://github.com/jupyter/qtconsole>.
-    - Catch exceptions in base_frontend_mixin.BaseFrontendMixin._dispatch() 
+    - Catch exceptions in base_frontend_mixin.BaseFrontendMixin._dispatch()
       for when the qtconsole is not ready yet when the first line of code is sent
     - Modify icon and title to reflect the connexion with PyTkEditor
     - Take --PyTkEditor.pid command line argument to get the pid of the
@@ -31,4 +31,4 @@ Originally distributed under the terms of the Modified BSD License available
 in the ORIGINAL_LICENSE file in this module.
 """
 
-from ._version import version_info, __version__
+from qtconsole._version import version_info, __version__

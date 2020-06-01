@@ -40,12 +40,13 @@ settings.case_insensitive_completion = False
 os.environ['PYFLAKES_BUILTINS'] = '_'
 
 APP_NAME = 'PyTkEditor'
-REPORT_URL = "https://gitlab.com/j_4321/{}/issues".format(APP_NAME)
+REPORT_URL = f"https://gitlab.com/j_4321/{APP_NAME}/issues"
 
 
 class MyLexer(Python3Lexer):
-    tokens = Python3Lexer.tokens.copy()
-    tokens['root'].insert(5, (r'^#( In\[.*\]| ?%%).*$', Comment.Cell))
+    name = "PyTkPython"
+    tokens = {key: val.copy() for key, val in Python3Lexer.tokens.items()}
+    tokens['root'].insert(4, (r'^#( In\[.*\]| ?%%).*$', Comment.Cell))
 
 
 PYTHON_LEX = MyLexer()
@@ -59,6 +60,7 @@ if os.access(PATH, os.W_OK) and os.path.exists(os.path.join(PATH, "images")):
     # local directory containing config files
     LOCAL_PATH = os.path.join(PATH, 'config')
     # PATH_LOCALE = os.path.join(PATH, "locale")
+    PATH_DOC = os.path.join(PATH, 'doc', "DOC.rst")
     PATH_HTML = os.path.join(PATH, 'html')
     PATH_SSL = os.path.join(PATH, 'ssl')
     PATH_IMG = os.path.join(PATH, 'images')
@@ -66,6 +68,7 @@ else:
     # local directory containing config files
     LOCAL_PATH = os.path.join(os.path.expanduser("~"), ".pytkeditor")
     # PATH_LOCALE = "/usr/share/locale"
+    PATH_DOC = "/usr/share/doc/pytkeditor/DOC.rst"
     PATH_HTML = "/usr/share/pytkeditor/html"
     PATH_SSL = "/usr/share/pytkeditor/ssl"
     PATH_IMG = "/usr/share/pytkeditor/images"
@@ -159,6 +162,7 @@ if not CONFIG.read(PATH_CONFIG):
     CONFIG.set('General', 'recent_files', "")
     CONFIG.set('General', 'layout', "horizontal")
     CONFIG.set('General', 'fullscreen', "False")
+    CONFIG.set('General', 'confirm_quit', "False")
     CONFIG.add_section('Layout')
     CONFIG.set('Layout', 'horizontal', "0.16 0.65")
     CONFIG.set('Layout', 'horizontal2', "0.65")
@@ -171,6 +175,7 @@ if not CONFIG.read(PATH_CONFIG):
     CONFIG.set('Editor', 'matching_brackets', '#00B100;;bold')  # fg;bg;font formatting
     CONFIG.set('Editor', 'unmatched_bracket', '#FF0000;;bold')  # fg;bg;font formatting
     CONFIG.set('Editor', 'comment_marker', '~')
+    CONFIG.set('Editor', 'toggle_comment_mode', 'line_by_line')
     CONFIG.add_section('Code structure')
     CONFIG.set('Code structure', 'visible', "True")
     CONFIG.add_section('Console')
@@ -179,6 +184,9 @@ if not CONFIG.read(PATH_CONFIG):
     CONFIG.set('Console', 'order', "0")
     CONFIG.set('Console', 'matching_brackets', '#00B100;;bold')  # fg;bg;font formatting
     CONFIG.set('Console', 'unmatched_bracket', '#FF0000;;bold')  # fg;bg;font formatting
+    CONFIG.set('Console', 'jupyter_config_dir', os.path.join(os.path.expanduser('~'), '.jupyter'))
+    CONFIG.set('Console', 'ipython_dir', os.path.join(os.path.expanduser('~'), '.ipython'))
+    CONFIG.set('Console', 'jupyter_options', '')
     CONFIG.add_section('History')
     CONFIG.set('History', 'max_size', "10000")
     CONFIG.set('History', 'visible', "True")
@@ -194,6 +202,7 @@ if not CONFIG.read(PATH_CONFIG):
     CONFIG.set('Run', 'console', "external")
     CONFIG.set('Run', 'external_interactive', "True")
     CONFIG.set('Run', 'external_console', external_console)
+    CONFIG.set('Run', 'cell', "console")
     CONFIG.add_section('Dark Theme')
     CONFIG.set('Dark Theme', 'bg', '#454545')
     CONFIG.set('Dark Theme', 'activebg', '#525252')
@@ -212,7 +221,6 @@ if not CONFIG.read(PATH_CONFIG):
     CONFIG.set('Dark Theme', 'disabledfg', '#666666')
     CONFIG.set('Dark Theme', 'disabledbg', '#454545')
     CONFIG.set('Dark Theme', 'tooltip_bg', '#131313')
-
     CONFIG.add_section('Light Theme')
     CONFIG.set('Light Theme', 'bg', '#dddddd')
     CONFIG.set('Light Theme', 'activebg', '#efefef')

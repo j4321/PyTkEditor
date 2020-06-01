@@ -20,13 +20,14 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 Config dialog
 """
-
+import os
 import tkinter as tk
 from tkinter import ttk
 from tkinter import font
 
 from pygments.styles import get_all_styles
 from tkcolorpicker import askcolor
+from tkfilebrowser import askopendirname
 
 from pytkeditorlib.utils.constants import CONFIG, PATH_TEMPLATE, JUPYTER
 from pytkeditorlib.gui_utils import AutoCompleteCombobox
@@ -126,7 +127,7 @@ class Config(tk.Toplevel):
     def __init__(self, master):
         tk.Toplevel.__init__(self, master)
         self.transient(master)
-        self.resizable(False, False)
+        self.minsize(529, 381)
         self.grab_set()
         self.configure(padx=8, pady=4)
         self.title('PyTkEditor - Settings')
@@ -179,16 +180,33 @@ class Config(tk.Toplevel):
                    command=self.edit_template).pack(side='left', padx=4, pady=8)
         frame_template.grid(row=2, columnspan=2, sticky='w')
 
+        # --- confirm quit
+        self.confirm_quit = ttk.Checkbutton(frame_general, text="Show confirmation dialog before exiting")
+        if CONFIG.getboolean("General", "confirm_quit", fallback=False):
+            self.confirm_quit.state(('selected', '!alternate'))
+        else:
+            self.confirm_quit.state(('!selected', '!alternate'))
+        self.confirm_quit.grid(row=3, columnspan=2, sticky='w', padx=4, pady=4)
+
     def _init_editor(self):
         frame_editor = ttk.Frame(self.notebook, padding=4)
         self.notebook.add(frame_editor, text='Editor')
 
         frame_editor.columnconfigure(1, weight=1)
 
-
-        # --- --- comment marker
+        # --- comments
         self.comment_marker = ttk.Entry(frame_editor, width=3)
         self.comment_marker.insert(0, CONFIG.get("Editor", "comment_marker", fallback="~"))
+        self.comment_toggle_mode = tk.StringVar(self, CONFIG.get('Editor',
+                                                                 'toggle_comment_mode',
+                                                                 fallback='line_by_line'))
+        rbtn_frame = ttk.Frame(frame_editor)
+        ttk.Radiobutton(rbtn_frame, text='Line by line',
+                        variable=self.comment_toggle_mode,
+                        value='line_by_line').pack(side='left', padx=4, pady=4)
+        ttk.Radiobutton(rbtn_frame, text='Block',
+                        variable=self.comment_toggle_mode,
+                        value='block').pack(side='left', padx=4, pady=4)
 
         # --- code checking
         self.code_check = ttk.Checkbutton(frame_editor, text='Check code')
@@ -229,15 +247,18 @@ class Config(tk.Toplevel):
                   text='Comment toggle marker:').grid(row=0, column=0, sticky='e', padx=4, pady=4)
         self.comment_marker.grid(row=0, column=1, sticky='w', padx=4, pady=4)
         ttk.Label(frame_editor,
-                  text='Code checking (on file saving):').grid(row=1, column=0,
-                                                               sticky='e', padx=4, pady=4)
-        self.code_check.grid(row=1, column=1, sticky='w', padx=3, pady=4)
-        self.style_check.grid(row=2, column=1, sticky='w', padx=3, pady=4)
-        ttk.Separator(frame_editor, orient='horizontal').grid(row=3, columnspan=2, sticky='ew', pady=4)
+                  text='Comment toggle mode:').grid(row=1, column=0, sticky='e', padx=4, pady=4)
+        rbtn_frame.grid(row=1, column=1, sticky='w')
         ttk.Label(frame_editor,
-                  text='Syntax Highlighting:').grid(row=4, columnspan=2,
+                  text='Code checking (on file saving):').grid(row=2, column=0,
+                                                               sticky='e', padx=4, pady=4)
+        self.code_check.grid(row=2, column=1, sticky='w', padx=3, pady=4)
+        self.style_check.grid(row=3, column=1, sticky='w', padx=3, pady=4)
+        ttk.Separator(frame_editor, orient='horizontal').grid(row=4, columnspan=2, sticky='ew', pady=4)
+        ttk.Label(frame_editor,
+                  text='Syntax Highlighting:').grid(row=5, columnspan=2,
                                                     sticky='w', pady=4, padx=4)
-        frame_s_h.grid(row=5, columnspan=2, sticky='ew', pady=(4, 8), padx=12)
+        frame_s_h.grid(row=6, columnspan=2, sticky='ew', pady=(4, 8), padx=12)
 
     def _init_console(self):
         frame_console = ttk.Frame(self.notebook, padding=4)
@@ -270,17 +291,55 @@ class Config(tk.Toplevel):
         ttk.Label(frame_s_h, text='Unmatched bracket:').grid(row=4, column=0, columnspan=2, sticky='w', pady=(8, 0))
         self.console_unmatched_bracket.grid(row=5, column=0, columnspan=2, sticky='w', padx=4)
 
+        # --- Jupyter QtConsole
+        frame_qtconsole = ttk.Frame(frame_console)
+        f1 = ttk.Frame(frame_qtconsole)
+        f1.columnconfigure(1, weight=1)
+        f2 = ttk.Frame(frame_qtconsole)
+        f1.pack(anchor='w', fill='x')
+        f2.pack(anchor='w', fill='x')
+
+        ttk.Label(f1, text='IPYTHONDIR').grid(sticky='e', row=0, column=0, pady=4, padx=(0, 4))
+        ttk.Label(f1, text='JUPYTER_CONFIG_DIR').grid(sticky='e', row=1, column=0, pady=4, padx=(0, 4))
+        self.ipythondir = ttk.Entry(f1)
+        home = os.path.expanduser('~')
+        self.ipythondir.insert(0, CONFIG.get('Console', 'ipython_dir', fallback=f'{home}/.ipython'))
+        self.ipythondir.grid(row=0, column=1, sticky='ew', pady=4)
+        self.jupyterdir = ttk.Entry(f1)
+        self.jupyterdir.insert(0, CONFIG.get('Console', 'jupyter_config_dir', fallback=f'{home}/.jupyter'))
+        self.jupyterdir.grid(row=1, column=1, sticky='ew', pady=4)
+        ttk.Button(f1, text='...', width=2,
+                   command=lambda: self.select_dir(self.ipythondir),
+                   padding=0).grid(row=0, column=2, sticky='ns', pady=4)
+        ttk.Button(f1, text='...', width=2,
+                   command=lambda: self.select_dir(self.jupyterdir),
+                   padding=0).grid(row=1, column=2, sticky='ns', pady=4)
+        ttk.Label(f2, text='options to pass to jupyter-qtconsole').pack(side='left')
+        self.jupyter_options = ttk.Entry(f2)
+        self.jupyter_options.pack(side='right', fill='x', expand=True, padx=(4, 0))
+        self.jupyter_options.insert(0, CONFIG.get('Console', 'jupyter_options', fallback=''))
+        if not JUPYTER:
+            self.jupyter_options.state(['disabled'])
+
         # --- placement
         ttk.Label(frame_console,
                   text='Maximum history size (truncated when quitting):').grid(row=0, column=0,
                                                                                sticky='e',
                                                                                padx=4, pady=4)
         self.history_size.grid(row=0, column=1, sticky='w', padx=4, pady=4)
-        ttk.Separator(frame_console, orient='horizontal').grid(row=1, columnspan=2, sticky='ew', pady=4)
+        ttk.Separator(frame_console, orient='horizontal').grid(row=1, columnspan=2,
+                                                               sticky='ew', pady=4)
         ttk.Label(frame_console,
                   text='Syntax Highlighting:').grid(row=2, columnspan=2,
                                                     sticky='w', pady=4, padx=4)
         frame_s_h.grid(row=3, columnspan=2, sticky='ew', pady=(4, 8), padx=12)
+
+        ttk.Separator(frame_console, orient='horizontal').grid(row=4, columnspan=2,
+                                                               sticky='ew', pady=4)
+        ttk.Label(frame_console,
+                  text='Jupyter Qtconsole:').grid(row=5, columnspan=2,
+                                                  sticky='w', pady=4, padx=4)
+        frame_qtconsole.grid(row=6, columnspan=2, sticky='ew', pady=(4, 8), padx=12)
 
 
     def _init_run(self):
@@ -288,7 +347,7 @@ class Config(tk.Toplevel):
         self.notebook.add(frame_run, text='Run')
 
         frame_run.columnconfigure(2, weight=1)
-
+        # --- run
         self.run_console = tk.StringVar(self, CONFIG.get('Run', 'console'))
 
         self.external_interactive = ttk.Checkbutton(frame_run,
@@ -315,10 +374,26 @@ class Config(tk.Toplevel):
                               command=self._run_setting,
                               variable=self.run_console)
         jqt.grid(row=3, column=1, pady=4, sticky='w')
-        if not JUPYTER:
-            jqt.state(['disabled'])
         self.external_console.grid(row=1, column=2, sticky='ew', padx=(0, 4), pady=4)
         self.external_interactive.grid(row=4, columnspan=3, padx=4, pady=4, sticky='w')
+
+        ttk.Separator(frame_run, orient='horizontal').grid(row=5, columnspan=3,
+                                                           sticky='ew', pady=4)
+        # --- run cell
+        self.run_cell_in = tk.StringVar(self, CONFIG.get('Run', 'cell', fallback="console"))
+        ttk.Label(frame_run, text='Execute cells in:').grid(row=6, column=0,
+                                                            padx=(4, 8), pady=4, sticky='w')
+        ttk.Radiobutton(frame_run, text='embedded console', value='console',
+                        variable=self.run_cell_in).grid(row=6, column=1,
+                                                        pady=4, sticky='w')
+
+        jqt2 = ttk.Radiobutton(frame_run, text='Jupyter QtConsole', value='qtconsole',
+                               variable=self.run_cell_in)
+        jqt2.grid(row=7, column=1, pady=4, sticky='w')
+
+        if not JUPYTER:
+            jqt.state(['disabled'])
+            jqt2.state(['disabled'])
 
     def _run_setting(self):
         if self.run_console.get() == 'external':
@@ -328,6 +403,14 @@ class Config(tk.Toplevel):
 
     def edit_template(self):
         self.master.open(PATH_TEMPLATE)
+
+    def select_dir(self, entry):
+        initialdir, initialfile = os.path.split(entry.get())
+        file = askopendirname(self, 'Select directory', initialdir=initialdir,
+                              initialfile=initialfile)
+        if file:
+            entry.delete(0, 'end')
+            entry.insert(0, file)
 
     def validate(self):
         # --- general
@@ -342,8 +425,13 @@ class Config(tk.Toplevel):
             pass
         else:
             CONFIG.set('General', 'fontsize', str(size))
+        CONFIG.set('General', 'confirm_quit',
+                   str('selected' in self.confirm_quit.state()))
 
         # --- editor
+        # --- --- comments
+        CONFIG.set('Editor', 'toggle_comment_mode', self.comment_toggle_mode.get())
+        CONFIG.set('Editor', 'comment_marker', self.comment_marker.get())
         # --- --- syntax highlighting
         estyle = self.editor_style.get()
         if estyle:
@@ -371,6 +459,9 @@ class Config(tk.Toplevel):
             CONFIG.set('Console', 'style', cstyle)
         CONFIG.set('Console', 'matching_brackets', self.console_matching_brackets.get_formatting())
         CONFIG.set('Console', 'unmatched_bracket', self.console_unmatched_bracket.get_formatting())
+        CONFIG.set('Console', 'ipython_dir', self.ipythondir.get())
+        CONFIG.set('Console', 'jupyter_config_dir', self.jupyterdir.get())
+        CONFIG.set('Console', 'jupyter_options', self.jupyter_options.get())
         # --- run
         console = self.run_console.get()
         CONFIG.set('Run', 'console', console)
@@ -378,6 +469,7 @@ class Config(tk.Toplevel):
                    str('selected' in self.external_interactive.state()))
         external_console = self.external_console.get()
         CONFIG.set('Run', 'external_console', external_console)
+        CONFIG.set('Run', 'cell', self.run_cell_in.get())
         if not external_console and console:
             ans = askokcancel("Warning",
                               'No external terminal is set so executing code in an external terminal will fail.',
