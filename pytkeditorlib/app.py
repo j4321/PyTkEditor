@@ -290,7 +290,7 @@ class App(tk.Tk):
         menu_filetype.add_radiobutton(label='Python', value='Python',
                                       variable=self.filetype,
                                       command=self.set_filetype)
-        menu_filetype.add_radiobutton(label='Text', value='Text',
+        menu_filetype.add_radiobutton(label='Other', value='Other',
                                       variable=self.filetype,
                                       command=self.set_filetype)
         # --- --- run
@@ -794,10 +794,16 @@ class App(tk.Tk):
         cells = self.codestruct.get_cells()
         self.editor.set_cells(cells)
 
+    def _populate_codestructure(self):
+        if self.filetype.get() == 'Python':
+            self.codestruct.populate(self.editor.filename, self.editor.get(strip=False))
+        else:
+            self.codestruct.populate(self.editor.filename, '')
+
     def _on_tab_changed(self, event):
         self.filetype.set(self.editor.get_filetype())
         self.codestruct.set_callback(self.editor.goto_item)
-        self.codestruct.populate(self.editor.filename, self.editor.get(strip=False))
+        self._populate_codestructure()
         self.update_menu_errors()
         self.editor.focus_tab()
 
@@ -1119,7 +1125,7 @@ class App(tk.Tk):
             self.editor.insert('1.0', txt)
             self.editor.edit_reset()
             self._edit_modified(0)
-            self.codestruct.populate(self.editor.filename, self.editor.get(strip=False))
+            self._populate_codestructure()
             self.check_syntax()
             self.editor.goto_start()
             self.busy(False)
@@ -1138,7 +1144,7 @@ class App(tk.Tk):
                 self.editor.insert('1.0', txt)
                 self.editor.edit_reset()
                 self._edit_modified(0)
-                self.codestruct.populate(self.editor.filename, self.editor.get(strip=False))
+                self._populate_codestructure()
                 self.check_syntax()
                 self.editor.goto_start()
                 self._update_recent_files(file)
@@ -1190,7 +1196,7 @@ class App(tk.Tk):
             self.editor.saveas(tab=tab, name=name)
             self._edit_modified(0, tab=tab)
             self.check_syntax()
-            self.codestruct.populate(self.editor.filename, self.editor.get(strip=False))
+            self._populate_codestructure()
             return True
         else:
             return False
@@ -1203,7 +1209,7 @@ class App(tk.Tk):
         if update and saved:
             self._edit_modified(0, tab=tab)
             self.check_syntax()
-            self.codestruct.populate(self.editor.filename, self.editor.get(strip=False))
+            self._populate_codestructure()
         self.editor.focus_tab()
         return saved
 
@@ -1466,3 +1472,4 @@ class App(tk.Tk):
                 self.menu_errors.add_command(label=msg,
                                              image=self._images[category],
                                              compound='left', command=cmd)
+

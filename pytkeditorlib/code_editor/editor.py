@@ -1,4 +1,3 @@
-
 #! /usr/bin/python3
 # -*- coding: utf-8 -*-
 """
@@ -18,17 +17,19 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-
 Code editor text widget
 """
-import jedi
+
 import re
 from glob import glob
 from os.path import sep
-from pygments import lex
 import tkinter as tk
 from tkinter import ttk
 from tkinter.font import Font
+
+import jedi
+from pygments import lex
+from pygments.lexers import get_lexer_for_filename, ClassNotFound
 
 from pytkeditorlib.dialogs.complistbox import CompListbox
 from pytkeditorlib.dialogs import showerror, showinfo, \
@@ -245,11 +246,7 @@ class Editor(ttk.Frame):
     def filetype(self, filetype):
         self.reset_syntax_issues()
         self._filetype = filetype
-        if filetype == 'Python':
-            self.parse_all()
-        else:
-            for tag in self.text.tag_names():
-                self.text.tag_remove(tag, '1.0', 'end')
+        self.parse_all()
 
     def update_cells(self):
         count = tk.IntVar(self)
@@ -647,8 +644,15 @@ class Editor(ttk.Frame):
 
     def parse(self, text, start):
         """Apply syntax highlighting to text at index start"""
-        if self.filetype != 'Python':
-            return
+        if self.filetype == 'Python':
+            lexer = PYTHON_LEX
+        else:
+            try:
+                lexer = get_lexer_for_filename(self.file)
+            except ClassNotFound:
+                for tag in self.text.tag_names():
+                    self.text.tag_remove(tag, '1.0', 'end')
+                return
         data = text
         while data and '\n' == data[0]:
             start = self.text.index('%s+1c' % start)
@@ -656,7 +660,7 @@ class Editor(ttk.Frame):
         self.text.mark_set('range_start', start)
         for t in self._syntax_highlighting_tags:
             self.text.tag_remove(t, start, "range_start +%ic" % len(data))
-        for token, content in lex(data, PYTHON_LEX):
+        for token, content in lex(data, lexer):
             self.text.mark_set("range_end", "range_start + %ic" % len(content))
             for t in token.split():
                 self.text.tag_add(str(t), "range_start", "range_end")
@@ -1251,3 +1255,4 @@ class Editor(ttk.Frame):
                 self.syntax_issues_menuentries.append((category, m, lambda l=line: self.show_line(l)))
         self.syntax_checks.configure(state='disabled')
         self.syntax_checks.yview_moveto(self.line_nb.yview()[0])
+

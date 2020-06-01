@@ -483,7 +483,7 @@ the external terminal configuration in the settings.",
         else:
             title = os.path.split(file)[-1]
 
-        editor = Editor(self, 'Python' if title.endswith('.py') else 'Text')
+        editor = Editor(self, 'Python' if title.endswith('.py') else 'Other')
         if len(self._visible_tabs) == 0:
             self.event_generate('<<NotebookFirstTab>>')
         tab = self.add(editor, text=title)
@@ -547,3 +547,4 @@ the external terminal configuration in the settings.",
         tab = self.current_tab
         if tab >= 0:
             self._tabs[self.current_tab].choose_color()
+
