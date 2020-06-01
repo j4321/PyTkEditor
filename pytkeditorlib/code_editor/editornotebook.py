@@ -307,6 +307,11 @@ class EditorNotebook(Notebook):
             tab = self.current_tab
         return self._tabs[tab].get(strip)
 
+    def get_lexer(self, tab=None):
+        if tab is None:
+            tab = self.current_tab
+        return self._tabs[tab].lexer
+
     def get_selection(self):
         if self._current_tab < 0:
             return ''
@@ -483,7 +488,7 @@ the external terminal configuration in the settings.",
         else:
             title = os.path.split(file)[-1]
 
-        editor = Editor(self, 'Python' if title.endswith('.py') else 'Text')
+        editor = Editor(self, file)
         if len(self._visible_tabs) == 0:
             self.event_generate('<<NotebookFirstTab>>')
         tab = self.add(editor, text=title)
@@ -497,7 +502,7 @@ the external terminal configuration in the settings.",
 
         self._tab_menu.entryconfigure(self._tab_menu_entries[tab],
                                       label="{} - {}".format(title, os.path.dirname(file)))
-        self._tabs[tab].file = file
+        #~self._tabs[tab].file = file
         self.wrapper.add_tooltip(tab, file if file else title)
         editor.text.bind('<<Modified>>', lambda e: self.edit_modified(widget=editor, generate=True))
         editor.text.bind('<Control-Tab>', self._select_next)
@@ -547,3 +552,6 @@ the external terminal configuration in the settings.",
         tab = self.current_tab
         if tab >= 0:
             self._tabs[self.current_tab].choose_color()
+
+
+

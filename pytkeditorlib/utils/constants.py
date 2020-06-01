@@ -30,7 +30,7 @@ from logging.handlers import TimedRotatingFileHandler
 
 import warnings
 from jedi import settings
-from pygments.lexers import Python3Lexer
+from pygments import lexers
 from pygments.token import Comment
 from pygments.styles import get_style_by_name
 from Xlib import display
@@ -43,13 +43,14 @@ APP_NAME = 'PyTkEditor'
 REPORT_URL = f"https://gitlab.com/j_4321/{APP_NAME}/issues"
 
 
-class MyLexer(Python3Lexer):
+class MyLexer(lexers.PythonLexer):
     name = "PyTkPython"
-    tokens = {key: val.copy() for key, val in Python3Lexer.tokens.items()}
+    tokens = {key: val.copy() for key, val in lexers.PythonLexer.tokens.items()}
     tokens['root'].insert(4, (r'^#( In\[.*\]| ?%%).*$', Comment.Cell))
 
 
 PYTHON_LEX = MyLexer()
+
 
 
 # --- paths
@@ -497,3 +498,4 @@ def parse_ansi(text, line_offset=1):
         tag_ranges[tag].append('end')
 
     return tag_ranges, stripped_text
+

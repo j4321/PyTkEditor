@@ -21,14 +21,16 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 Code editor text widget
 """
-import jedi
 import re
 from glob import glob
 from os.path import sep
-from pygments import lex
 import tkinter as tk
 from tkinter import ttk
 from tkinter.font import Font
+
+import jedi
+from pygments import lex
+from pygments.lexers import get_lexer_by_name, get_lexer_for_filename, ClassNotFound
 
 from pytkeditorlib.dialogs.complistbox import CompListbox
 from pytkeditorlib.dialogs import showerror, showinfo, \
@@ -40,7 +42,7 @@ from .filebar import FileBar
 
 
 class Editor(ttk.Frame):
-    def __init__(self, master=None, filetype='Python'):
+    def __init__(self, master=None, file=''):
         ttk.Frame.__init__(self, master, class_='Editor')
 
         self.columnconfigure(2, weight=1)
@@ -53,8 +55,6 @@ class Editor(ttk.Frame):
         self._re_indents = re.compile(r'^( *)(?=.*\S+.*$)', re.MULTILINE)
         self._re_tab = re.compile(r' {4}$')
         self._re_colon = re.compile(r':( *)$')
-
-        self._filetype = filetype
 
         self._valid_nb = self.register(valide_entree_nb)
 
@@ -77,8 +77,6 @@ class Editor(ttk.Frame):
                                 titlestyle='args.title.tooltip.TLabel')
         self._tooltip.withdraw()
         self._tooltip.bind('<FocusOut>', lambda e: self._tooltip.withdraw())
-
-        self.file = ''
 
         self.text = tk.Text(self, undo=True, autoseparators=False,
                             width=81, height=45, wrap='none', cursor='watch')
@@ -176,6 +174,8 @@ class Editor(ttk.Frame):
         self.frame_search.grid_remove()
 
         self.update_style()
+        self.file = file
+        self.filetype = 'Python' if (not file or file.endswith('.py')) else 'Other'
 
         # --- bindings
         self.text.bind("<KeyPress>", self._on_keypress)
@@ -246,10 +246,13 @@ class Editor(ttk.Frame):
         self.reset_syntax_issues()
         self._filetype = filetype
         if filetype == 'Python':
-            self.parse_all()
+            self.lexer = PYTHON_LEX
         else:
-            for tag in self.text.tag_names():
-                self.text.tag_remove(tag, '1.0', 'end')
+            try:
+                self.lexer = get_lexer_for_filename(self.file)
+            except ClassNotFound:
+                self.lexer = get_lexer_by_name('text')
+        self.parse_all()
 
     def update_cells(self):
         count = tk.IntVar(self)
@@ -480,7 +483,7 @@ class Editor(ttk.Frame):
             end_line = int(end.split('.')[0]) + 1
             for line in range(start_line, end_line):
                 self.text.insert('%i.0' % line, '    ')
-        else:
+        elif self.filetype == 'Python':
             txt = self.text.get('insert linestart', 'insert')
             if force_indent:
                 self.text.insert('insert linestart', self._get_indent())
@@ -488,6 +491,8 @@ class Editor(ttk.Frame):
                 self.text.insert('insert', self._get_indent())
             else:
                 self._comp_display()
+        else:
+            self.text.insert('insert', '\t')
         return "break"
 
     def on_ctrl_return(self, event):
@@ -647,8 +652,7 @@ class Editor(ttk.Frame):
 
     def parse(self, text, start):
         """Apply syntax highlighting to text at index start"""
-        if self.filetype != 'Python':
-            return
+
         data = text
         while data and '\n' == data[0]:
             start = self.text.index('%s+1c' % start)
@@ -656,7 +660,7 @@ class Editor(ttk.Frame):
         self.text.mark_set('range_start', start)
         for t in self._syntax_highlighting_tags:
             self.text.tag_remove(t, start, "range_start +%ic" % len(data))
-        for token, content in lex(data, PYTHON_LEX):
+        for token, content in lex(data, self.lexer):
             self.text.mark_set("range_end", "range_start + %ic" % len(content))
             for t in token.split():
                 self.text.tag_add(str(t), "range_start", "range_end")
