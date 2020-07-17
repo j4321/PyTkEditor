@@ -227,8 +227,10 @@ class Editor(ttk.Frame):
         # vertical scrolling
         self.text.bind('<4>', self._on_b4)
         self.line_nb.bind('<4>', self._on_b4)
+        self.syntax_checks.bind('<4>', self._on_b4)
         self.text.bind('<5>', self._on_b5)
         self.line_nb.bind('<5>', self._on_b5)
+        self.syntax_checks.bind('<5>', self._on_b5)
         # horizontal scrolling
         self.text.bind('<Shift-4>', self._on_sb4)
         self.text.bind('<Shift-5>', self._on_sb5)
@@ -1260,4 +1262,5 @@ class Editor(ttk.Frame):
                 self.syntax_issues_menuentries.append((category, m, lambda l=line: self.show_line(l)))
         self.syntax_checks.configure(state='disabled')
         self.syntax_checks.yview_moveto(self.line_nb.yview()[0])
+
 
