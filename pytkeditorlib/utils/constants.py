@@ -154,7 +154,10 @@ if i < len(external_consoles):
 else:
     external_console = ''
 
-if not CONFIG.read(PATH_CONFIG):
+sections = ['General', 'Layout', 'Editor', 'Code structure', 'Console', 'History',
+            'Help', 'File browser', 'Run', 'Dark Theme', 'Light Theme']
+
+def create_config():
     CONFIG.add_section('General')
     CONFIG.set('General', 'theme', "light")
     CONFIG.set('General', 'fontfamily', "DejaVu Sans Mono")
@@ -240,7 +243,7 @@ if not CONFIG.read(PATH_CONFIG):
     CONFIG.set('Light Theme', 'disabledfg', '#999999')
     CONFIG.set('Light Theme', 'disabledbg', '#dddddd')
     CONFIG.set('Light Theme', 'tooltip_bg', 'light yellow')
-
+    save_config()
 
 def save_config():
     with open(PATH_CONFIG, 'w') as f:
@@ -249,6 +252,16 @@ def save_config():
 
 CONFIG.save = save_config
 
+# restore config
+CONFIG.read(PATH_CONFIG)
+if set(CONFIG.sections()) != set(sections):
+    if CONFIG.read(PATH_CONFIG + '.bak') and set(CONFIG.sections()) == set(sections):
+        save_config()
+    else:
+        create_config()
+else:
+    os.rename(PATH_CONFIG, PATH_CONFIG + '.bak')
+    save_config()
 
 # --- style
 def load_style(stylename):
@@ -498,4 +511,5 @@ def parse_ansi(text, line_offset=1):
         tag_ranges[tag].append('end')
 
     return tag_ranges, stripped_text
+
 
