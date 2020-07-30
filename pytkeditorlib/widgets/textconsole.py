@@ -69,6 +69,7 @@ class TextConsole(RichText):
         self._hist_match = ''
 
         RichText.__init__(self, master, **kw)
+        self._orig = self._w + "_orig"
 
         # --- regexp
         ext_cmds = "|".join(EXTERNAL_COMMANDS)
@@ -84,6 +85,7 @@ class TextConsole(RichText):
         self._re_expanduser = re.compile(r'(~\w*)')
         self._re_trailing_spaces = re.compile(r' *$', re.MULTILINE)
         self._re_prompt = re.compile(rf'^{re.escape(self._prompt2)}?', re.MULTILINE)
+        self._re_prompts = re.compile(rf'^({re.escape(self._prompt2)}|{re.escape(self._prompt1)})?', re.MULTILINE)
 
         self._jedi_comp_external = '\n'.join([f'\ndef {cmd}():\n    pass\n'
                                               for cmd in EXTERNAL_COMMANDS])
@@ -106,6 +108,9 @@ class TextConsole(RichText):
         self.mark_gravity('input', 'left')
         self.mark_set('input_end', 'insert')
         self.mark_gravity('input_end', 'right')
+
+        self.tk.call("rename", self._w, self._orig)
+        self.tk.createcommand(self._w, self._proxy)
 
         self._poll_id = ""
 
@@ -132,7 +137,6 @@ class TextConsole(RichText):
         self.bind("<Control-t>", lambda e: "break")
         self.bind("<Control-l>", self.shell_clear)
         self.bind('<<Paste>>', self.on_paste)
-        self.bind('<<Cut>>', self.on_cut)
         self.bind('<<LineStart>>', self.on_goto_linestart)
         self.bind('<Destroy>', self.quit)
         self.bind('<FocusOut>', self._on_focusout)
@@ -147,6 +151,53 @@ class TextConsole(RichText):
         self.bind("<braceright>", self.close_brackets)
         self.bind("<Configure>", self._on_configure)
         self.bind("<Shift-Escape>", lambda e: self.delete("input", "input_end"))
+
+    def _proxy(self, *args):
+        """
+        Proxy between tkinter widget and tcl interpreter to catch unwanted actions.
+
+        Prevent edition of text outside of current prompt.
+        """
+        largs = list(args)
+        if args[0] in ("insert", "replace", "delete"):
+            self._clear_highlight()
+            self._tooltip.withdraw()
+        if args[0] == "insert":
+            if self.compare('insert', '<', 'input') or self.compare('insert', '>', 'input_end'):
+                self.mark_set('insert', 'input_end')
+                self._hist_item = self.history.get_length()
+        elif args[0] == "delete":
+            try:
+                if self.compare(args[1], '<', 'input'):
+                    largs[1] = 'input'
+                if len(args) > 2 and self.compare(args[2], '>', 'input_end'):
+                    largs[2] = 'input_end'
+            except tk.TclError:
+                return
+        elif args[0:3] == ("mark", "set", "insert"):
+            try:
+                if self.compare(args[3], '>', 'input_end'):
+                    largs[3] = 'input_end'
+            except tk.TclError:
+                return
+        elif args[0:3] == ('tag', 'add', 'sel'):
+            if self.compare(args[4], '>', 'input_end'):
+                largs[4] = 'input_end'
+
+        cmd = (self._orig,) + tuple(largs)
+        
+        try:
+            result = self.tk.call(cmd)
+            if largs[0] == 'delete':
+                self.tag_remove('sel', '1.0', 'end')
+        except tk.TclError as e:
+            print(e)
+        else:
+            return result
+
+    def _delete(self, index1, index2):
+        """Call delete without going through _proxy."""
+        self.tk.call(self._orig, 'delete', index1, index2)
 
     def update_style(self):
         RichText.update_style(self)
@@ -207,7 +258,7 @@ class TextConsole(RichText):
             self._init_shell()
 
     def shell_clear(self, event=None):
-        self.delete('banner.last', 'end')
+        self._delete('banner.last', 'end')
         self.insert('insert', '\n')
         self.prompt()
 
@@ -317,7 +368,7 @@ class TextConsole(RichText):
         nb_lines = event.height // self._line_height - 1
         insert = self.index('insert')
         input_end = self.index('input_end')
-        self.delete('input_end', 'end')
+        self._delete('input_end', 'end')
         self.insert('end', '\n' * nb_lines)
         self.mark_set('insert', insert)
         self.mark_set('input_end', input_end)
@@ -369,44 +420,17 @@ class TextConsole(RichText):
 
     def on_ctrl_c(self, event):
         try:
-            if self.compare('sel.last', '>', 'input_end'):
-                self.tag_remove('sel', 'input_end', 'sel.last')
-            txt = self.get('sel.first', 'sel.last').splitlines()
-            lines = []
-            for i, line in enumerate(txt):
-                if line.startswith(self._prompt1):
-                    lines.append(line[len(self._prompt1):])
-                elif line.startswith(self._prompt2):
-                    lines.append(line[len(self._prompt2):])
-                else:
-                    lines.append(line)
             self.clipboard_clear()
-            self.clipboard_append('\n'.join(lines))
+            self.clipboard_append(self._re_prompts.sub('', self.get('sel.first', 'sel.last')))
         except tk.TclError:
             if self.cget('state') == 'disabled':
                 kill(self.shell_pid, signal.SIGINT)
         return 'break'
 
-    def on_cut(self, event):
-        try:
-            if self.compare('sel.first', '<', 'input'):
-                self.tag_remove('sel', 'sel.first', 'input')
-            if self.compare('sel.last', '>', 'input_end'):
-                self.tag_remove('sel', 'input_end', 'sel.last')
-        except tk.TclError:
-            pass
-
     def on_paste(self, event):
-        if self.compare('insert', '<', 'input'):
-            return "break"
-        if self.compare('insert', '>', 'input_end'):
-            return "break"
         try:
-            if self.compare('sel.first', '<', 'input'):
-                self.tag_remove('sel', 'sel.first', 'input')
-            if self.compare('sel.last', '>', 'input_end'):
-                self.tag_remove('sel', 'input_end', 'sel.last')
             self.delete('sel.first', 'sel.last')
+            self.tag_remove('sel', 'sel.first', 'sel.last')
         except tk.TclError:
             pass
         self.edit_separator()
@@ -419,23 +443,8 @@ class TextConsole(RichText):
         return 'break'
 
     def on_key_press(self, event):
-        self._tooltip.withdraw()
-        self._clear_highlight()
-        if 'Control' not in event.keysym:
-            try:
-                self.tag_remove('sel', 'sel.first', 'input')
-            except tk.TclError:
-                pass
-        if self.compare('insert', '<', 'input') and event.keysym not in ['Left', 'Right']:
-            self._hist_item = self.history.get_length()
-            self.mark_set('insert', 'input_end')
-            if not event.char.isalnum():
-                return 'break'
-        elif self.compare('insert', '>', 'input_end') and event.keysym not in ['Left', 'Right']:
-            self._hist_item = self.history.get_length()
-            self.mark_set('insert', 'input_end')
-            if not event.char.isalnum():
-                return 'break'
+        if event.char.isalnum() and self.tag_ranges('sel'):
+            self.edit_separator()
 
     def on_key_release(self, event):
         if self.compare('insert', '<', 'input') and event.keysym not in ['Left', 'Right']:
@@ -616,14 +625,11 @@ class TextConsole(RichText):
     def on_backspace(self, event):
         self._clear_highlight()
         self.edit_separator()
-        try:  # there is selected text
-            if self.compare('sel.first', '<', 'input'):
-                self.tag_remove('sel', 'sel.first', 'input')
-            if self.compare('sel.last', '>', 'input_end'):
-                self.tag_remove('sel', 'input_end', 'sel.last')
-            if self.tag_ranges('sel'):
-                self.delete('sel.first', 'sel.last')
-        except tk.TclError:  # no selected text
+
+        if self.tag_ranges('sel'):
+            self.delete('sel.first', 'sel.last')
+            self.tag_remove('sel', '1.0', 'end')
+        else:
             if self.compare('insert', '<=', 'input') or self.compare('insert', '>', 'input_end'):
                 self.mark_set('insert', 'input_end')
                 return 'break'
@@ -969,3 +975,4 @@ class ConsoleFrame(BaseWidget):
         else:
             self.console.configure(cursor='xterm')
             self.configure(cursor='')
+
