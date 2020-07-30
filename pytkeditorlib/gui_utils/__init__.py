@@ -23,4 +23,6 @@ from .autoscrollbar import AutoHideScrollbar
 from .entry_history import EntryHistory
 from .menu import LongMenu
 from .notebook import Notebook
+from .rich_text import RichText
 from .tkhtml import HtmlFrame
+
