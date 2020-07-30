@@ -24,22 +24,19 @@ import tkinter as tk
 from tkinter import ttk
 import pickle
 
-from pygments import lex
-from pygments.lexers import Python3Lexer
-
 from pytkeditorlib.utils.constants import CONFIG, HISTFILE
 from pytkeditorlib.gui_utils import AutoHideScrollbar
 from pytkeditorlib.dialogs import showinfo
-from .base_widget import BaseWidget, RichText
+from .base_widget import BaseWidget, WidgetText
 
 
-class History(RichText):
+class History(WidgetText):
     """Python console command history."""
 
     def __init__(self, master=None, histfile=HISTFILE, current_session=False, **kw):
         """ Crée un historique vide """
         kw.setdefault('width', 1)
-        RichText.__init__(self, master, **kw)
+        WidgetText.__init__(self, master, **kw)
 
         self.histfile = histfile
         self.maxsize = CONFIG.getint('History', 'max_size', fallback=10000)
@@ -68,22 +65,8 @@ class History(RichText):
         return "break"
 
     def update_style(self):
-        RichText.update_style(self)
+        WidgetText.update_style(self)
         self.maxsize = CONFIG.getint('History', 'max_size', fallback=10000)
-
-    def parse(self, start='1.0'):
-        data = self.get(start, 'end')
-        while data and '\n' == data[0]:
-            start = self.index('%s+1c' % start)
-            data = data[1:]
-        self.mark_set('range_start', start)
-        for t in self._syntax_highlighting_tags:
-            self.tag_remove(t, start, "range_start +%ic" % len(data))
-        for token, content in lex(data, Python3Lexer()):
-            self.mark_set("range_end", "range_start + %ic" % len(content))
-            for t in token.split():
-                self.tag_add(str(t), "range_start", "range_end")
-            self.mark_set("range_start", "range_end")
 
     def save(self):
         try:
@@ -319,3 +302,4 @@ class HistoryFrame(BaseWidget):
         else:
             if notify_no_match:
                 showinfo("Search complete", "No match found")
+
