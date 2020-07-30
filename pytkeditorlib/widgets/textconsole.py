@@ -414,12 +414,14 @@ class TextConsole(WidgetText):
         return "break"
 
     def on_ctrl_c(self, event):
-        try:
-            self.clipboard_clear()
-            self.clipboard_append(self._re_prompts.sub('', self.get('sel.first', 'sel.last')))
-        except tk.TclError:
-            if self.cget('state') == 'disabled':
-                kill(self.shell_pid, signal.SIGINT)
+        if self.cget('state') == 'disabled':
+            kill(self.shell_pid, signal.SIGINT)
+        else:
+            try:
+                self.clipboard_clear()
+                self.clipboard_append(self._re_prompts.sub('', self.get('sel.first', 'sel.last')))
+            except tk.TclError:
+                pass
         return 'break'
 
     def on_paste(self, event):
@@ -970,6 +972,7 @@ class ConsoleFrame(BaseWidget):
         else:
             self.console.configure(cursor='xterm')
             self.configure(cursor='')
+
 
 
 
