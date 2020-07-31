@@ -31,6 +31,7 @@ import socket
 import ssl
 from subprocess import Popen
 import signal
+import logging
 
 import jedi
 
@@ -68,6 +69,19 @@ class TextConsole(WidgetText):
 
         WidgetText.__init__(self, master, **kw)
 
+        # --- menu
+        self.menu = tk.Menu(self)
+        self.menu.add_command(label='Cut', accelerator='Ctrl+X',
+                              command=lambda: self.event_generate('<<Cut>>'))
+        self.menu.add_command(label='Copy', accelerator='Ctrl+C',
+                              command=lambda: self.event_generate('<<Copy>>'))
+        self.menu.add_command(label='Copy raw text', accelerator='Ctrl+Shift+C',
+                              command=self.raw_copy)
+        self.menu.add_command(label='Paste', accelerator='Ctrl+V',
+                              command=lambda: self.event_generate('<<Paste>>'))
+        self.menu.add_separator()
+        self.menu.add_command(label='Inspect', accelerator='Ctrl+I', command=self.inspect)
+
         # --- regexp
         ext_cmds = "|".join(EXTERNAL_COMMANDS)
         magic_cmds = "|".join(MAGIC_COMMANDS)
@@ -95,7 +109,7 @@ class TextConsole(WidgetText):
         self._tooltip.withdraw()
 
         # --- shell socket
-        self._init_shell()
+        self._shell_init()
 
         # --- initialization
         self.insert('end', banner, 'banner')
@@ -109,6 +123,7 @@ class TextConsole(WidgetText):
         self._poll_id = ""
 
         # --- bindings
+        self.bind('<3>', self._post_menu)
         self.bind('<parenleft>', self._args_hint)
         self.bind('<Control-Return>', self.on_ctrl_return)
         self.bind('<Shift-Return>', self.on_shift_return)
@@ -121,11 +136,15 @@ class TextConsole(WidgetText):
         self.bind('<Return>', self.on_return)
         self.bind('<BackSpace>', self.on_backspace)
         self.bind('<Control-c>', self.on_ctrl_c)
+        self.bind('<Control-Shift-C>', self.raw_copy)
         self.bind('<Control-y>', self.redo)
         self.bind('<Control-z>', self.undo)
         self.bind("<Control-i>", self.inspect)
         self.bind("<Control-l>", self.shell_clear)
-        self.bind('<<Paste>>', self.on_paste)
+        self.bind("<Control-period>", self.shell_restart)
+        self.bind('<<Cut>>', self.cut)
+        self.bind('<<Copy>>', self.copy)
+        self.bind('<<Paste>>', self.paste)
         self.bind('<<LineStart>>', self.on_goto_linestart)
         self.bind('<Destroy>', self.quit)
         self.bind('<FocusOut>', self._on_focusout)
@@ -186,7 +205,10 @@ class TextConsole(WidgetText):
             result = self.tk.call(cmd)
             if largs[0] == 'delete':
                 self.tag_remove('sel', '1.0', 'end')
-        except tk.TclError:
+        except tk.TclError as e:
+            if str(e) not in ['bad text index "input"',
+                              'text doesn\'t contain any characters tagged with "sel"']:
+                logging.exception('TclError')
             return
 
         if insert_moved:
@@ -216,8 +238,78 @@ class TextConsole(WidgetText):
     def parse(self):
         WidgetText.parse(self, 'input', 'input_end')
 
+    def quit(self, event=None):
+        self.history.save()
+        try:
+            self.after_cancel(self._poll_id)
+        except ValueError:
+            pass
+        try:
+            self.shell_client.shutdown(socket.SHUT_RDWR)
+            self.shell_client.close()
+            self.shell_socket.close()
+        except OSError:
+            pass
+
+    # --- cut / copy / paste
+    def cut(self, event=None):
+        # copy sel
+        txt = self._re_prompts.sub('', self.get('sel.first', 'sel.last'))
+        if txt:
+            self.clipboard_clear()
+            self.clipboard_append(txt)
+        # delete sel
+        self.delete('sel.first', 'sel.last')
+        self.parse()
+        return "break"
+
+    def copy(self, event=None):
+        txt = self._re_prompts.sub('', self.get('sel.first', 'sel.last'))
+        if txt:
+            self.clipboard_clear()
+            self.clipboard_append(txt)
+        return "break"
+
+    def paste(self, event=None):
+        self.delete('sel.first', 'sel.last')
+        self.tag_remove('sel', 'sel.first', 'sel.last')
+        self.edit_separator()
+        txt = self.clipboard_get()
+        if self.get("input", "input_end").strip():
+            self.insert("insert", txt.replace('\n', f"\n{self._prompt2}"))
+        else:
+            self.insert_cmd(txt)
+        self.parse()
+        return 'break'
+
+    def raw_copy(self, event=None):
+        txt = self.get('sel.first', 'sel.last')
+        if txt:
+            self.clipboard_clear()
+            self.clipboard_append(txt)
+        return "break"
+
+    # --- undo / redo
+    def undo(self, event=None):
+        #~try:
+        self.edit_undo()
+        #~except tk.TclError:
+        #~    pass
+        #~finally:
+        self.parse()
+        return "break"
+
+    def redo(self, event=None):
+        #~try:
+        self.edit_redo()
+        #~except tk.TclError:
+        #~    pass
+        #~finally:
+        self.parse()
+        return "break"
+
     # --- remote python interpreter
-    def _init_shell(self):
+    def _shell_init(self):
         context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
         context.verify_mode = ssl.CERT_REQUIRED
         context.load_cert_chain(certfile=SERVER_CERT)
@@ -236,7 +328,7 @@ class TextConsole(WidgetText):
         self.shell_client = context.wrap_socket(client, server_side=True)
         self.shell_client.setblocking(False)
 
-    def restart_shell(self):
+    def shell_restart(self, event=None):
         rep = askyesno('Confirmation', 'Do you really want to restart the console?')
         if rep:
             kill(self.shell_pid, signal.SIGTERM)
@@ -250,12 +342,15 @@ class TextConsole(WidgetText):
             self._jedi_comp_extra = ''
             self.history.new_session()
             self.shell_clear()
-            self._init_shell()
+            self._shell_init()
 
     def shell_clear(self, event=None):
         self._delete('banner.last', 'end')
         self.insert('insert', '\n')
         self.prompt()
+
+    def shell_interrupt(self):
+        kill(self.shell_pid, signal.SIGINT)
 
     # --- autocompletion / hints
     def _comp_sel(self):
@@ -359,6 +454,17 @@ class TextConsole(WidgetText):
             self._comp.deiconify()
 
     # --- bindings
+    def _post_menu(self, event):
+        if self.tag_ranges('sel'):
+            self.menu.entryconfigure('Cut', state='normal')
+            self.menu.entryconfigure('Copy', state='normal')
+            self.menu.entryconfigure('Copy raw text', state='normal')
+        else:
+            self.menu.entryconfigure('Cut', state='disabled')
+            self.menu.entryconfigure('Copy', state='disabled')
+            self.menu.entryconfigure('Copy raw text', state='disabled')
+        self.menu.tk_popup(event.x_root, event.y_root)
+
     def _on_configure(self, event):
         nb_lines = event.height // self._line_height - 1
         insert = self.index('insert')
@@ -367,37 +473,6 @@ class TextConsole(WidgetText):
         self.insert('end', '\n' * nb_lines)
         self.mark_set('insert', insert)
         self.mark_set('input_end', input_end)
-
-    def undo(self, event=None):
-        try:
-            self.edit_undo()
-        except tk.TclError:
-            pass
-        finally:
-            self.parse()
-        return "break"
-
-    def redo(self, event=None):
-        try:
-            self.edit_redo()
-        except tk.TclError:
-            pass
-        finally:
-            self.parse()
-        return "break"
-
-    def quit(self, event=None):
-        self.history.save()
-        try:
-            self.after_cancel(self._poll_id)
-        except ValueError:
-            pass
-        try:
-            self.shell_client.shutdown(socket.SHUT_RDWR)
-            self.shell_client.close()
-            self.shell_socket.close()
-        except OSError:
-            pass
 
     def _on_focusout(self, event):
         self._comp.withdraw()
@@ -415,28 +490,9 @@ class TextConsole(WidgetText):
 
     def on_ctrl_c(self, event):
         if self.cget('state') == 'disabled':
-            kill(self.shell_pid, signal.SIGINT)
+            self.shell_interrupt()
         else:
-            try:
-                self.clipboard_clear()
-                self.clipboard_append(self._re_prompts.sub('', self.get('sel.first', 'sel.last')))
-            except tk.TclError:
-                pass
-        return 'break'
-
-    def on_paste(self, event):
-        try:
-            self.delete('sel.first', 'sel.last')
-            self.tag_remove('sel', 'sel.first', 'sel.last')
-        except tk.TclError:
-            pass
-        self.edit_separator()
-        txt = self.clipboard_get()
-        if self.get("input", "input_end").strip():
-            self.insert("insert", txt.replace('\n', f"\n{self._prompt2}"))
-        else:
-            self.insert_cmd(txt)
-        self.parse()
+            self.copy()
         return 'break'
 
     def on_key_press(self, event):
@@ -520,14 +576,11 @@ class TextConsole(WidgetText):
         if self.compare('insert', '<', 'input'):
             self.mark_set('insert', 'input_end')
             return "break"
-        if self.compare('insert', '>', 'input_end'):
-            self.mark_set('insert', 'input_end')
-            return "break"
         if self._comp.winfo_ismapped():
             self._comp_sel()
             return "break"
         self.edit_separator()
-        try:
+        if self.tag_ranges('sel'):
             if self.compare('sel.first', '<', 'input'):
                 self.tag_remove('sel', 'sel.first', 'input')
             if self.compare('sel.last', '>', 'input_end'):
@@ -539,7 +592,7 @@ class TextConsole(WidgetText):
             char = len(self._prompt1)
             for line in range(start_line, end_line):
                 self.insert(f'{line}.{char}', '    ')
-        except tk.TclError:
+        else:
             txt = self.get(f'insert linestart+{len(self._prompt1)}c', 'insert')
             if txt == ' ' * len(txt):
                 self.insert('insert', '    ')
@@ -620,7 +673,6 @@ class TextConsole(WidgetText):
         return 'break'
 
     def on_backspace(self, event):
-        self.clear_highlight()
         self.edit_separator()
 
         if self.tag_ranges('sel'):
@@ -653,7 +705,6 @@ class TextConsole(WidgetText):
             else:
                 self.delete('insert-1c')
         self.parse()
-        self.find_matching_par()
         return 'break'
 
     # --- insert
@@ -683,7 +734,7 @@ class TextConsole(WidgetText):
         self.mark_set('input', 'input_end')
 
     # --- docstrings
-    def inspect(self, event):
+    def inspect(self, event=None):
         try:
             self._inspect_obj = self.get('sel.first', "sel.last"), "Console"
         except tk.TclError:
@@ -958,7 +1009,10 @@ class ConsoleFrame(BaseWidget):
         self.menu = tk.Menu(self)
         self.menu.add_command(label='Clear console', accelerator='Ctrl+L',
                               command=self.console.shell_clear)
-        self.menu.add_command(label='Restart console', command=self.console.restart_shell)
+        self.menu.add_command(label='Interrupt console',
+                              command=self.console.shell_interrupt)
+        self.menu.add_command(label='Restart console', accelerator='Ctrl+.',
+                              command=self.console.shell_restart)
 
         self.update_style = self.console.update_style
 
@@ -972,6 +1026,7 @@ class ConsoleFrame(BaseWidget):
         else:
             self.console.configure(cursor='xterm')
             self.configure(cursor='')
+
 
 
 
