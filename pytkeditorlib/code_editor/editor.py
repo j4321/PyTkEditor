@@ -319,8 +319,8 @@ class Editor(ttk.Frame):
         self.text.bind('<Shift-4>', self._on_sb4)
         self.text.bind('<Shift-5>', self._on_sb5)
 
-        self.line_nb.bind('<1>', self.highlight_line)
-        self.syntax_checks.bind('<1>', self.highlight_line)
+        self.line_nb.bind('<1>', self._highlight_line)
+        self.syntax_checks.bind('<1>', self._highlight_line)
         self.bind('<FocusOut>', self._on_focusout)
 
 
@@ -1152,10 +1152,13 @@ class Editor(ttk.Frame):
         self.line_nb.see(i)
         self.syntax_checks.see(i)
 
-    def highlight_line(self, event):
-        line = event.widget.index('current linestart')
+    def highlight_line(self, line):
         self.text.mark_set('insert', line)
         self.goto_item(line, f'{line} lineend')
+
+    def _highlight_line(self, event):
+        line = event.widget.index('current linestart')
+        self.highlight_line(line)
 
     def update_nb_line(self):
         row = int(str(self.text.index('end')).split('.')[0]) - 1

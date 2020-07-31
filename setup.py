@@ -61,4 +61,6 @@ setup(name="pytkeditor",
                         "docutils",
                         "pdfkit",
                         "pycups"],
-      extras_require={'Execute in Jupyter QtConsole': ["qtconsole", "qtpy", "traitlets", "jupyter_client"]})
+      extras_require={'Execute in Jupyter QtConsole': ["qtconsole", "qtpy", "traitlets", "jupyter_client"],
+                      'Code analysis widget': ['pylint']})
+

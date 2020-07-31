@@ -23,7 +23,9 @@ from tkinter.ttk import Button, Label, Entry
 
 from tkfilebrowser import askopenfilename
 
-from pytkeditorlib.utils.constants import jupyter_runtime_dir
+from pytkeditorlib.utils.constants import JUPYTER
+if JUPYTER:
+    from pytkeditorlib.utils.constants import jupyter_runtime_dir
 
 
 class SelectKernel(Toplevel):
@@ -72,3 +74,4 @@ class SelectKernel(Toplevel):
         if filename:
             self.entry.delete(0, 'end')
             self.entry.insert(0, filename)
+

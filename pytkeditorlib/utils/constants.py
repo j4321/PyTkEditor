@@ -103,6 +103,12 @@ else:
     from jupyter_core.paths import jupyter_runtime_dir
     JUPYTER = True
 JUPYTER_ICON = os.path.join(PATH_IMG, 'JupyterConsole.svg')
+# --- pylint
+PYLINT = True
+try:
+    import pylint
+except ImportError:
+    PYLINT = False
 
 # --- images
 IMAGES = {}
@@ -154,7 +160,7 @@ if i < len(external_consoles):
 else:
     external_console = ''
 
-sections = ['General', 'Layout', 'Editor', 'Code structure', 'Console', 'History',
+sections = ['General', 'Layout', 'Editor', 'Code structure', 'Code analysis', 'Console', 'History',
             'Help', 'File browser', 'Run', 'Dark Theme', 'Light Theme']
 
 def create_config():
@@ -182,6 +188,8 @@ def create_config():
     CONFIG.set('Editor', 'toggle_comment_mode', 'line_by_line')
     CONFIG.add_section('Code structure')
     CONFIG.set('Code structure', 'visible', "True")
+    CONFIG.add_section('Code analysis')
+    CONFIG.set('Code analysis', 'visible', "True")
     CONFIG.add_section('Console')
     CONFIG.set('Console', 'style', "monokai")
     CONFIG.set('Console', 'visible', "True")
@@ -255,9 +263,11 @@ CONFIG.save = save_config
 # restore config
 CONFIG.read(PATH_CONFIG)
 if set(CONFIG.sections()) != set(sections):
+    CONFIG.clear()
     if CONFIG.read(PATH_CONFIG + '.bak') and set(CONFIG.sections()) == set(sections):
         save_config()
     else:
+        CONFIG.clear()
         create_config()
 else:
     os.rename(PATH_CONFIG, PATH_CONFIG + '.bak')
@@ -511,5 +521,8 @@ def parse_ansi(text, line_offset=1):
         tag_ranges[tag].append('end')
 
     return tag_ranges, stripped_text
+
+
+
 
 

@@ -122,6 +122,10 @@ class EditorNotebook(Notebook):
     def filename(self):
         return self.tab(self.current_tab, 'text')
 
+    @property
+    def filepath(self):
+        return self.files.get(self.current_tab, '')
+
     def update_style(self):
         for editor in self._tabs.values():
             editor.update_style()
@@ -448,6 +452,10 @@ class EditorNotebook(Notebook):
         if self.current_tab >= 0:
             self._tabs[self.current_tab].goto_line()
 
+    def highlight_line(self, *args):
+        if self.current_tab >= 0:
+            self._tabs[self.current_tab].highlight_line(*args)
+
     def goto_start(self):
         if self._current_tab >= 0:
             self._tabs[self._current_tab].text.mark_set('insert', '1.0')
@@ -552,6 +560,7 @@ the external terminal configuration in the settings.",
         tab = self.current_tab
         if tab >= 0:
             self._tabs[self.current_tab].choose_color()
+
 
 
 

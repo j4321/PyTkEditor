@@ -44,7 +44,7 @@ from pytkeditorlib.utils import check_file
 from pytkeditorlib.dialogs import showerror, About, Config, SearchDialog, \
     PrintDialog, HelpDialog, SelectKernel, askyesno
 from pytkeditorlib.widgets import WidgetNotebook, Help, HistoryFrame, \
-    ConsoleFrame, Filebrowser, CodeStructure
+    ConsoleFrame, Filebrowser, CodeStructure, CodeAnalysis
 from pytkeditorlib.gui_utils import LongMenu
 
 
@@ -121,12 +121,17 @@ class App(tk.Tk):
         self._vertical_pane = ttk.PanedWindow(self._horizontal_pane, orient='vertical')
         # --- --- editor notebook
         self.editor = EditorNotebook(self._horizontal_pane, width=696)
-        # --- --- right pane
+        # --- --- widgets
         self.right_nb = WidgetNotebook(self._horizontal_pane)
         widgets = ['Code structure', 'Console', 'History', 'Help', 'File browser']
+        if cst.PYLINT:
+            widgets.append('Code analysis')
         widgets.sort(key=lambda w: CONFIG.getint(w, 'order', fallback=0))
-        # --- --- code structure tree
+        # --- --- --- code structure tree
         self.codestruct = CodeStructure(self._horizontal_pane, self.right_nb)
+        # --- --- --- code analysis
+        if cst.PYLINT:
+            self.widgets['Code analysis'] = CodeAnalysis(self.right_nb, padding=1)
         # --- --- --- command history
         self.widgets['History'] = HistoryFrame(self.right_nb, padding=1)
         # --- --- --- python console
@@ -369,7 +374,6 @@ class App(tk.Tk):
                                          indicatoron=False,
                                          compound='left',
                                          variable=self.widgets.get(name, self.codestruct).visible)
-
         # --- --- --- layouts
         menu_layouts.add_radiobutton(label='Horizontal split',
                                      variable=self.layout,
@@ -445,6 +449,7 @@ class App(tk.Tk):
         self.bind('<Control-Shift-H>', lambda e: self.switch_to_widget(e, self.widgets['Help']))
         self.bind('<Control-Shift-I>', lambda e: self.switch_to_widget(e, self.widgets['History']))
         self.bind('<Control-Shift-F>', lambda e: self.switch_to_widget(e, self.widgets['File browser']))
+        self.bind('<Control-Shift-A>', lambda e: self.switch_to_widget(e, self.widgets['Code analysis']))
         self.bind('<Control-Shift-G>', lambda e: self.switch_to_widget(e, self.codestruct))
         self.bind('<Control-Shift-Q>', self.quit)
         self.bind('<<CtrlReturn>>', self.run_cell)
@@ -801,6 +806,9 @@ class App(tk.Tk):
     def _on_tab_changed(self, event):
         self.filetype.set(self.editor.get_filetype())
         self.codestruct.set_callback(self.editor.goto_item)
+        if cst.PYLINT:
+            self.widgets['Code analysis'].set_callback(self.editor.highlight_line)
+            self.widgets['Code analysis'].set_file(self.editor.filename, self.editor.filepath)
         self._populate_codestructure()
         self.update_menu_errors()
         self.editor.focus_tab()
@@ -1143,6 +1151,8 @@ class App(tk.Tk):
                 self.editor.edit_reset()
                 self._edit_modified(0)
                 self._populate_codestructure()
+                if cst.PYLINT:
+                    self.widgets['Code analysis'].set_file(self.editor.filename, self.editor.filepath)
                 self.check_syntax()
                 self.editor.goto_start()
                 self._update_recent_files(file)
@@ -1195,6 +1205,8 @@ class App(tk.Tk):
             self._edit_modified(0, tab=tab)
             self.check_syntax()
             self._populate_codestructure()
+            if cst.PYLINT:
+                self.widgets['Code analysis'].set_file(self.editor.filename, self.editor.filepath)
             return True
         else:
             return False
@@ -1283,7 +1295,7 @@ class App(tk.Tk):
                 tab = self.editor.current_tab
                 if tab < 0:
                     return
-                file = self.editor.files[self.editor.current_tab]
+                file = self.editor.filepath
                 wdir = os.path.dirname(file)
                 if console == "qtconsole":
                     if not cst.JUPYTER:
@@ -1471,6 +1483,9 @@ class App(tk.Tk):
                 self.menu_errors.add_command(label=msg,
                                              image=self._images[category],
                                              compound='left', command=cmd)
+
+
+
 
 
 

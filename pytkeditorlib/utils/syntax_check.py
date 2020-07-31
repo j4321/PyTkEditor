@@ -21,13 +21,93 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 Syntax / PEP8 compliance checks
 """
 from subprocess import Popen, PIPE
+from multiprocessing import Process, Queue
 
 from pyflakes.api import checkPath
 from pyflakes.reporter import Reporter as flakeReporter
 from pyflakes.checker import builtin_vars
 
-from .constants import CONFIG
+from .constants import CONFIG, PYLINT
 
+if PYLINT:
+    from pylint.reporters.text import TextReporter
+    from pylint import lint
+    from pylint import epylint
+
+    class MyReporter(TextReporter):
+        name = "parseable"
+        line_format = "{msg_id} (line {line}): {msg}"
+
+        def __init__(self, queue, output=None):
+            TextReporter.__init__(self, output)
+            self.queue = queue
+
+        def handle_message(self, msg):
+            """manage message of different type and in the context of path"""
+            self.queue.put((msg.category, msg.format(self._template), msg.line))
+
+        def on_close(self, *args):
+            self.queue.put(args)
+
+        def display_messages(self, layout):
+            """Launch layouts display"""
+
+        def display_reports(self, layout):
+            """Don't do anything in this reporter."""
+
+        def _display(self, layout):
+            """Do nothing."""
+
+    #~class PylintReporter(TextReporter):
+    #~    """Custom Pylint reporter."""
+
+    #~    name = "myreporter"
+    #~    line_format = "{msg_id} (line {line}): {msg}"
+
+    #~    def __init__(self, output=None, msg=[]):
+    #~        TextReporter.__init__(self, output)
+    #~        self.messages = msg
+
+    #~    def handle_message(self, msg):
+    #~        """manage message of different type and in the context of path"""
+    #~        self.messages.append((msg.category, msg.format(self._template), msg.line))
+
+    #~    def display_messages(self, layout):
+    #~        """Launch layouts display"""
+
+    #~    def display_reports(self, layout):
+    #~        """Don't do anything in this reporter."""
+
+    #~    def _display(self, layout):
+    #~        """Do nothing."""
+
+    def worker_pylint_check(filename, queue):
+        """Return the list of messages and the stats from pylint's analysis."""
+        lint.Run([filename], reporter=MyReporter(queue=queue), do_exit=True)
+
+    def pylint_check(filename):
+        queue = Queue()
+        p = Process(target=worker_pylint_check, daemon=True, args=(filename, queue))
+        p.start()
+        return queue, p
+
+    #~def pylint_check(filename):
+    #~    """Return the list of messages and the stats from pylint's analysis."""
+
+    #~    options = '--enable=all'  # all messages will be shown
+    #~    options += '--reports=y'  # also print the reports (ascii tables at the end)
+
+    #~    pylint_stdout, pylint_stderr = epylint.py_run(filename + ' ' + options, return_std=True)
+    #~    print(pylint_stdout.getvalue())
+    #~    print(pylint_stderr.getvalue())
+    #~    return [], {'global_note': 0}
+
+
+else:
+
+    def pylint_check(filename):
+        """Return the list of messages and the stats from pylint's analysis."""
+        return [], {'global_note': 0}
 
 builtin_vars.append('_')
 
@@ -112,3 +192,6 @@ def check_file(filename):
             for line in warn2:
                 parse_message_style(line, results)
     return results
+
+
+

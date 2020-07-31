@@ -18,6 +18,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 Dialogs
 """
+from pytkeditorlib.utils.constants import JUPYTER
 from .about import About
 from .colorpicker import ColorPicker
 from .complistbox import CompListbox
