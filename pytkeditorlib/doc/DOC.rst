@@ -26,7 +26,7 @@ Main features
         + File browser with filter on file extensions
         + Code structure (classes, functions, TODOs, cells, comments ``# ---``)
 
-    - Autocompletion on tab in editor and console
+    - Autocompletion on Tab key :kbd:`⇥` in editor and console
 
     - Syntax highlighting (all pygments styles are supported) in editor, console and history
 
@@ -263,6 +263,8 @@ Console
 
         :kbd:`Ctrl` :kbd:`Y`
 
+        :kbd:`Ctrl` :kbd:`Shift` :kbd:`C`
+
         :kbd:`Ctrl` :kbd:`A`
 
         :kbd:`Ctrl` :kbd:`E`
@@ -285,6 +287,8 @@ Console
 
         :kbd:`Ctrl` :kbd:`L`
 
+        :kbd:`Ctrl` :kbd:`.`
+
     .. container:: rightside
 
         Autocomplete current word or indent line / selection
@@ -294,6 +298,8 @@ Console
         Undo
 
         Redo
+
+        Copy raw text
 
         Go to the start of the line
 
@@ -315,7 +321,9 @@ Console
 
         Clear line
 
-        Clear shell
+        Clear console
+
+        Restart console
 
 
 Troubleshooting
@@ -323,3 +331,4 @@ Troubleshooting
 
 If you encounter bugs or if you have suggestions, please open an issue
 on `Github <https://github.com/j4321/PyTkEditor/issues>`_.
+
