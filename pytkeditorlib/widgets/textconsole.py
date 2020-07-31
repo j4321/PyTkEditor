@@ -35,7 +35,7 @@ import logging
 
 import jedi
 
-from pytkeditorlib.utils.constants import SERVER_CERT, CLIENT_CERT, \
+from pytkeditorlib.utils.constants import SERVER_CERT, CLIENT_CERT, CONFIG,\
     MAGIC_COMMANDS, EXTERNAL_COMMANDS, get_screen, PathCompletion, glob_rel, \
     magic_complete, parse_ansi, format_long_output, ANSI_COLORS_DARK, ANSI_COLORS_LIGHT
 from pytkeditorlib.dialogs import askyesno, Tooltip, CompListbox
@@ -234,6 +234,16 @@ class TextConsole(WidgetText):
             self.tag_configure('foreground ' + c, foreground=c)
             self.tag_configure('background ' + c, background=c)
         self._line_height = Font(self, self.cget('font')).metrics('linespace')
+
+        theme = dict(CONFIG.items('{} Theme'.format(CONFIG.get('General', 'theme').capitalize())))
+        submenu_options = dict(bg=theme['fieldbg'], activebackground=theme['selectbg'],
+                               fg=theme['fg'], activeforeground=theme['fg'],
+                               disabledforeground=theme['disabledfg'],
+                               selectcolor=theme['fg'])
+        try:
+            self.menu.configure(**submenu_options)
+        except AttributeError:
+            pass
 
     def parse(self):
         WidgetText.parse(self, 'input', 'input_end')
@@ -1020,6 +1030,7 @@ class ConsoleFrame(BaseWidget):
         else:
             self.console.configure(cursor='xterm')
             self.configure(cursor='')
+
 
 
 
