@@ -1220,6 +1220,8 @@ class App(tk.Tk):
             self._edit_modified(0, tab=tab)
             self.check_syntax()
             self._populate_codestructure()
+            if cst.PYLINT:
+                self.widgets['Code analysis'].set_file(self.editor.filename, self.editor.filepath)
         self.editor.focus_tab()
         return saved
 
@@ -1483,6 +1485,7 @@ class App(tk.Tk):
                 self.menu_errors.add_command(label=msg,
                                              image=self._images[category],
                                              compound='left', command=cmd)
+
 
 
 
