@@ -318,7 +318,11 @@ class Editor(ttk.Frame):
         # horizontal scrolling
         self.text.bind('<Shift-4>', self._on_sb4)
         self.text.bind('<Shift-5>', self._on_sb5)
+
+        self.line_nb.bind('<1>', self.highlight_line)
+        self.syntax_checks.bind('<1>', self.highlight_line)
         self.bind('<FocusOut>', self._on_focusout)
+
 
         self.text.focus_set()
         self.text.edit_modified(0)
@@ -1112,7 +1116,7 @@ class Editor(ttk.Frame):
             self._inspect_obj = obj, "Editor"
             self.event_generate('<<Inspect>>')
         return "break"
-        
+
     # --- text edit
     def delete(self, index1, index2=None):
         self.text.edit_separator()
@@ -1148,13 +1152,18 @@ class Editor(ttk.Frame):
         self.line_nb.see(i)
         self.syntax_checks.see(i)
 
+    def highlight_line(self, event):
+        line = event.widget.index('current linestart')
+        self.text.mark_set('insert', line)
+        self.goto_item(line, f'{line} lineend')
+
     def update_nb_line(self):
         row = int(str(self.text.index('end')).split('.')[0]) - 1
         row_old = int(str(self.line_nb.index('end')).split('.')[0]) - 1
         self.line_nb.configure(state='normal')
         self.syntax_checks.configure(state='normal')
         if row_old < row:
-            self.syntax_checks.insert('end', '\n')
+            self.syntax_checks.insert('end', '\n'*(row - row_old))
             self.line_nb.insert('end',
                                 '\n' + '\n'.join([str(i) for i in range(row_old + 1, row + 1)]),
                                 'right')
@@ -1200,6 +1209,5 @@ class Editor(ttk.Frame):
                 self.syntax_issues_menuentries.append((category, m, lambda l=line: self.show_line(l)))
         self.syntax_checks.configure(state='disabled')
         self.syntax_checks.yview_moveto(self.line_nb.yview()[0])
-
 
 
