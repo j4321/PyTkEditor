@@ -291,20 +291,12 @@ class TextConsole(WidgetText):
 
     # --- undo / redo
     def undo(self, event=None):
-        #~try:
         self.edit_undo()
-        #~except tk.TclError:
-        #~    pass
-        #~finally:
         self.parse()
         return "break"
 
     def redo(self, event=None):
-        #~try:
         self.edit_redo()
-        #~except tk.TclError:
-        #~    pass
-        #~finally:
         self.parse()
         return "break"
 
@@ -735,11 +727,13 @@ class TextConsole(WidgetText):
 
     # --- docstrings
     def inspect(self, event=None):
-        try:
-            self._inspect_obj = self.get('sel.first', "sel.last"), "Console"
-        except tk.TclError:
-            return "break"
-        self.event_generate('<<Inspect>>')
+        if self.tag_ranges('sel'):
+            obj = self.get('sel.first wordstart', 'sel.first wordend')
+        else:
+            obj = self.get('insert wordstart', 'insert wordend')
+        if obj[0].isalpha():
+            self._inspect_obj = obj, "Console"
+            self.event_generate('<<Inspect>>')
         return "break"
 
     def get_docstring(self, obj):

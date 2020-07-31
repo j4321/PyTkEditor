@@ -1,4 +1,3 @@
-
 #! /usr/bin/python3
 # -*- coding: utf-8 -*-
 """
@@ -52,6 +51,14 @@ class EditorText(RichText):
         self.bind("<parenright>", self.close_brackets)
         self.bind("<bracketright>", self.close_brackets)
         self.bind("<braceright>", self.close_brackets)
+
+    def undo(self):
+        """Undo without going through _proxy."""
+        self.tk.call(self._orig, 'edit', 'undo')
+
+    def redo(self):
+        """Redo without going through _proxy."""
+        self.tk.call(self._orig, 'edit', 'redo')
 
     def auto_close(self, event):
         sel = self.tag_ranges('sel')
@@ -277,7 +284,7 @@ class Editor(ttk.Frame):
         self.text.bind("<Down>", self.on_down)
         self.text.bind("<Up>", self.on_up)
         self.text.bind("<<Paste>>", self.on_paste)
-        self.text.bind('<parenleft>', self._args_hint)
+        self.text.bind('<parenleft>', self._args_hint, True)
         self.text.bind("<Control-i>", self.inspect)
         self.text.bind("<Control-z>", self.undo)
         self.text.bind("<Control-y>", self.redo)
@@ -388,7 +395,7 @@ class Editor(ttk.Frame):
 
     def undo(self, event=None):
         try:
-            self.text.edit_undo()
+            self.text.undo()
         except tk.TclError:
             pass
         else:
@@ -398,7 +405,7 @@ class Editor(ttk.Frame):
 
     def redo(self, event=None):
         try:
-            self.text.edit_redo()
+            self.text.redo()
         except tk.TclError:
             pass
         else:
@@ -1097,13 +1104,15 @@ class Editor(ttk.Frame):
             return None
 
     def inspect(self, event):
-        try:
-            self._inspect_obj = self.text.get('sel.first', "sel.last"), "Editor"
-        except tk.TclError:
-            return "break"
-        self.event_generate('<<Inspect>>')
+        if self.text.tag_ranges('sel'):
+            obj = self.text.get('sel.first wordstart', 'sel.first wordend')
+        else:
+            obj = self.text.get('insert wordstart', 'insert wordend')
+        if obj[0].isalpha():
+            self._inspect_obj = obj, "Editor"
+            self.event_generate('<<Inspect>>')
         return "break"
-
+        
     # --- text edit
     def delete(self, index1, index2=None):
         self.text.edit_separator()
@@ -1191,4 +1200,6 @@ class Editor(ttk.Frame):
                 self.syntax_issues_menuentries.append((category, m, lambda l=line: self.show_line(l)))
         self.syntax_checks.configure(state='disabled')
         self.syntax_checks.yview_moveto(self.line_nb.yview()[0])
+
+
 

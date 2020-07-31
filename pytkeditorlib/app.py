@@ -321,7 +321,7 @@ class App(tk.Tk):
                                   image='img_console_clear',
                                   compound='left')
         menu_consoles.add_command(label='Restart console',
-                                  command=self.console.restart_shell,
+                                  command=self.console.shell_restart,
                                   image='img_console_restart',
                                   compound='left')
         if cst.JUPYTER:
@@ -1471,5 +1471,6 @@ class App(tk.Tk):
                 self.menu_errors.add_command(label=msg,
                                              image=self._images[category],
                                              compound='left', command=cmd)
+
 
 
