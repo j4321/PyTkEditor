@@ -20,6 +20,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 Rich text widget
 """
 from tkinter import Text, TclError
+import logging
 
 
 class RichText(Text):
@@ -50,7 +51,8 @@ class RichText(Text):
 
         try:
             result = self.tk.call(cmd)
-        except TclError:
+        except TclError as e:
+            logging.exception('TclError')
             return
 
         if insert_moved:
@@ -131,5 +133,6 @@ class RichText(Text):
         else:
             self.tag_add('unmatched_bracket', 'insert-1c')
             return False
+
 
 
