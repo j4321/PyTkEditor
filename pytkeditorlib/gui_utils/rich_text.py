@@ -336,6 +336,7 @@ class RichEditor(RichText):
                 y = yr + yb - ht
 
             self._tooltip.geometry('+%i+%i' % (x, y))
+            self._tooltip.deiconify()
 
     def on_down(self, event):
         if self._comp.winfo_ismapped():

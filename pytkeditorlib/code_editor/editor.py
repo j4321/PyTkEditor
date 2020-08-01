@@ -72,8 +72,7 @@ class EditorText(RichEditor):
     def _proxy(self, *args):
         """Proxy between tkinter widget and tcl interpreter."""
         cmd = (self._orig,) + args
-        update_lines = args[0] in ("insert", "delete")
-        insert_moved = (update_lines or args[0:3] == ("mark", "set", "insert"))
+        insert_moved = (args[0] in ("insert", "delete")) or (args[0:3] == ("mark", "set", "insert"))
         if insert_moved:
             self.clear_highlight()
             self._tooltip.withdraw()
@@ -84,13 +83,11 @@ class EditorText(RichEditor):
             logging.exception('TclError')
             return
 
+        if args[0] == 'delete':
+            self.master.update_nb_lines()
         if insert_moved:
             self.event_generate("<<CursorChange>>", when="tail")
             self.find_matching_par()
-
-        if update_lines:
-            self.event_generate("<<UpdateLines>>", when="tail")
-
         return result
 
     def _on_key_release(self, event):
@@ -202,9 +199,10 @@ class EditorText(RichEditor):
             self.delete(*sel)
         txt = self.clipboard_get()
         self.insert("insert", txt)
+        self.master.update_nb_lines()
         lines = len(txt.splitlines())//2
         self.parse_part(f'insert linestart - {lines} lines', nblines=lines + 10)
-        self.see('insert')  # --> to FIX
+        self.master.see('insert')
         return "break"
 
     def on_tab(self, event=None, force_indent=False):
@@ -270,9 +268,10 @@ class EditorText(RichEditor):
             indent = indent + '    '
 
         self.insert('insert', '\n' + indent)
+        self.master.update_nb_lines()
         # update whole syntax highlighting
         self.parse_part()
-        self.see('insert')  # --> to FIX
+        self.master.see(self.index('insert'))
         return "break"
 
     def on_backspace(self, event):
@@ -302,6 +301,7 @@ class EditorText(RichEditor):
             else:
                 self.delete('insert-1c')
         self.find_matching_par()
+        self.master.update_nb_lines()
         return "break"
 
     def duplicate_lines(self, event=None):
@@ -316,6 +316,7 @@ class EditorText(RichEditor):
         start = self.index('%s lineend +1c' % index)
         self.insert('%s lineend' % index, '\n%s' % line)
         self.parse(line, start)
+        self.master.update_nb_lines()
         return "break"
 
     def delete_lines(self, event=None):
@@ -325,6 +326,7 @@ class EditorText(RichEditor):
             self.delete('sel.first linestart', 'sel.last lineend +1c')
         else:
             self.delete('insert linestart', 'insert lineend +1c')
+        self.master.update_nb_lines()
         return "break"
 
     def select_all(self, event=None):
@@ -461,8 +463,13 @@ class Editor(ttk.Frame):
             sx.set(x0, x1)
             self.sep.place_configure(relx=self._sep_x / self.text.winfo_width() - float(x0))
 
+        def yscroll(y0, y1):
+            sy.set(y0, y1)
+            self.line_nb.yview_moveto(y0)
+            self.syntax_checks.yview_moveto(y0)
+
         self.filebar = FileBar(self, self, width=10, cursor='watch')
-        self.text.configure(xscrollcommand=xscroll, yscrollcommand=sy.set)
+        self.text.configure(xscrollcommand=xscroll, yscrollcommand=yscroll)
         self.line_nb.configure(yscrollcommand=sy.set)
         self.syntax_checks.configure(yscrollcommand=sy.set)
         self.update_idletasks()
@@ -547,7 +554,6 @@ class Editor(ttk.Frame):
         self.text.bind('<Control-Up>', self.goto_prev_cell)
         self.text.bind('<Configure>', self.filebar.update_positions)
         self.text.bind("<<CursorChange>>", self._highlight_current_line)
-        self.text.bind("<<UpdateLines>>", self.update_nb_lines)
         # vertical scrolling
         self.text.bind('<4>', self._on_b4)
         self.line_nb.bind('<4>', self._on_b4)
@@ -970,6 +976,7 @@ class Editor(ttk.Frame):
         self.text.edit_separator()
         self.text.delete(index1, index2=index2)
         self.text.parse_part()
+        self.update_nb_lines()
 
     def insert(self, index, text, replace_sel=False):
         self.text.edit_separator()
@@ -980,6 +987,7 @@ class Editor(ttk.Frame):
         self.text.insert(index, text)
         lines = len(text.splitlines())//2
         self.text.parse_part(f'insert linestart - {lines} lines', nblines=lines + 10)
+        self.update_nb_lines()
 
     def choose_color(self, event=None):
 
@@ -1058,6 +1066,5 @@ class Editor(ttk.Frame):
                 self.syntax_issues_menuentries.append((category, m, lambda l=line: self.show_line(l)))
         self.syntax_checks.configure(state='disabled')
         self.syntax_checks.yview_moveto(self.line_nb.yview()[0])
-
 
 
