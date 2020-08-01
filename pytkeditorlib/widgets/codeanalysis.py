@@ -97,6 +97,7 @@ class CodeAnalysis(BaseWidget):
 
     def set_file(self, filename, file):
         if file != self.file:
+            self.interrupt()
             if file in self._records:
                 data = self._records[file]
                 self.populate(data['msgs'], data['stats'], data['label'])
@@ -173,4 +174,5 @@ class CodeAnalysis(BaseWidget):
             line = f'{line_nb}.0'
             self.tree.insert(mtype, 'end', text=msg, values=(line,))
         self.tree.column('#0', width=max_width, minwidth=max_width)
+
 
