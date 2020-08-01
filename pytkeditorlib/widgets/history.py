@@ -25,18 +25,18 @@ from tkinter import ttk
 import pickle
 
 from pytkeditorlib.utils.constants import CONFIG, HISTFILE
-from pytkeditorlib.gui_utils import AutoHideScrollbar
+from pytkeditorlib.gui_utils import AutoHideScrollbar, RichText
 from pytkeditorlib.dialogs import showinfo
-from .base_widget import BaseWidget, WidgetText
+from .base_widget import BaseWidget
 
 
-class History(WidgetText):
+class History(RichText):
     """Python console command history."""
 
     def __init__(self, master=None, histfile=HISTFILE, current_session=False, **kw):
         """ Crée un historique vide """
         kw.setdefault('width', 1)
-        WidgetText.__init__(self, master, **kw)
+        RichText.__init__(self, master, 'Console', **kw)
 
         self.histfile = histfile
         self.maxsize = CONFIG.getint('History', 'max_size', fallback=10000)
@@ -57,6 +57,11 @@ class History(WidgetText):
             self._session_start = 0
         self.reset_text(init=True)
 
+    def parse(self, start='1.0', end='end'):
+        """Syntax highlighting between start and end."""
+        text = self.get(start, end)
+        self._parse(text, start)
+
     def new_session(self):
         self._session_start = len(self.history)
 
@@ -65,7 +70,7 @@ class History(WidgetText):
         return "break"
 
     def update_style(self):
-        WidgetText.update_style(self)
+        RichText.update_style(self)
         self.maxsize = CONFIG.getint('History', 'max_size', fallback=10000)
 
     def save(self):
@@ -302,4 +307,5 @@ class HistoryFrame(BaseWidget):
         else:
             if notify_no_match:
                 showinfo("Search complete", "No match found")
+
 

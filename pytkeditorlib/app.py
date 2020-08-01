@@ -449,7 +449,8 @@ class App(tk.Tk):
         self.bind('<Control-Shift-H>', lambda e: self.switch_to_widget(e, self.widgets['Help']))
         self.bind('<Control-Shift-I>', lambda e: self.switch_to_widget(e, self.widgets['History']))
         self.bind('<Control-Shift-F>', lambda e: self.switch_to_widget(e, self.widgets['File browser']))
-        self.bind('<Control-Shift-A>', lambda e: self.switch_to_widget(e, self.widgets['Code analysis']))
+        if cst.PYLINT:
+            self.bind('<Control-Shift-A>', lambda e: self.switch_to_widget(e, self.widgets['Code analysis']))
         self.bind('<Control-Shift-G>', lambda e: self.switch_to_widget(e, self.codestruct))
         self.bind('<Control-Shift-Q>', self.quit)
         self.bind('<<CtrlReturn>>', self.run_cell)
@@ -514,6 +515,7 @@ class App(tk.Tk):
                 self.open_file(os.path.abspath(f))
 
     def _setup_style(self):
+        """Configure style."""
         # --- load theme
         font = (CONFIG.get("General", "fontfamily"),
                 CONFIG.getint("General", "fontsize"))
@@ -1485,6 +1487,8 @@ class App(tk.Tk):
                 self.menu_errors.add_command(label=msg,
                                              image=self._images[category],
                                              compound='left', command=cmd)
+
+
 
 
 

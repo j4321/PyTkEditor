@@ -28,7 +28,6 @@ from tkinter import ttk
 from tkinter.font import Font
 
 import jedi
-from pygments import lex
 from pygments.lexers import get_lexer_by_name, get_lexer_for_filename, ClassNotFound
 
 from pytkeditorlib.dialogs.complistbox import CompListbox
@@ -42,15 +41,8 @@ from .filebar import FileBar
 
 class EditorText(RichText):
     def __init__(self, master, **kwargs):
-        RichText.__init__(self, master, **kwargs)
-        self.bind("<apostrophe>", self.auto_close_string)
-        self.bind("<quotedbl>", self.auto_close_string)
-        self.bind('<parenleft>', self.auto_close, True)
-        self.bind("<bracketleft>", self.auto_close)
-        self.bind("<braceleft>", self.auto_close)
-        self.bind("<parenright>", self.close_brackets)
-        self.bind("<bracketright>", self.close_brackets)
-        self.bind("<braceright>", self.close_brackets)
+        RichText.__init__(self, master, 'Editor', **kwargs)
+        self.parse = self._parse
 
     def undo(self):
         """Undo without going through _proxy."""
@@ -60,73 +52,10 @@ class EditorText(RichText):
         """Redo without going through _proxy."""
         self.tk.call(self._orig, 'edit', 'redo')
 
-    def auto_close(self, event):
-        sel = self.tag_ranges('sel')
-        if sel:
-            text = self.get('sel.first', 'sel.last')
-            index = self.index('sel.first')
-            self.insert('sel.first', event.char)
-            self.insert('sel.last', self.autoclose[event.char])
-            self.mark_set('insert', 'sel.last+1c')
-            self.tag_remove('sel', 'sel.first', 'sel.last')
-            self.parse(event.char + text + self.autoclose[event.char], index)
-        else:
-            self.insert('insert', event.char, ['Token.Punctuation', 'matching_brackets'])
-            if not self.find_matching_par():
-                self.tag_remove('unmatched_bracket', 'insert-1c')
-                self.insert('insert', self.autoclose[event.char], ['Token.Punctuation', 'matching_brackets'])
-                self.mark_set('insert', 'insert-1c')
-        self.edit_separator()
-        return 'break'
-
     def auto_close_string(self, event):
-        sel = self.tag_ranges('sel')
-        if sel:
-            text = self.get('sel.first', 'sel.last')
-            if len(text.splitlines()) > 1:
-                char = event.char * 3
-            else:
-                char = event.char
-            self.insert('sel.first', char)
-            self.insert('sel.last', char)
-            self.mark_set('insert', 'sel.last+%ic' % (len(char)))
-            self.tag_remove('sel', 'sel.first', 'sel.last')
-        elif self.get('insert') == event.char:
-            self.mark_set('insert', 'insert+1c')
-        else:
-            self.insert('insert', event.char * 2)
-            self.mark_set('insert', 'insert-1c')
+        RichText.auto_close_string(self, event)
         self.parse_part()
-        self.edit_separator()
         return 'break'
-
-    def close_brackets(self, event):
-        if self.get('insert') == event.char:
-            self.mark_set('insert', 'insert+1c')
-        else:
-            self.insert('insert', event.char, 'Token.Punctuation')
-        self.find_opening_par(event.char)
-        return 'break'
-
-    def parse(self, text, start):
-        """Apply syntax highlighting to text at index start"""
-
-        data = text
-        while data and '\n' == data[0]:
-            start = self.index('%s+1c' % start)
-            data = data[1:]
-        self.mark_set('range_start', start)
-        for t in self.syntax_highlighting_tags:
-            self.tag_remove(t, start, "range_start +%ic" % len(data))
-        for token, content in lex(data, self.lexer):
-            self.mark_set("range_end", "range_start + %ic" % len(content))
-            for t in token.split():
-                self.tag_add(str(t), "range_start", "range_end")
-            if str(token) == 'Token.Comment.Cell':
-                line, col = tuple(map(int, self.index("range_end").split(".")))
-                if col < 79:
-                    self.insert("range_end", " " * (79 - col), "Token.Comment.Cell")
-            self.mark_set("range_start", "range_end")
 
     def parse_part(self, current='insert', nblines=10):
         start = f"{current} - {nblines} lines linestart"
@@ -139,6 +68,13 @@ class EditorText(RichText):
     def parse_all(self):
         self.parse(self.get('1.0', 'end'), '1.0')
 
+    def update_style(self):
+        """Load and update widget style."""
+        fg, bg, highlight_bg, font, syntax_highlighting = self._load_style()
+        theme = f"{CONFIG.get('General', 'theme').capitalize()} Theme"
+        selectbg = CONFIG.get(theme, 'textselectbg')
+        selectfg = CONFIG.get(theme, 'textselectfg')
+        self._update_style(fg, bg, selectfg, selectbg, font, syntax_highlighting)
 
 
 class Editor(ttk.Frame):
@@ -674,51 +610,32 @@ class Editor(ttk.Frame):
             self.filebar.configure(cursor='arrow')
 
     def update_style(self):
-        FONT = (CONFIG.get("General", "fontfamily"),
+        self.text.update_style()
+
+        font = (CONFIG.get("General", "fontfamily"),
                 CONFIG.getint("General", "fontsize"))
-        font = Font(self, FONT)
-        self._sep_x = font.measure(' ' * 79)
+        tkfont = Font(self, font)
+        self._sep_x = tkfont.measure(' ' * 79)
         self.sep.place(y=0, relheight=1, relx=self._sep_x / self.text.winfo_width(), width=1)
 
-        EDITOR_BG, EDITOR_HIGHLIGHT_BG, EDITOR_SYNTAX_HIGHLIGHTING = load_style(CONFIG.get('Editor', 'style'))
-        EDITOR_FG = EDITOR_SYNTAX_HIGHLIGHTING.get('Token.Name', {}).get('foreground', 'black')
-
-        self.text.syntax_highlighting_tags = list(EDITOR_SYNTAX_HIGHLIGHTING.keys())
-
         theme = f"{CONFIG.get('General', 'theme').capitalize()} Theme"
-        selectbg = CONFIG.get(theme, 'textselectbg')
-        selectfg = CONFIG.get(theme, 'textselectfg')
 
         fg = self.line_nb.option_get('foreground', '*Text')
         bg = self.line_nb.option_get('background', '*Text')
-        comment_fg = EDITOR_SYNTAX_HIGHLIGHTING['Token.Comment'].get('foreground', EDITOR_FG)
+        comment_fg = self.text.tag_cget('Token.Comment', 'foreground')
+        if not comment_fg:
+            comment_fg = self.text.cget('foreground')
+
         self.sep.configure(bg=comment_fg)
-        self.line_nb.configure(fg=fg, bg=bg, font=FONT,
+        self.line_nb.configure(fg=fg, bg=bg, font=font,
                                selectbackground=bg, selectforeground=fg,
                                inactiveselectbackground=bg)
-        self.line_nb.tag_configure('current_line', font=FONT + ('bold',), foreground=CONFIG.get(theme, 'fg'))
-        self.syntax_checks.configure(fg=fg, bg=bg, font=FONT,
+        self.line_nb.tag_configure('current_line', font=font + ('bold',),
+                                   foreground=CONFIG.get(theme, 'fg'))
+        self.syntax_checks.configure(fg=fg, bg=bg, font=font,
                                      selectbackground=bg, selectforeground=fg,
                                      inactiveselectbackground=bg)
         self.filebar.update_style(comment_fg=comment_fg)
-
-        # --- syntax highlighting
-        EDITOR_SYNTAX_HIGHLIGHTING['Token.Comment.Cell'] = EDITOR_SYNTAX_HIGHLIGHTING['Token.Comment'].copy()
-        EDITOR_SYNTAX_HIGHLIGHTING['Token.Comment.Cell']['underline'] = True
-        EDITOR_SYNTAX_HIGHLIGHTING['highlight_find'] = {'background': EDITOR_HIGHLIGHT_BG}
-
-        # bracket matching:  fg;bg;font formatting
-        mb = CONFIG.get('Editor', 'matching_brackets', fallback='#00B100;;bold').split(';')
-        EDITOR_SYNTAX_HIGHLIGHTING['matching_brackets'] = {'foreground': mb[0],
-                                                           'background': mb[1],
-                                                           'font': FONT + tuple(mb[2:])}
-        umb = CONFIG.get('Editor', 'unmatched_bracket', fallback='#FF0000;;bold').split(';')
-        EDITOR_SYNTAX_HIGHLIGHTING['unmatched_bracket'] = {'foreground': umb[0],
-                                                           'background': umb[1],
-                                                           'font': FONT + tuple(umb[2:])}
-
-        self.text.update_style(EDITOR_FG, EDITOR_BG, selectfg, selectbg,
-                               FONT, EDITOR_SYNTAX_HIGHLIGHTING)
 
     def strip(self):
         res = self.text.search(r' +$', '1.0', regexp=True)
@@ -1212,5 +1129,6 @@ class Editor(ttk.Frame):
                 self.syntax_issues_menuentries.append((category, m, lambda l=line: self.show_line(l)))
         self.syntax_checks.configure(state='disabled')
         self.syntax_checks.yview_moveto(self.line_nb.yview()[0])
+
 
 

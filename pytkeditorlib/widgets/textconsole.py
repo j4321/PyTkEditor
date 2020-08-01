@@ -39,11 +39,11 @@ from pytkeditorlib.utils.constants import SERVER_CERT, CLIENT_CERT, CONFIG,\
     MAGIC_COMMANDS, EXTERNAL_COMMANDS, get_screen, PathCompletion, glob_rel, \
     magic_complete, parse_ansi, format_long_output, ANSI_COLORS_DARK, ANSI_COLORS_LIGHT
 from pytkeditorlib.dialogs import askyesno, Tooltip, CompListbox
-from pytkeditorlib.gui_utils import AutoHideScrollbar
-from .base_widget import BaseWidget, WidgetText
+from pytkeditorlib.gui_utils import AutoHideScrollbar, RichText
+from .base_widget import BaseWidget
 
 
-class TextConsole(WidgetText):
+class TextConsole(RichText):
 
     def __init__(self, master, history, **kw):
         kw.setdefault('width', 50)
@@ -67,7 +67,7 @@ class TextConsole(WidgetText):
         self._hist_item = self.history.get_length()
         self._hist_match = ''
 
-        WidgetText.__init__(self, master, **kw)
+        RichText.__init__(self, master, 'Console', **kw)
 
         # --- menu
         self.menu = tk.Menu(self)
@@ -124,7 +124,7 @@ class TextConsole(WidgetText):
 
         # --- bindings
         self.bind('<3>', self._post_menu)
-        self.bind('<parenleft>', self._args_hint)
+        self.bind('<parenleft>', self._args_hint, True)
         self.bind('<Control-Return>', self.on_ctrl_return)
         self.bind('<Shift-Return>', self.on_shift_return)
         self.bind('<KeyPress>', self.on_key_press)
@@ -149,16 +149,14 @@ class TextConsole(WidgetText):
         self.bind('<Destroy>', self.quit)
         self.bind('<FocusOut>', self._on_focusout)
         self.bind("<ButtonPress>", self._on_press)
-        self.bind("<apostrophe>", self.auto_close_string)
-        self.bind("<quotedbl>", self.auto_close_string)
-        self.bind('<parenleft>', self.auto_close, True)
-        self.bind("<bracketleft>", self.auto_close)
-        self.bind("<braceleft>", self.auto_close)
-        self.bind("<parenright>", self.close_brackets)
-        self.bind("<bracketright>", self.close_brackets)
-        self.bind("<braceright>", self.close_brackets)
+        #~self.bind('<parenleft>', self.auto_close, True)
         self.bind("<Configure>", self._on_configure)
         self.bind("<Shift-Escape>", lambda e: self.delete("input", "input_end"))
+
+    def parse(self, start='input', end='input_end'):
+        """Syntax highlighting between start and end."""
+        text = self.get(start, end)
+        self._parse(text, start)
 
     def _proxy(self, *args):
         """
@@ -221,7 +219,7 @@ class TextConsole(WidgetText):
         self.tk.call(self._orig, 'delete', index1, index2)
 
     def update_style(self):
-        WidgetText.update_style(self)
+        RichText.update_style(self)
         # ansi tags
         self.tag_configure('foreground default', foreground='')
         self.tag_configure('background default', background='')
@@ -233,20 +231,19 @@ class TextConsole(WidgetText):
         for c in ANSI_COLORS_DARK:
             self.tag_configure('foreground ' + c, foreground=c)
             self.tag_configure('background ' + c, background=c)
+        self.tag_raise('sel')
         self._line_height = Font(self, self.cget('font')).metrics('linespace')
 
-        theme = dict(CONFIG.items('{} Theme'.format(CONFIG.get('General', 'theme').capitalize())))
-        submenu_options = dict(bg=theme['fieldbg'], activebackground=theme['selectbg'],
-                               fg=theme['fg'], activeforeground=theme['fg'],
-                               disabledforeground=theme['disabledfg'],
-                               selectcolor=theme['fg'])
         try:
-            self.menu.configure(**submenu_options)
+            fg = self.menu.option_get('foreground', '*Menu')
+            bg = self.menu.option_get('background', '*Menu')
+            activebackground = self.menu.option_get('activeBackground', '*Menu')
+            disabledforeground = self.menu.option_get('disabledForeground', '*Menu')
+            self.menu.configure(bg=bg, activebackground=activebackground,
+                                fg=fg, selectcolor=fg, activeforeground=fg,
+                                disabledforeground=disabledforeground)
         except AttributeError:
             pass
-
-    def parse(self):
-        WidgetText.parse(self, 'input', 'input_end')
 
     def quit(self, event=None):
         self.history.save()
@@ -964,34 +961,8 @@ class TextConsole(WidgetText):
         return 'break'
 
     def auto_close_string(self, event):
-        self.clear_highlight()
-        sel = self.tag_ranges('sel')
-        if sel:
-            text = self.get('sel.first', 'sel.last')
-            if len(text.splitlines()) > 1:
-                char = event.char * 3
-            else:
-                char = event.char
-            self.insert('sel.first', char)
-            self.insert('sel.last', char)
-            self.mark_set('insert', 'sel.last+%ic' % (len(char)))
-            self.tag_remove('sel', 'sel.first', 'sel.last')
-        elif self.get('insert') == event.char:
-            self.mark_set('insert', 'insert+1c')
-        else:
-            self.insert('insert', event.char * 2)
-            self.mark_set('insert', 'insert-1c')
+        RichText.auto_close_string(self, event)
         self.parse()
-        self.edit_separator()
-        return 'break'
-
-    def close_brackets(self, event):
-        self.clear_highlight()
-        if self.get('insert') == event.char:
-            self.mark_set('insert', 'insert+1c')
-        else:
-            self.insert('insert', event.char, 'Token.Punctuation')
-        self.find_opening_par(event.char)
         return 'break'
 
 
@@ -1030,6 +1001,7 @@ class ConsoleFrame(BaseWidget):
         else:
             self.console.configure(cursor='xterm')
             self.configure(cursor='')
+
 
 
 

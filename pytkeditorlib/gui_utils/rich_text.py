@@ -22,25 +22,56 @@ Rich text widget
 from tkinter import Text, TclError
 import logging
 
+from pygments import lex
+from pygments.lexers import Python3Lexer
+from tkcolorpicker.functions import rgb_to_hsv, hexa_to_rgb
+
+
+from pytkeditorlib.utils.constants import CONFIG, load_style
 
 class RichText(Text):
-    """Rich text widget with bracket autoclosing and matching."""
-    def __init__(self, master, **kw):
+    """Rich text widget with bracket autoclosing and syntax highlighting."""
+
+    def __init__(self, master, wtype, **kw):
+        """
+        Create RichText widget.
+
+        Arguments:
+
+            master: widget's master
+            wtype: widget type, namely "Editor" or "Console"
+            kw: Text keyword arguments
+        """
         Text.__init__(self, master, **kw)
+        self.wtype = wtype
 
         self._orig = self._w + "_orig"
         self.tk.call("rename", self._w, self._orig)
         self.tk.createcommand(self._w, self._proxy)
 
         self.syntax_highlighting_tags = []
+        self.lexer = Python3Lexer()   # lexer for syntax highlighting
+
         self.autoclose = {'(': ')', '[': ']', '{': '}', '"': '"', "'": "'"}
 
         self.bind("<FocusOut>", self.clear_highlight)
+        self.bind("<apostrophe>", self.auto_close_string)
+        self.bind("<quotedbl>", self.auto_close_string)
+        self.bind('<parenleft>', self.auto_close)
+        self.bind("<bracketleft>", self.auto_close)
+        self.bind("<braceleft>", self.auto_close)
+        self.bind("<parenright>", self.close_brackets)
+        self.bind("<bracketright>", self.close_brackets)
+        self.bind("<braceright>", self.close_brackets)
+        # remove unwanted Text bindings
         self.bind("<Control-w>", lambda e: "break")
         self.bind("<Control-h>", lambda e: "break")
         self.bind("<Control-b>", lambda e: "break")
         self.bind("<Control-f>", lambda e: "break")
         self.bind("<Control-t>", lambda e: "break")
+
+        self.update_style()
+
 
     def _proxy(self, *args):
         """Proxy between tkinter widget and tcl interpreter."""
@@ -51,7 +82,7 @@ class RichText(Text):
 
         try:
             result = self.tk.call(cmd)
-        except TclError as e:
+        except TclError:
             logging.exception('TclError')
             return
 
@@ -61,7 +92,55 @@ class RichText(Text):
 
         return result
 
-    def update_style(self, fg, bg, selectfg, selectbg, font, syntax_highlighting):
+    def _parse(self, text, start):
+        """Apply syntax highlighting to text at index start"""
+        data = text
+        while data and '\n' == data[0]:
+            start = self.index('%s+1c' % start)
+            data = data[1:]
+        self.mark_set('range_start', start)
+        for t in self.syntax_highlighting_tags:
+            self.tag_remove(t, start, "range_start +%ic" % len(data))
+        for token, content in lex(data, self.lexer):
+            self.mark_set("range_end", "range_start + %ic" % len(content))
+            for t in token.split():
+                self.tag_add(str(t), "range_start", "range_end")
+            if str(token) == 'Token.Comment.Cell':
+                line, col = tuple(map(int, self.index("range_end").split(".")))
+                if col < 79:
+                    self.insert("range_end", " " * (79 - col), "Token.Comment.Cell")
+            self.mark_set("range_start", "range_end")
+
+    def _load_style(self):
+        """Load new widget style."""
+        font = (CONFIG.get("General", "fontfamily"),
+                CONFIG.getint("General", "fontsize"))
+        bg, highlight_bg, syntax_highlighting = load_style(CONFIG.get(self.wtype, 'style'))
+        fg = syntax_highlighting.get('Token.Name', {}).get('foreground', 'black')
+
+        self.syntax_highlighting_tags = list(syntax_highlighting.keys())
+        syntax_highlighting['Token.Generic.Prompt'].setdefault('foreground', fg)
+
+        # --- syntax highlighting
+        syntax_highlighting['prompt'] = syntax_highlighting['Token.Generic.Prompt']
+        syntax_highlighting['output'] = {'foreground': fg}
+        syntax_highlighting['highlight_find'] = {'background': highlight_bg}
+        syntax_highlighting['Token.Comment.Cell'] = syntax_highlighting['Token.Comment'].copy()
+        syntax_highlighting['Token.Comment.Cell']['underline'] = True
+
+        # bracket matching:  fg;bg;font formatting
+        mb = CONFIG.get(self.wtype, 'matching_brackets', fallback='#00B100;;bold').split(';')
+        syntax_highlighting['matching_brackets'] = {'foreground': mb[0],
+                                                            'background': mb[1],
+                                                            'font': font + tuple(mb[2:])}
+        umb = CONFIG.get(self.wtype, 'unmatched_bracket', fallback='#FF0000;;bold').split(';')
+        syntax_highlighting['unmatched_bracket'] = {'foreground': umb[0],
+                                                            'background': umb[1],
+                                                            'font': font + tuple(umb[2:])}
+        return fg, bg, highlight_bg, font, syntax_highlighting
+
+    def _update_style(self, fg, bg, selectfg, selectbg, font, syntax_highlighting):
+        """Update widget style."""
         self.configure(fg=fg, bg=bg, font=font,
                        selectbackground=selectbg,
                        selectforeground=selectfg,
@@ -83,6 +162,15 @@ class RichText(Text):
             self.tag_configure(tag, **props)
 
         self.tag_raise('sel')
+
+    def update_style(self):
+        """Load and update widget style."""
+        fg, bg, highlight_bg, font, syntax_highlighting = self._load_style()
+        if rgb_to_hsv(*hexa_to_rgb(highlight_bg))[2] > 50:
+            selectfg = 'black'
+        else:
+            selectfg = 'white'
+        self._update_style(fg, bg, selectfg, highlight_bg, font, syntax_highlighting)
 
     def clear_highlight(self, event=None):
         self.tag_remove('matching_brackets', '1.0', 'end')
@@ -134,5 +222,51 @@ class RichText(Text):
             self.tag_add('unmatched_bracket', 'insert-1c')
             return False
 
+    def close_brackets(self, event):
+        """Close brackets."""
+        if self.get('insert') == event.char:
+            self.mark_set('insert', 'insert+1c')
+        else:
+            self.insert('insert', event.char, 'Token.Punctuation')
+        self.find_opening_par(event.char)
+        return 'break'
 
+    def auto_close(self, event):
+        sel = self.tag_ranges('sel')
+        if sel:
+            text = self.get('sel.first', 'sel.last')
+            index = self.index('sel.first')
+            self.insert('sel.first', event.char)
+            self.insert('sel.last', self.autoclose[event.char])
+            self.mark_set('insert', 'sel.last+1c')
+            self.tag_remove('sel', 'sel.first', 'sel.last')
+            self._parse(event.char + text + self.autoclose[event.char], index)
+        else:
+            self.insert('insert', event.char, ['Token.Punctuation', 'matching_brackets'])
+            if not self.find_matching_par():
+                self.tag_remove('unmatched_bracket', 'insert-1c')
+                self.insert('insert', self.autoclose[event.char], ['Token.Punctuation', 'matching_brackets'])
+                self.mark_set('insert', 'insert-1c')
+        self.edit_separator()
+        return 'break'
+
+    def auto_close_string(self, event):
+        sel = self.tag_ranges('sel')
+        if sel:
+            text = self.get('sel.first', 'sel.last')
+            if len(text.splitlines()) > 1:
+                char = event.char * 3
+            else:
+                char = event.char
+            self.insert('sel.first', char)
+            self.insert('sel.last', char)
+            self.mark_set('insert', 'sel.last+%ic' % (len(char)))
+            self.tag_remove('sel', 'sel.first', 'sel.last')
+        elif self.get('insert') == event.char:
+            self.mark_set('insert', 'insert+1c')
+        else:
+            self.insert('insert', event.char * 2)
+            self.mark_set('insert', 'insert-1c')
+        self.edit_separator()
+        return 'break'
 
