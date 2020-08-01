@@ -170,9 +170,11 @@ class CodeAnalysis(BaseWidget):
                              open=True, image=f'img_{elt}', tags=tags)
 
         for mtype, msg, line_nb in msgs:
-            max_width = max(max_width, self.font.measure(msg) + 40)
+            message = msg.splitlines()[0]
+            max_width = max(max_width, self.font.measure(message) + 40)
             line = f'{line_nb}.0'
-            self.tree.insert(mtype, 'end', text=msg, values=(line,))
+            self.tree.insert(mtype, 'end', text=message, values=(line,))
         self.tree.column('#0', width=max_width, minwidth=max_width)
+
 
 
