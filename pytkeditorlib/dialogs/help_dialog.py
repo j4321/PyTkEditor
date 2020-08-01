@@ -24,7 +24,7 @@ Help dialog
 from tkinter import Toplevel, TclError
 
 from pytkeditorlib.utils.constants import PATH_DOC, CSS_PATH, CONFIG
-from pytkeditorlib.gui_utils import HtmlFrame
+from pytkeditorlib.gui_utils.tkhtml import HtmlFrame
 from pytkeditorlib.utils import doc2html
 from .messagebox import showerror
 
@@ -52,3 +52,4 @@ class HelpDialog(Toplevel):
             pass
         content.pack(fill='both', expand=True)
         self.geometry('600x700')
+

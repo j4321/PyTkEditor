@@ -289,7 +289,6 @@ class EditorNotebook(Notebook):
             for tab, matches in replacements.items():
                 for start, end in reversed(matches):
                     self._tabs[tab].replace_text(start, end, pattern, new_text)
-                self._tabs[tab].update_nb_line()
                 self._tabs[tab].parse_all()
         except re.error as e:
             showerror("Error", f"Replacement error: {e.msg}", parent=self)
@@ -560,6 +559,7 @@ the external terminal configuration in the settings.",
         tab = self.current_tab
         if tab >= 0:
             self._tabs[self.current_tab].choose_color()
+
 
 
 

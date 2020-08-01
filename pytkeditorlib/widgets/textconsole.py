@@ -39,11 +39,11 @@ from pytkeditorlib.utils.constants import SERVER_CERT, CLIENT_CERT, CONFIG,\
     MAGIC_COMMANDS, EXTERNAL_COMMANDS, get_screen, PathCompletion, glob_rel, \
     magic_complete, parse_ansi, format_long_output, ANSI_COLORS_DARK, ANSI_COLORS_LIGHT
 from pytkeditorlib.dialogs import askyesno, Tooltip, CompListbox
-from pytkeditorlib.gui_utils import AutoHideScrollbar, RichText
+from pytkeditorlib.gui_utils import AutoHideScrollbar, RichEditor
 from .base_widget import BaseWidget
 
 
-class TextConsole(RichText):
+class TextConsole(RichEditor):
 
     def __init__(self, master, history, **kw):
         kw.setdefault('width', 50)
@@ -67,7 +67,7 @@ class TextConsole(RichText):
         self._hist_item = self.history.get_length()
         self._hist_match = ''
 
-        RichText.__init__(self, master, 'Console', **kw)
+        RichEditor.__init__(self, master, 'Console', **kw)
 
         # --- menu
         self.menu = tk.Menu(self)
@@ -101,12 +101,8 @@ class TextConsole(RichText):
         self._jedi_comp_external = '\n'.join([f'\ndef {cmd}():\n    pass\n'
                                               for cmd in EXTERNAL_COMMANDS])
         self._jedi_comp_extra = ''
-        self._comp = CompListbox(self)
-        self._comp.set_callback(self._comp_sel)
-
-        self._tooltip = Tooltip(self, title='Arguments',
-                                titlestyle='args.title.tooltip.TLabel')
-        self._tooltip.withdraw()
+        #~self._comp = CompListbox(self)
+        #~self._comp.set_callback(self._comp_sel)
 
         # --- shell socket
         self._shell_init()
@@ -124,11 +120,9 @@ class TextConsole(RichText):
 
         # --- bindings
         self.bind('<3>', self._post_menu)
-        self.bind('<parenleft>', self._args_hint, True)
         self.bind('<Control-Return>', self.on_ctrl_return)
         self.bind('<Shift-Return>', self.on_shift_return)
         self.bind('<KeyPress>', self.on_key_press)
-        self.bind('<KeyRelease>', self.on_key_release)
         self.bind('<Tab>', self.on_tab)
         self.bind('<ISO_Left_Tab>', self.unindent)
         self.bind('<Down>', self.on_down)
@@ -147,9 +141,6 @@ class TextConsole(RichText):
         self.bind('<<Paste>>', self.paste)
         self.bind('<<LineStart>>', self.on_goto_linestart)
         self.bind('<Destroy>', self.quit)
-        self.bind('<FocusOut>', self._on_focusout)
-        self.bind("<ButtonPress>", self._on_press)
-        #~self.bind('<parenleft>', self.auto_close, True)
         self.bind("<Configure>", self._on_configure)
         self.bind("<Shift-Escape>", lambda e: self.delete("input", "input_end"))
 
@@ -219,7 +210,7 @@ class TextConsole(RichText):
         self.tk.call(self._orig, 'delete', index1, index2)
 
     def update_style(self):
-        RichText.update_style(self)
+        RichEditor.update_style(self)
         # ansi tags
         self.tag_configure('foreground default', foreground='')
         self.tag_configure('background default', background='')
@@ -353,9 +344,7 @@ class TextConsole(RichText):
 
     # --- autocompletion / hints
     def _comp_sel(self):
-        txt = self._comp.get()
-        self._comp.withdraw()
-        self.insert('insert', txt)
+        RichEditor._comp_sel(self)
         self.parse()
 
     def _jedi_script(self):
@@ -371,36 +360,8 @@ class TextConsole(RichText):
                              'completion.py')
         return script
 
-    def _args_hint(self, event=None):
-        index = self.index('insert')
-        try:
-            script = self._jedi_script()
-            res = script.goto_definitions()
-        except Exception:
-            return
-        self.mark_set('insert', index)
-        if res:
-            try:
-                args = res[-1].docstring().splitlines()[0]
-            except Exception:
-                # usually caused by an exception raised in Jedi
-                return
-            self._tooltip.configure(text=args)
-            xb, yb, w, h = self.bbox('insert')
-            xr = self.winfo_rootx()
-            yr = self.winfo_rooty()
-            ht = self._tooltip.winfo_reqheight()
-            screen = get_screen(xr, yr)
-            y = yr + yb + h
-            x = xr + xb
-            if y + ht > screen[3]:
-                y = yr + yb - ht
-
-            self._tooltip.geometry('+%i+%i' % (x, y))
-            self._tooltip.deiconify()
-
-    def _comp_display(self):
-        self._comp.withdraw()
+    def _comp_generate(self):
+        """Generate autocompletion list."""
         index = self.index('insert wordend')
         if index[-2:] != '.0':
             self.mark_set('insert', 'insert-1c wordend')
@@ -434,23 +395,7 @@ class TextConsole(RichText):
                 except Exception:
                     # jedi raised an exception
                     pass
-
-        if len(comp) == 1:
-            self.insert('insert', comp[0].complete)
-            self.parse()
-        elif len(comp) > 1:
-            self._comp.update(comp)
-            xb, yb, w, h = self.bbox('insert')
-            xr = self.winfo_rootx()
-            yr = self.winfo_rooty()
-            hcomp = self._comp.winfo_reqheight()
-            screen = self.winfo_screenheight()
-            y = yr + yb + h
-            x = xr + xb
-            if y + hcomp > screen:
-                y = yr + yb - hcomp
-            self._comp.geometry('+%i+%i' % (x, y))
-            self._comp.deiconify()
+        return comp
 
     # --- bindings
     def _post_menu(self, event):
@@ -473,15 +418,6 @@ class TextConsole(RichText):
         self.mark_set('insert', insert)
         self.mark_set('input_end', input_end)
 
-    def _on_focusout(self, event):
-        self._comp.withdraw()
-        self._tooltip.withdraw()
-
-    def _on_press(self, event):
-        self.clear_highlight()
-        self._comp.withdraw()
-        self._tooltip.withdraw()
-
     def on_goto_linestart(self, event):
         self.edit_separator()
         self.mark_set('insert', 'insert linestart+%ic' % (len(self._prompt1)))
@@ -498,7 +434,7 @@ class TextConsole(RichText):
         if event.char.isalnum() and self.tag_ranges('sel'):
             self.edit_separator()
 
-    def on_key_release(self, event):
+    def _on_key_release(self, event):
         if self.compare('insert', '<', 'input') and event.keysym not in ['Left', 'Right']:
             self._hist_item = self.history.get_length()
             return 'break'
@@ -961,7 +897,7 @@ class TextConsole(RichText):
         return 'break'
 
     def auto_close_string(self, event):
-        RichText.auto_close_string(self, event)
+        RichEditor.auto_close_string(self, event)
         self.parse()
         return 'break'
 

@@ -25,12 +25,15 @@ import logging
 from pygments import lex
 from pygments.lexers import Python3Lexer
 from tkcolorpicker.functions import rgb_to_hsv, hexa_to_rgb
+import jedi
 
+from pytkeditorlib.utils.constants import CONFIG, load_style, get_screen
+from pytkeditorlib.dialogs.tooltip import Tooltip
+from pytkeditorlib.dialogs.complistbox import CompListbox
 
-from pytkeditorlib.utils.constants import CONFIG, load_style
 
 class RichText(Text):
-    """Rich text widget with bracket autoclosing and syntax highlighting."""
+    """Rich text widget with bracket matching and syntax highlighting."""
 
     def __init__(self, master, wtype, **kw):
         """
@@ -54,15 +57,7 @@ class RichText(Text):
 
         self.autoclose = {'(': ')', '[': ']', '{': '}', '"': '"', "'": "'"}
 
-        self.bind("<FocusOut>", self.clear_highlight)
-        self.bind("<apostrophe>", self.auto_close_string)
-        self.bind("<quotedbl>", self.auto_close_string)
-        self.bind('<parenleft>', self.auto_close)
-        self.bind("<bracketleft>", self.auto_close)
-        self.bind("<braceleft>", self.auto_close)
-        self.bind("<parenright>", self.close_brackets)
-        self.bind("<bracketright>", self.close_brackets)
-        self.bind("<braceright>", self.close_brackets)
+        self.bind("<FocusOut>", self._on_focus_out)
         # remove unwanted Text bindings
         self.bind("<Control-w>", lambda e: "break")
         self.bind("<Control-h>", lambda e: "break")
@@ -72,6 +67,8 @@ class RichText(Text):
 
         self.update_style()
 
+    def _on_focus_out(self, event):
+        self.clear_highlight()
 
     def _proxy(self, *args):
         """Proxy between tkinter widget and tcl interpreter."""
@@ -221,6 +218,138 @@ class RichText(Text):
         else:
             self.tag_add('unmatched_bracket', 'insert-1c')
             return False
+
+
+class RichEditor(RichText):
+    """Rich text editor widget with bracket autoclosing and hints."""
+
+    def __init__(self, master, wtype, **kw):
+        RichText.__init__(self, master, wtype, **kw)
+
+        # tooltip for argument hints
+        self._tooltip = Tooltip(self, title='Arguments',
+                                titlestyle='args.title.tooltip.TLabel')
+        self._tooltip.withdraw()
+        self._tooltip.bind('<FocusOut>', lambda e: self._tooltip.withdraw())
+        # autocompletion dialog
+        self._comp = CompListbox(self)
+        self._comp.set_callback(self._comp_sel)
+
+        self.bind("<ButtonPress>", self._on_btn_press)
+        self.bind("<apostrophe>", self.auto_close_string)
+        self.bind("<quotedbl>", self.auto_close_string)
+        self.bind('<parenleft>', self._on_left_par)
+        self.bind("<bracketleft>", self.auto_close)
+        self.bind("<braceleft>", self.auto_close)
+        self.bind("<parenright>", self.close_brackets)
+        self.bind("<bracketright>", self.close_brackets)
+        self.bind("<braceright>", self.close_brackets)
+
+        self.bind("<KeyRelease>", self._on_key_release)
+        self.bind("<KeyRelease-Left>", self._on_key_release_Left_Right)
+        self.bind("<KeyRelease-Right>", self._on_key_release_Left_Right)
+        self.bind("<Down>", self.on_down)
+        self.bind("<Up>", self.on_up)
+
+    def _on_key_release(self, event):
+        pass  # to be overriden in subclass
+
+    def _on_key_release_Left_Right(self, event):
+        self._comp.withdraw()
+
+    def _on_focusout(self, event):
+        self._comp.withdraw()
+        self._tooltip.withdraw()
+        self.clear_highlight()
+
+    def _on_btn_press(self, event):
+        self.clear_highlight()
+        self._comp.withdraw()
+        self._tooltip.withdraw()
+
+    def _on_left_par(self, event):
+        self._args_hint()
+        self.auto_close(event)
+        self._tooltip.deiconify()
+        return "break"
+
+    def _comp_sel(self):
+        """Select completion."""
+        txt = self._comp.get()
+        self._comp.withdraw()
+        self.insert('insert', txt)
+
+    def _comp_generate(self):
+        """Generate autocompletion list."""
+        return []  # to be overriden in subclass
+
+    def _comp_display(self):
+        """Display autocompletion."""
+        self._comp.withdraw()
+        comp = self._comp_generate()
+        if len(comp) == 1:
+            self.insert('insert', comp[0].complete)
+        elif len(comp) > 1:
+            self._comp.update(comp)
+            xb, yb, w, h = self.bbox('insert')
+            xr = self.winfo_rootx()
+            yr = self.winfo_rooty()
+            hcomp = self._comp.winfo_reqheight()
+            screen = get_screen(xr, yr)
+            y = yr + yb + h
+            x = xr + xb
+            if y + hcomp > screen[3]:
+                y = yr + yb - hcomp
+            self._comp.geometry('+%i+%i' % (x, y))
+            self._comp.deiconify()
+
+    def _jedi_script(self):
+        """Return jedi script for insert position."""
+        index = self.index('insert')
+        row, col = str(index).split('.')
+        return jedi.Script(self.get('1.0', 'end'), int(row), int(col), 'args_hint.py')
+
+    def _args_hint(self, event=None):
+        index = self.index('insert')
+        try:
+            script = self._jedi_script()
+            res = script.goto_definitions()
+        except Exception as e:
+            print(e)
+            return
+        self.mark_set('insert', index)
+        if res:
+            try:
+                args = res[-1].docstring().splitlines()[0]
+            except Exception:
+                # usually caused by an exception raised in Jedi
+                return
+            self._tooltip.configure(text=args)
+            xb, yb, w, h = self.bbox('insert')
+            xr = self.winfo_rootx()
+            yr = self.winfo_rooty()
+            ht = self._tooltip.winfo_reqheight()
+            screen = get_screen(xr, yr)
+            y = yr + yb + h
+            x = xr + xb
+            if y + ht > screen[3]:
+                y = yr + yb - ht
+
+            self._tooltip.geometry('+%i+%i' % (x, y))
+
+    def on_down(self, event):
+        if self._comp.winfo_ismapped():
+            self._comp.sel_next()
+            return "break"
+        else:
+            self._parse(self.get('insert linestart', 'insert lineend'), 'insert linestart')
+
+    def on_up(self, event):
+        if self._comp.winfo_ismapped():
+            self._comp.sel_prev()
+            return "break"
+        else:
+            self._parse(self.get('insert linestart', 'insert lineend'), 'insert linestart')
 
     def close_brackets(self, event):
         """Close brackets."""
