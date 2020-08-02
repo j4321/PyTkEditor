@@ -32,7 +32,6 @@ from .constants import CONFIG, PYLINT
 if PYLINT:
     from pylint.reporters.text import TextReporter
     from pylint import lint
-    from pylint import epylint
 
     class MyReporter(TextReporter):
         name = "parseable"
@@ -58,61 +57,27 @@ if PYLINT:
         def _display(self, layout):
             """Do nothing."""
 
-    #~class PylintReporter(TextReporter):
-    #~    """Custom Pylint reporter."""
-
-    #~    name = "myreporter"
-    #~    line_format = "{msg_id} (line {line}): {msg}"
-
-    #~    def __init__(self, output=None, msg=[]):
-    #~        TextReporter.__init__(self, output)
-    #~        self.messages = msg
-
-    #~    def handle_message(self, msg):
-    #~        """manage message of different type and in the context of path"""
-    #~        self.messages.append((msg.category, msg.format(self._template), msg.line))
-
-    #~    def display_messages(self, layout):
-    #~        """Launch layouts display"""
-
-    #~    def display_reports(self, layout):
-    #~        """Don't do anything in this reporter."""
-
-    #~    def _display(self, layout):
-    #~        """Do nothing."""
 
     def worker_pylint_check(filename, queue):
         """Return the list of messages and the stats from pylint's analysis."""
         lint.Run([filename], reporter=MyReporter(queue=queue), do_exit=True)
 
     def pylint_check(filename):
+        """Launch pylint check in separate thread and return the queue and process."""
         queue = Queue()
         p = Process(target=worker_pylint_check, daemon=True, args=(filename, queue))
         p.start()
         return queue, p
 
-    #~def pylint_check(filename):
-    #~    """Return the list of messages and the stats from pylint's analysis."""
-
-    #~    options = '--enable=all'  # all messages will be shown
-    #~    options += '--reports=y'  # also print the reports (ascii tables at the end)
-
-    #~    pylint_stdout, pylint_stderr = epylint.py_run(filename + ' ' + options, return_std=True)
-    #~    print(pylint_stdout.getvalue())
-    #~    print(pylint_stderr.getvalue())
-    #~    return [], {'global_note': 0}
-
-
 else:
 
-    def pylint_check(filename):
-        """Return the list of messages and the stats from pylint's analysis."""
-        return [], {'global_note': 0}
+    def pylint_check():
+        """Do nothing (pylint not installed)."""
 
 builtin_vars.append('_')
 
 
-class Logger(object):
+class Logger:
     """Logger to collect checks output."""
     def __init__(self):
         self.log = []
@@ -142,6 +107,7 @@ class Reporter(flakeReporter):
 
 
 def parse_message_style(message, results):
+    """Parse pycodestyle output."""
     txt = message.split(':')
     line = int(txt[1])
     msg = ':'.join(txt[3:]).strip()
@@ -153,6 +119,7 @@ def parse_message_style(message, results):
 
 
 def parse_message_flake(message, category, results):
+    """Parse pyflakes output."""
     txt = message.split(':')
     line = int(txt[1])
     msg = ':'.join(txt[2:]).strip()
@@ -164,17 +131,20 @@ def parse_message_flake(message, category, results):
 
 
 def pyflakes_check(filename):
+    """Run pyflakes on file and return output."""
     warning_log, err_log = Logger(), Logger()
     checkPath(filename, Reporter(warning_log, err_log))
     return err_log.log, warning_log.log
 
 
 def pycodestyle_check(filename):
+    """Run pycodestyle on file and return output."""
     p = Popen(['pycodestyle', filename], stdout=PIPE)
     return p.stdout.read().decode().splitlines()
 
 
 def check_file(filename):
+    """Run syntax and style checks on file."""
     results = {}
     if CONFIG.getboolean('Editor', 'code_check', fallback=True):
         err, warn = pyflakes_check(filename)
@@ -192,6 +162,3 @@ def check_file(filename):
             for line in warn2:
                 parse_message_style(line, results)
     return results
-
-
-

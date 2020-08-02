@@ -74,6 +74,7 @@ class History(RichText):
         self.maxsize = CONFIG.getint('History', 'max_size', fallback=10000)
 
     def save(self):
+        """Save history."""
         try:
             with open(self.histfile, 'rb') as file:
                 dp = pickle.Unpickler(file)
@@ -89,6 +90,7 @@ class History(RichText):
             pick.dump(hist)
 
     def add_history(self, line):
+        """Add line to history."""
         self.history.append(line)
         index = self.index('end-1c')
         self.configure(state='normal')
@@ -98,6 +100,7 @@ class History(RichText):
         self.see('end')
 
     def reset_text(self, init=False):
+        """Reset text display."""
         if not init:
             self.winfo_toplevel().busy(True)
         self.update_idletasks()
@@ -135,7 +138,7 @@ class History(RichText):
 
 class HistoryFrame(BaseWidget):
 
-    def __init__(self, master=None, histfile=HISTFILE, **kw):
+    def __init__(self, master=None, **kw):
         BaseWidget.__init__(self, master, 'History', **kw)
         self.columnconfigure(0, weight=1)
         self.rowconfigure(0, weight=1)
@@ -193,7 +196,7 @@ class HistoryFrame(BaseWidget):
 
         frame_find = ttk.Frame(self.frame_search)
         ttk.Button(frame_find, padding=0,
-                   command=lambda: self.frame_search.grid_remove(),
+                   command=self.frame_search.grid_remove,
                    style='close.TButton').pack(side='left')
         ttk.Label(frame_find, text='Find:').pack(side='right')
         frame_find.grid(row=1, column=0, padx=2, pady=4, sticky='ew')
@@ -307,5 +310,4 @@ class HistoryFrame(BaseWidget):
         else:
             if notify_no_match:
                 showinfo("Search complete", "No match found")
-
 

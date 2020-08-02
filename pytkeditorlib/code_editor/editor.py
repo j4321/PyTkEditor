@@ -913,10 +913,10 @@ class Editor(ttk.Frame):
 
     # --- get
     def get(self, strip=True):
-        txt = self.text.get('1.0', 'end')
         if strip:
             self.text.parse_part()
             self.strip()
+        txt = self.text.get('1.0', 'end')
         self.text.edit_separator()
         return txt
 
@@ -990,6 +990,7 @@ class Editor(ttk.Frame):
         self.update_nb_lines()
 
     def choose_color(self, event=None):
+        """Display color picker."""
 
         def insert(event):
             color = picker.get_color()
@@ -1066,5 +1067,6 @@ class Editor(ttk.Frame):
                 self.syntax_issues_menuentries.append((category, m, lambda l=line: self.show_line(l)))
         self.syntax_checks.configure(state='disabled')
         self.syntax_checks.yview_moveto(self.line_nb.yview()[0])
+
 
 

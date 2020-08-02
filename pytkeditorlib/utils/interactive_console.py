@@ -90,9 +90,9 @@ class Stdout:
 
 
 class ConsoleMethods:
-    def __init__(self, locals):
+    def __init__(self, locals_):
         self.current_gui = ''
-        self.locals = locals
+        self.locals = locals_
         sys.path.insert(0, '.')
         # log
         self.logger = logging.getLogger("pytkeditor_log")
@@ -122,7 +122,8 @@ class ConsoleMethods:
         else:
             print(dedent(obj.__doc__))
 
-    def external(self, cmd):
+    @staticmethod
+    def external(cmd):
         cmd = cmd.split()
         res = run(cmd, capture_output=True)
         err = res.stderr.decode()
@@ -131,7 +132,8 @@ class ConsoleMethods:
         else:
             print(res.stdout.decode())
 
-    def cd(self, path):
+    @staticmethod
+    def cd(path):
         "Change the current working directory."
         if '~' in path:
             path = expanduser(path)
@@ -305,10 +307,10 @@ Log output : {args.output}
 Timestamp  : {args.timestamps}"""
         self.handler.setFormatter(formatter)
         self.logger.addHandler(self.handler)
-        self.logger.debug(f'## PyTkEditor log - {datetime.now()} ##\n')
+        self.logger.debug('## PyTkEditor log - %s ##\n', datetime.now())
         hist = self._hist.getvalue()
         if hist:
-            self.logger.debug(hist + "\n")
+            self.logger.debug("%s\n", hist)
 
     def logstop(self, arg):
         """Stop logging."""
@@ -323,8 +325,8 @@ Timestamp  : {args.timestamps}"""
 
 
 class SocketConsole(InteractiveConsole):
-    def __init__(self, hostname, port, locals=None, filename='<console>'):
-        InteractiveConsole.__init__(self, locals, filename)
+    def __init__(self, hostname, port, locals_=None, filename='<console>'):
+        InteractiveConsole.__init__(self, locals_, filename)
         self.stdout = Stdout(self.send_cmd)
         self.stderr = StringIO()
 
@@ -466,3 +468,4 @@ class SocketConsole(InteractiveConsole):
 if __name__ == '__main__':
     c = SocketConsole(sys.argv[1], int(sys.argv[2]))
     c.interact()
+

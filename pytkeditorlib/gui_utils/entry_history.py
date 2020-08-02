@@ -31,6 +31,7 @@ class EntryHistory(ttk.Combobox):
         self.max_length = max_length
 
     def add_to_history(self, value):
+        """Add value to history."""
         values = list(self['values'])
         try:
             if values[0] == value:

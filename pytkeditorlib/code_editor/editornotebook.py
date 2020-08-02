@@ -67,7 +67,7 @@ class EditorNotebook(Notebook):
             mtime = os.stat(file).st_mtime
             if mtime > self._files_mtime[tab]:
                 # the file has been modified
-                logging.info(f'{file} has been modified')
+                logging.info('%s has been modified', file)
                 self.edit_modified(True, tab=tab, generate=True)
                 self.update_idletasks()
                 ans = askoptions('Warning',
@@ -84,7 +84,7 @@ class EditorNotebook(Notebook):
             # the file has been deleted
             try:
                 if self._files_check_deletion[tab]:
-                    logging.info(f'{file} has been deleted')
+                    logging.info('%s has been deleted', file)
                     self.edit_modified(True, tab=tab, generate=True)
                     self.update_idletasks()
                     ans = askoptions('Warning',
@@ -105,25 +105,27 @@ class EditorNotebook(Notebook):
     def _menu_insert(self, tab, text):
         label = '{} - {}'.format(text, self.files.get(tab, ''))
         menu = []
-        for t in self._tabs.keys():
+        for t in self._tabs:
             menu.append((self.tab(t, 'text'), t))
         menu.sort()
         ind = menu.index((text, tab))
         self._tab_menu.insert_radiobutton(ind, label=label,
                                           variable=self._tab_var, value=tab,
                                           command=lambda t=tab: self._show(t))
-        for i, (text, tab) in enumerate(menu):
-            self._tab_menu_entries[tab] = i
+        for i, (label, key) in enumerate(menu):
+            self._tab_menu_entries[key] = i
 
     def get_open_files(self):
         return [self.files[tab] for tab in self._visible_tabs]
 
     @property
     def filename(self):
+        """Current editor's filename."""
         return self.tab(self.current_tab, 'text')
 
     @property
     def filepath(self):
+        """Current editor's file path."""
         return self.files.get(self.current_tab, '')
 
     def update_style(self):
@@ -301,8 +303,7 @@ class EditorNotebook(Notebook):
     def get_syntax_issues(self):
         if self.current_tab >= 0:
             return self._tabs[self.current_tab].syntax_issues_menuentries
-        else:
-            return []
+        return []
 
     # --- get
     def get(self, tab=None, strip=True):
@@ -321,14 +322,12 @@ class EditorNotebook(Notebook):
         sel = self._tabs[self._current_tab].text.tag_ranges('sel')
         if sel:
             return self._tabs[self._current_tab].text.get('sel.first', 'sel.last')
-        else:
-            return ''
+        return ''
 
     def get_cell(self, goto_next=False):
         if self._current_tab >= 0:
             return self._tabs[self._current_tab].get_cell(goto_next)
-        else:
-            return ''
+        return ''
 
     def get_last_closed(self):
         if self.last_closed:
@@ -337,8 +336,7 @@ class EditorNotebook(Notebook):
     def get_docstring(self, obj):
         if self.current_tab >= 0:
             return self._tabs[self.current_tab].get_docstring(obj)
-        else:
-            return ("", "")
+        return ("", "")
 
     # --- close
     def _close(self, tab):
@@ -362,7 +360,8 @@ class EditorNotebook(Notebook):
         """Close tab and ask before dropping modifications."""
         rep = False
         if self.edit_modified(widget=self._tabs[tab]):
-            rep = askyesnocancel('Confirmation', 'The file %r has been modified. Do you want to save it?' % self.files[tab])
+            rep = askyesnocancel('Confirmation',
+                                 'The file %r has been modified. Do you want to save it?' % self.files[tab])
         if rep:
             self.save(tab)
         elif rep is None:
@@ -443,8 +442,7 @@ class EditorNotebook(Notebook):
             self.save(tab, force=True)
             self._files_check_deletion[tab] = True
             return True
-        else:
-            return False
+        return False
 
     # --- goto
     def goto_line(self):
@@ -473,7 +471,6 @@ class EditorNotebook(Notebook):
                 filename = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'utils', 'console.py')
                 external_console = CONFIG.get('Run', 'external_console', fallback='').split()
                 try:
-
                     Popen(external_console + [f"python {filename} {file} {interactive}"])
                 except Exception:
                     showerror("Error",
@@ -482,6 +479,7 @@ the external terminal configuration in the settings.",
                               parent=self)
 
     def new(self, file=None):
+        """Create new editor tab."""
         if file is None:
             new_files = [-1]
             pattern = re.compile(r"^new(\d+).py - $")
@@ -525,9 +523,10 @@ the external terminal configuration in the settings.",
         return "break"
 
     def file_switch(self, event=None):
+        """Display file switcher dialog."""
 
         def ok(event):
-            file = c.get()
+            file = file_swicther.get()
             if file not in files:
                 top.destroy()
             else:
@@ -535,8 +534,8 @@ the external terminal configuration in the settings.",
                 top.destroy()
 
         def sel(event):
-            self.select(list(self.files.keys())[files.index(c.get())])
-            self.after(2, c.entry.focus_set)
+            self.select(list(self.files.keys())[files.index(file_swicther.get())])
+            self.after(2, file_swicther.entry.focus_set)
 
         top = Toplevel(self)
         top.geometry('+%i+%i' % self.winfo_pointerxy())
@@ -545,22 +544,18 @@ the external terminal configuration in the settings.",
         top.grab_set()
 
         files = ["{1} - {0}".format(*os.path.split(file)) for file in self.files.values()]
-        c = AutoCompleteEntryListbox(top, completevalues=sorted(files), width=60)
-        c.pack(fill='both', expand=True)
-        c.entry.bind('<Escape>', lambda e: top.destroy())
-        c.listbox.bind('<Escape>', lambda e: top.destroy())
-        c.entry.bind('<Return>', ok)
-        c.listbox.bind('<Return>', ok)
-        c.bind('<<ItemSelect>>', sel)
-        c.focus_set()
+        file_swicther = AutoCompleteEntryListbox(top, completevalues=sorted(files), width=60)
+        file_swicther.pack(fill='both', expand=True)
+        file_swicther.entry.bind('<Escape>', lambda e: top.destroy())
+        file_swicther.listbox.bind('<Escape>', lambda e: top.destroy())
+        file_swicther.entry.bind('<Return>', ok)
+        file_swicther.listbox.bind('<Return>', ok)
+        file_swicther.bind('<<ItemSelect>>', sel)
+        file_swicther.focus_set()
         return "break"
 
     def choose_color(self):
+        """Display color picker."""
         tab = self.current_tab
         if tab >= 0:
             self._tabs[self.current_tab].choose_color()
-
-
-
-
-

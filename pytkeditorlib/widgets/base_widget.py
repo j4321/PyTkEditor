@@ -22,15 +22,12 @@ Base widgets
 from tkinter import BooleanVar, TclError
 from tkinter.ttk import Frame
 
-from pygments import lex
-from pygments.lexers import Python3Lexer
-from tkcolorpicker.functions import rgb_to_hsv, hexa_to_rgb
-
-from pytkeditorlib.gui_utils import Notebook, RichText
-from pytkeditorlib.utils.constants import CONFIG, load_style
+from pytkeditorlib.gui_utils import Notebook
+from pytkeditorlib.utils.constants import CONFIG
 
 
 class BaseWidget(Frame):
+    """Base class for the side widgets."""
     def __init__(self, master, name, **kw):
         kw.setdefault('padding', 2)
         Frame.__init__(self, master, **kw)
@@ -43,23 +40,28 @@ class BaseWidget(Frame):
         self.visible.trace_add('write', self._visibility_trace)
 
     def traversal_next(self, event):
+        """Display next widget."""
         self.master.traversal_next(event)
         return "break"
 
     def traversal_prev(self, event):
+        """Display previous widget."""
         self.master.traversal_prev(event)
         return "break"
 
     def update_style(self):
+        """Update widget style."""
         pass  # to be overriden in subclass
 
     def busy(self, busy):
+        """Toggle busy cursor."""
         if busy:
             self.configure(cursor='watch')
         else:
             self.configure(cursor='')
 
     def _visibility_trace(self, *args):
+        """Callback when widget's visibilty changes."""
         visible = self.visible.get()
         if visible:
             self.master.add(self)
@@ -70,6 +72,7 @@ class BaseWidget(Frame):
         CONFIG.save()
 
     def set_order(self, order):
+        """Write widget's order in config."""
         CONFIG.set(self.name, 'order', str(order))
 
 
@@ -85,6 +88,7 @@ class WidgetNotebook(Notebook):
 
     @property
     def manager(self):
+        """Notebook's manager, namely the GUI element in which it is displayed."""
         return self._manager
 
     @manager.setter
@@ -98,10 +102,12 @@ class WidgetNotebook(Notebook):
         self._manager = new_manager
 
     def traversal_next(self, event):
+        """Display next tab."""
         self.select_next(True)
         return "break"
 
     def traversal_prev(self, event):
+        """Display previous tab."""
         self.select_prev(True)
         return "break"
 
@@ -115,22 +121,24 @@ class WidgetNotebook(Notebook):
         if widget.menu is not None:
             widget.menu.tk_popup(event.x_root, event.y_root)
 
-    def hide(self, tabId):
-        Notebook.hide(self, tabId)
+    def hide(self, tab_id):
+        Notebook.hide(self, tab_id)
         if not self._visible_tabs:
             self.manager.forget(self)
 
-    def add(self, child, **kw):
+    def add(self, widget, **kwargs):
         if not self._visible_tabs:
             self.manager.insert('end', self, weight=1)
-        return Notebook.add(self, child, **kw)
+        return Notebook.add(self, widget, **kwargs)
 
-    def close(self, tabId):
-        tab = self.index(tabId)
+    def close(self, tab_id):
+        """Hide tab."""
+        tab = self.index(tab_id)
         if tab in self._visible_tabs:
             self._tabs[tab].visible.set(False)
 
     def select_first_tab(self):
+        """Display first tab."""
         if self._visible_tabs:
             self.select(self._visible_tabs[0])
 
@@ -139,7 +147,3 @@ class WidgetNotebook(Notebook):
         if tab:
             return tab
         self._tabs[self.index(tab_id)].visible.set(True)
-
-
-
-

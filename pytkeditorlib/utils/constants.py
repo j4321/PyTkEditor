@@ -30,7 +30,7 @@ from logging.handlers import TimedRotatingFileHandler
 
 import warnings
 from jedi import settings
-from pygments import lexers
+from pygments.lexers.python import PythonLexer
 from pygments.token import Comment
 from pygments.styles import get_style_by_name
 from Xlib import display
@@ -43,9 +43,9 @@ APP_NAME = 'PyTkEditor'
 REPORT_URL = f"https://gitlab.com/j_4321/{APP_NAME}/issues"
 
 
-class MyLexer(lexers.PythonLexer):
+class MyLexer(PythonLexer):
     name = "PyTkPython"
-    tokens = {key: val.copy() for key, val in lexers.PythonLexer.tokens.items()}
+    tokens = {key: val.copy() for key, val in PythonLexer.tokens.items()}
     tokens['root'].insert(4, (r'^#( In\[.*\]| ?%%).*$', Comment.Cell))
 
 
@@ -307,8 +307,7 @@ def get_screen(x, y):
         i += 1
     if i == len(monitors):
         raise ValueError("(%i, %i) is out of screen" % (x, y))
-    else:
-        return monitors[i]
+    return monitors[i]
 
 
 def valide_entree_nb(d, S):
@@ -316,8 +315,7 @@ def valide_entree_nb(d, S):
         seulement des chiffres """
     if d == '1':
         return S.isdigit()
-    else:
-        return True
+    return True
 
 
 # --- autocompletion
@@ -421,8 +419,7 @@ def find_closing_bracket(text, open_char, open_index):
         close_index = text.find(close_char, index)
     if stack == 0:
         return index - 1
-    else:
-        return -1
+    return -1
 
 
 def format_long_output(output, wrap_length, head='', indent2=''):
@@ -521,6 +518,7 @@ def parse_ansi(text, line_offset=1):
         tag_ranges[tag].append('end')
 
     return tag_ranges, stripped_text
+
 
 
 

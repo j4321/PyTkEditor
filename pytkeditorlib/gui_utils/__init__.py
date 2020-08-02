@@ -25,4 +25,3 @@ from .menu import LongMenu
 from .notebook import Notebook
 from .rich_text import RichText, RichEditor
 from .tkhtml import HtmlFrame
-

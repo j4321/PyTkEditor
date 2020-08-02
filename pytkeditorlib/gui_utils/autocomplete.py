@@ -94,21 +94,19 @@ bind $popdown.f.l <KeyPress> [list ComboListKeyPressed %%W %%K]
         if action == "0":
             txt = txt[:int(pos)] + txt[int(pos) + 1:]
             return True
-        else:
-            values = self.cget('values')
-            txt = txt[:int(pos)] + modif + txt[int(pos):]
-            l = [i for i in values if i[:len(txt)] == txt]
-            if l:
-                i = values.index(l[0])
-                self.current(i)
-                index = self.index("insert")
-                self.delete(0, "end")
-                self.insert(0, l[0].replace("\ ", " "))
-                self.selection_range(index + 1, "end")
-                self.icursor(index + 1)
-                return True
-            else:
-                return self._allow_other_values and (self._additional_validation(new_txt))
+        values = self.cget('values')
+        txt = txt[:int(pos)] + modif + txt[int(pos):]
+        l = [i for i in values if i[:len(txt)] == txt]
+        if l:
+            i = values.index(l[0])
+            self.current(i)
+            index = self.index("insert")
+            self.delete(0, "end")
+            self.insert(0, l[0].replace("\ ", " "))
+            self.selection_range(index + 1, "end")
+            self.icursor(index + 1)
+            return True
+        return self._allow_other_values and (self._additional_validation(new_txt))
 
     def __getitem__(self, key):
         return self.cget(key)
@@ -121,18 +119,18 @@ bind $popdown.f.l <KeyPress> [list ComboListKeyPressed %%W %%K]
     def cget(self, key):
         if key == 'allow_other_values':
             return self._allow_other_values
-        else:
-            return Combobox.cget(self, key)
+        return Combobox.cget(self, key)
 
-    def config(self, dic={}, **kwargs):
-        self.configure(dic={}, **kwargs)
+    def config(self, cnf=None, **kw):
+        self.configure(cnf, **kw)
 
-    def configure(self, dic={}, **kwargs):
-        dic2 = {}
-        dic2.update(dic)
-        dic2.update(kwargs)
-        self._allow_other_values = dic2.pop('allow_other_values', self._allow_other_values)
-        Combobox.config(self, dic2)
+    def configure(self, cnf=None, **kw):
+        dic = {}
+        if cnf:
+            dic.update(cnf)
+        dic.update(kw)
+        self._allow_other_values = dic.pop('allow_other_values', self._allow_other_values)
+        Combobox.config(self, dic)
 
 
 class AutoCompleteCombobox2(AutoCompleteCombobox):
@@ -173,21 +171,19 @@ class AutoCompleteCombobox2(AutoCompleteCombobox):
             l = [i for i in values if i[:len(txt)] == txt]
             self['values'] = l
             return True
-        else:
-            values = self.cget('values')
-            txt = txt[:int(pos)] + modif + txt[int(pos):]
-            l = [i for i in values if i[:len(txt)] == txt]
-            if l:
-                self['values'] = l
-                self.current(0)
-                index = self.index("insert")
-                self.delete(0, "end")
-                self.insert(0, l[0].replace("\ ", " "))
-                self.selection_range(index + 1, "end")
-                self.icursor(index + 1)
-                return True
-            else:
-                return self._allow_other_values and (self._additional_validation(new_txt))
+        values = self.cget('values')
+        txt = txt[:int(pos)] + modif + txt[int(pos):]
+        l = [i for i in values if i[:len(txt)] == txt]
+        if l:
+            self['values'] = l
+            self.current(0)
+            index = self.index("insert")
+            self.delete(0, "end")
+            self.insert(0, l[0].replace("\ ", " "))
+            self.selection_range(index + 1, "end")
+            self.icursor(index + 1)
+            return True
+        return self._allow_other_values and (self._additional_validation(new_txt))
 
     def set_completion_list(self, completevalues):
         self.complete_values = completevalues
@@ -215,7 +211,7 @@ class AutoCompleteEntryListbox(Frame):
         self._validate = self.register(self.validate)
         self.entry = Entry(self, width=width, justify=justify, font=font,
                            validate='key', exportselection=exportselection,
-                           validatecommand=(self._validate, "%d", "%S", "%i", "%s", "%P"))
+                           validatecommand=(self._validate, "%d", "%S", "%i", "%s"))
         f = Frame(self, style='border.TFrame', padding=1)
         self.listbox = Listbox(f, width=width, justify=justify, font=font,
                                exportselection=exportselection, selectmode="browse",
@@ -285,7 +281,7 @@ class AutoCompleteEntryListbox(Frame):
             self.listbox.select_set(0)
         self.listbox.event_generate('<<ListboxSelect>>')
 
-    def validate(self, action, modif, pos, prev_txt, new_txt):
+    def validate(self, action, modif, pos, prev_txt):
         """Complete the text in the entry with values."""
         try:
             sel = self.entry.selection_get()
@@ -295,22 +291,20 @@ class AutoCompleteEntryListbox(Frame):
         if action == "0":
             txt = txt[:int(pos)] + txt[int(pos) + 1:]
             return True
-        else:
-            txt = txt[:int(pos)] + modif + txt[int(pos):]
-            l = [i for i in self._completevalues if i[:len(txt)] == txt]
-            if l:
-                i = self._completevalues.index(l[0])
-                self.listbox.selection_clear(0, "end")
-                self.listbox.selection_set(i)
-                self.listbox.see(i)
-                index = self.entry.index("insert")
-                self.entry.delete(0, "end")
-                self.entry.insert(0, l[0].replace("\ ", " "))
-                self.entry.selection_range(index + 1, "end")
-                self.entry.icursor(index + 1)
-                return True
-            else:
-                return self._allow_other_values
+        txt = txt[:int(pos)] + modif + txt[int(pos):]
+        l = [i for i in self._completevalues if i[:len(txt)] == txt]
+        if l:
+            i = self._completevalues.index(l[0])
+            self.listbox.selection_clear(0, "end")
+            self.listbox.selection_set(i)
+            self.listbox.see(i)
+            index = self.entry.index("insert")
+            self.entry.delete(0, "end")
+            self.entry.insert(0, l[0].replace("\ ", " "))
+            self.entry.selection_range(index + 1, "end")
+            self.entry.icursor(index + 1)
+            return True
+        return self._allow_other_values
 
     def __getitem__(self, key):
         return self.cget(key)
@@ -338,18 +332,19 @@ class AutoCompleteEntryListbox(Frame):
     def cget(self, key):
         if key == 'allow_other_values':
             return self._allow_other_values
-        elif key == 'completevalues':
+        if key == 'completevalues':
             return self._completevalues
-        else:
-            return self.cget(self, key)
+        return Frame.cget(self, key)
 
-    def config(self, dic={}, **kwargs):
-        self.configure(dic={}, **kwargs)
+    def config(self, cnf=None, **kw):
+        self.configure(cnf, **kw)
 
-    def configure(self, dic={}, **kwargs):
-        dic2 = {}
-        dic2.update(dic)
-        dic2.update(kwargs)
-        self._allow_other_values = dic2.pop('allow_other_values', self._allow_other_values)
-        self._completevalues = dic2.pop('completevalues', self._completevalues)
-        self.config(self, dic2)
+    def configure(self, cnf=None, **kw):
+        dic = {}
+        if cnf:
+            dic.update(cnf)
+        dic.update(kw)
+        self._allow_other_values = dic.pop('allow_other_values', self._allow_other_values)
+        self._completevalues = dic.pop('completevalues', self._completevalues)
+        Frame.config(self, dic)
+

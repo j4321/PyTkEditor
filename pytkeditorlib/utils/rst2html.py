@@ -99,4 +99,3 @@ def doc2html(doc):
     out = publish_string(source=doc, writer=html_writer, settings_overrides=rst_opts)
 
     return out.decode()
-

@@ -23,7 +23,7 @@ from tkinter import Text, TclError
 import logging
 
 from pygments import lex
-from pygments.lexers import Python3Lexer
+from pygments.lexers.python import Python3Lexer
 from tkcolorpicker.functions import rgb_to_hsv, hexa_to_rgb
 import jedi
 
@@ -92,7 +92,7 @@ class RichText(Text):
     def _parse(self, text, start):
         """Apply syntax highlighting to text at index start"""
         data = text
-        while data and '\n' == data[0]:
+        while data and data[0] == '\n':
             start = self.index('%s+1c' % start)
             data = data[1:]
         self.mark_set('range_start', start)
@@ -103,7 +103,7 @@ class RichText(Text):
             for t in token.split():
                 self.tag_add(str(t), "range_start", "range_end")
             if str(token) == 'Token.Comment.Cell':
-                line, col = tuple(map(int, self.index("range_end").split(".")))
+                col = int(self.index("range_end").split(".")[1])
                 if col < 79:
                     self.insert("range_end", " " * (79 - col), "Token.Comment.Cell")
             self.mark_set("range_start", "range_end")
@@ -128,12 +128,12 @@ class RichText(Text):
         # bracket matching:  fg;bg;font formatting
         mb = CONFIG.get(self.wtype, 'matching_brackets', fallback='#00B100;;bold').split(';')
         syntax_highlighting['matching_brackets'] = {'foreground': mb[0],
-                                                            'background': mb[1],
-                                                            'font': font + tuple(mb[2:])}
+                                                    'background': mb[1],
+                                                    'font': font + tuple(mb[2:])}
         umb = CONFIG.get(self.wtype, 'unmatched_bracket', fallback='#FF0000;;bold').split(';')
         syntax_highlighting['unmatched_bracket'] = {'foreground': umb[0],
-                                                            'background': umb[1],
-                                                            'font': font + tuple(umb[2:])}
+                                                    'background': umb[1],
+                                                    'font': font + tuple(umb[2:])}
         return fg, bg, highlight_bg, font, syntax_highlighting
 
     def _update_style(self, fg, bg, selectfg, selectbg, font, syntax_highlighting):
@@ -170,6 +170,7 @@ class RichText(Text):
         self._update_style(fg, bg, selectfg, highlight_bg, font, syntax_highlighting)
 
     def clear_highlight(self, event=None):
+        """Clear matching brackets highlighting."""
         self.tag_remove('matching_brackets', '1.0', 'end')
         self.tag_remove('unmatched_bracket', '1.0', 'end')
 
@@ -178,10 +179,9 @@ class RichText(Text):
         char = self.get('insert-1c')
         if char in ['(', '{', '[']:
             return self.find_closing_par(char)
-        elif char in [')', '}', ']']:
+        if char in [')', '}', ']']:
             return self.find_opening_par(char)
-        else:
-            return False
+        return False
 
     def find_closing_par(self, char):
         """Highlight the closing bracket of CHAR if it is on the same line."""
@@ -197,9 +197,8 @@ class RichText(Text):
             self.tag_add('matching_brackets', 'insert-1c')
             self.tag_add('matching_brackets', index + '-1c')
             return True
-        else:
-            self.tag_add('unmatched_bracket', 'insert-1c')
-            return False
+        self.tag_add('unmatched_bracket', 'insert-1c')
+        return False
 
     def find_opening_par(self, char):
         """Highlight the opening bracket of CHAR if it is on the same line."""
@@ -246,15 +245,15 @@ class RichEditor(RichText):
         self.bind("<braceright>", self.close_brackets)
 
         self.bind("<KeyRelease>", self._on_key_release)
-        self.bind("<KeyRelease-Left>", self._on_key_release_Left_Right)
-        self.bind("<KeyRelease-Right>", self._on_key_release_Left_Right)
+        self.bind("<KeyRelease-Left>", self._on_key_release_left_right)
+        self.bind("<KeyRelease-Right>", self._on_key_release_left_right)
         self.bind("<Down>", self.on_down)
         self.bind("<Up>", self.on_up)
 
     def _on_key_release(self, event):
         pass  # to be overriden in subclass
 
-    def _on_key_release_Left_Right(self, event):
+    def _on_key_release_left_right(self, event):
         self._comp.withdraw()
 
     def _on_focusout(self, event):
@@ -290,7 +289,7 @@ class RichEditor(RichText):
         if len(comp) == 1:
             self.insert('insert', comp[0].complete)
         elif len(comp) > 1:
-            self._comp.update(comp)
+            self._comp.update_completion(comp)
             xb, yb, w, h = self.bbox('insert')
             xr = self.winfo_rootx()
             yr = self.winfo_rooty()
@@ -339,18 +338,18 @@ class RichEditor(RichText):
             self._tooltip.deiconify()
 
     def on_down(self, event):
+        """Down arrow."""
         if self._comp.winfo_ismapped():
             self._comp.sel_next()
             return "break"
-        else:
-            self._parse(self.get('insert linestart', 'insert lineend'), 'insert linestart')
+        self._parse(self.get('insert linestart', 'insert lineend'), 'insert linestart')
 
     def on_up(self, event):
+        """Up arrow."""
         if self._comp.winfo_ismapped():
             self._comp.sel_prev()
             return "break"
-        else:
-            self._parse(self.get('insert linestart', 'insert lineend'), 'insert linestart')
+        self._parse(self.get('insert linestart', 'insert lineend'), 'insert linestart')
 
     def close_brackets(self, event):
         """Close brackets."""
@@ -362,6 +361,7 @@ class RichEditor(RichText):
         return 'break'
 
     def auto_close(self, event):
+        """Autoclose brackets."""
         sel = self.tag_ranges('sel')
         if sel:
             text = self.get('sel.first', 'sel.last')
@@ -375,12 +375,14 @@ class RichEditor(RichText):
             self.insert('insert', event.char, ['Token.Punctuation', 'matching_brackets'])
             if not self.find_matching_par():
                 self.tag_remove('unmatched_bracket', 'insert-1c')
-                self.insert('insert', self.autoclose[event.char], ['Token.Punctuation', 'matching_brackets'])
+                self.insert('insert', self.autoclose[event.char],
+                            ['Token.Punctuation', 'matching_brackets'])
                 self.mark_set('insert', 'insert-1c')
         self.edit_separator()
         return 'break'
 
     def auto_close_string(self, event):
+        """Autoclose quotes."""
         sel = self.tag_ranges('sel')
         if sel:
             text = self.get('sel.first', 'sel.last')

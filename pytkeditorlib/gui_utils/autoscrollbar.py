@@ -42,9 +42,9 @@ class AutoHideScrollbar(ttk.Scrollbar):
         self._visible = False
         self._incr_timer()
 
-    def set(self, lo, hi):
+    def set(self, first, last):
         if self.timer > self.threshold:
-            if float(lo) <= 0.0 and float(hi) >= 1.0:
+            if float(first) <= 0.0 and float(last) >= 1.0:
                 if self._layout == 'place':
                     self.place_forget()
                 elif self._layout == 'pack':
@@ -64,7 +64,7 @@ class AutoHideScrollbar(ttk.Scrollbar):
                 if not self._visible:
                     self.timer = 0
                 self._visible = True
-        ttk.Scrollbar.set(self, lo, hi)
+        ttk.Scrollbar.set(self, first, last)
 
     def _incr_timer(self):
         self.timer += 1

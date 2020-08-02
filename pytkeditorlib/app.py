@@ -591,6 +591,7 @@ class App(tk.Tk):
         style.configure('TCheckbutton', **button_style_config)
         style.configure('TRadiobutton', **button_style_config)
         style.configure('TEntry', **button_style_config)
+        style.configure('TSpinbox', **button_style_config)
         style.configure('TCombobox', **button_style_config)
         style.configure('TNotebook', **style_config)
         style.configure('TNotebook.Tab', **style_config)
@@ -602,6 +603,7 @@ class App(tk.Tk):
         style.map('TCheckbutton', **button_style_map)
         style.map('TRadiobutton', **button_style_map)
         style.map('TEntry', **button_style_map)
+        style.map('TSpinbox', **button_style_map)
         combo_map = button_style_map.copy()
         combo_map["fieldbackground"].extend([('readonly', theme["bg"]),
                                              ('readonly', 'focus', theme["bg"])])
@@ -1487,6 +1489,7 @@ class App(tk.Tk):
                 self.menu_errors.add_command(label=msg,
                                              image=self._images[category],
                                              compound='left', command=cmd)
+
 
 
 

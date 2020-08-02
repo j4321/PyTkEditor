@@ -41,7 +41,8 @@ class Splash(Tk):
         self.configure(padx=4, pady=4)
 
         self._im = PhotoImage(file=IMAGES['icon'], master=self)
-        self._loading = [PhotoImage(f'img_anim_{i}', file=img, master=self) for i, img in enumerate(ANIM_LOADING)]
+        self._loading = [PhotoImage(f'img_anim_{i}', file=img, master=self)
+                         for i, img in enumerate(ANIM_LOADING)]
         self._nb_img = len(ANIM_LOADING)
         # style
         style = ttk.Style()
@@ -54,7 +55,6 @@ class Splash(Tk):
         style.configure('TProgressbar', background=bg, foreground=fg)
         frame = Frame(self, padx=150, pady=10, bg=bg)
         frame.pack(fill='both')
-
 
         ttk.Label(frame, text="PyTkEditor", image=self._im, compound='bottom',
                   font="TkDefaultFont 20").pack(pady=8, padx=8)
@@ -73,6 +73,7 @@ class Splash(Tk):
             pass
 
     def anim(self):
+        """Display animation."""
         self._anim_index += 1
         self._anim_index %= self._nb_img
         try:  # check whether main app has been killed
@@ -89,3 +90,4 @@ class Splash(Tk):
 if __name__ == '__main__':
     s = Splash()
     s.mainloop()
+

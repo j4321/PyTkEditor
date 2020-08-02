@@ -30,6 +30,7 @@ from .messagebox import showerror
 
 
 class HelpDialog(Toplevel):
+    """Help Toplevel."""
     def __init__(self, master=None, **kw):
         Toplevel.__init__(self, master, **kw)
         self.transient(master)
@@ -43,8 +44,8 @@ class HelpDialog(Toplevel):
             self.destroy()
 
         content = HtmlFrame(self)
-        with open(CSS_PATH.format(theme=CONFIG.get('General', 'theme'))) as f:
-            stylesheet = f.read()
+        with open(CSS_PATH.format(theme=CONFIG.get('General', 'theme'))) as style_file:
+            stylesheet = style_file.read()
         try:
             content.set_content(doc2html(doc))
             content.set_style(stylesheet)
@@ -52,4 +53,3 @@ class HelpDialog(Toplevel):
             pass
         content.pack(fill='both', expand=True)
         self.geometry('600x700')
-

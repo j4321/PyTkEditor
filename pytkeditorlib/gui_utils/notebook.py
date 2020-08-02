@@ -65,6 +65,7 @@ class Tab(ttk.Frame):
                        height=self.frame.winfo_reqheight() + 2)
 
     def closecommand(self):
+        """Close button command."""
         self._closecommand(self.tab_nb)
 
     def state(self, *args):
@@ -82,14 +83,30 @@ class Tab(ttk.Frame):
                            height=self.frame.winfo_reqheight() + 2)
         return res
 
-    def bind(self, sequence=None, func=None, add=None):
-        return self.frame.bind(sequence, func, add), self.label.bind(sequence, func, add)
+    def bind(self, sequence=None, func=None, add=None, bind_all=True):
+        """
+        Bind to this widget at event SEQUENCE a call to function FUNC.
+
+        An additional boolean parameter ADD specifies whether FUNC will
+        be called additionally to the other bound function or whether
+        it will replace the previous function.
+
+        If BIND_ALL is true, bind both the Frame and the Label of the tab,
+        otherwise, bind only to the Frame.
+        """
+        funcid = self.frame.bind(sequence, func, add)
+        if bind_all:
+            funcid2 = self.label.bind(sequence, func, add)
+        else:
+            funcid2 = None
+        return funcid, funcid2 
 
     def unbind(self, sequence, funcids=(None, None)):
         self.label.unbind(sequence, funcids[1])
         self.frame.unbind(sequence, funcids[0])
 
     def tab_configure(self, **kwargs):
+        """Configure tab."""
         if 'closecommand' in kwargs:
             self._closecommand = kwargs.pop('closecommand')
         if 'closebutton' in kwargs:
@@ -115,14 +132,14 @@ class Tab(ttk.Frame):
         self.label.configure(**kwargs)
 
     def tab_cget(self, option):
+        """Get tab option."""
         if option == 'closecommand':
             return self._closecommand
-        elif option == 'closebutton':
+        if option == 'closebutton':
             return self._closebutton
-        elif option == 'state':
+        if option == 'state':
             return self._state
-        else:
-            return self.label.cget(option)
+        return self.label.cget(option)
 
 
 class Notebook(ttk.Frame):
@@ -202,6 +219,9 @@ class Notebook(ttk.Frame):
         self._nb_tab = 0
         self.current_tab = -1
         self._dragged_tab = None
+        self._dx = 0
+        self._y = 0
+        self._distance_to_dragged_border = 0
 
         style = ttk.Style(self)
         bg = style.lookup('TFrame', 'background')
@@ -295,7 +315,9 @@ class Notebook(ttk.Frame):
         h = self._tab_frame.winfo_reqheight()
         self._canvas.configure(height=h)
         # ensure that _tab_frame2 fills the canvas if _tab_frame is smaller
-        self._canvas.itemconfigure('window', width=max(self._canvas.winfo_width(), self._tab_frame.winfo_reqwidth()))
+        self._canvas.itemconfigure('window',
+                                   width=max(self._canvas.winfo_width(),
+                                             self._tab_frame.winfo_reqwidth()))
         # update canvas scrollregion
         self._canvas.configure(scrollregion=self._canvas.bbox('all'))
         # ensure visibility of current tab
@@ -382,15 +404,15 @@ class Notebook(ttk.Frame):
 
     def _menu_insert(self, tab, text):
         menu = []
-        for t in self._tabs.keys():
+        for t in self._tabs:
             menu.append((self.tab(t, 'text'), t))
         menu.sort()
         ind = menu.index((text, tab))
         self._tab_menu.insert_radiobutton(ind, label=text,
                                           variable=self._tab_var, value=tab,
                                           command=lambda t=tab: self._show(t))
-        for i, (text, tab) in enumerate(menu):
-            self._tab_menu_entries[tab] = i
+        for i, (label, key) in enumerate(menu):
+            self._tab_menu_entries[key] = i
 
     def _resize(self):
         """Resize the notebook so that all widgets can be displayed fully."""
@@ -429,7 +451,7 @@ class Notebook(ttk.Frame):
 
         if new:
             # add new tab
-            c, r = self._tab_frame.grid_size()
+            c = self._tab_frame.grid_size()[0]
             self._tab_labels[tab_id].grid(in_=self._tab_frame, row=0, column=c, sticky='s')
             self._visible_tabs.append(tab_id)
 
@@ -462,14 +484,13 @@ class Notebook(ttk.Frame):
     def cget(self, key):
         if key == 'closebutton':
             return self._closebutton
-        elif key == 'closecommand':
+        if key == 'closecommand':
             return self._closecommand
-        elif key == 'tabmenu':
+        if key == 'tabmenu':
             return self._tabmenu
-        elif key == 'tabdrag':
+        if key == 'tabdrag':
             return self._tabdrag
-        else:
-            return ttk.Frame.cget(self, key)
+        return ttk.Frame.cget(self, key)
 
     def configure(self, cnf=None, **kw):
         if cnf:
@@ -505,6 +526,7 @@ class Notebook(ttk.Frame):
         return keys + ['closebutton', 'closecommand', 'tabmenu']
 
     def busy(self, busy, tab=False):
+        """Toggle busy cursor."""
         if busy:
             self.configure(cursor='watch')
             if tab:
@@ -590,15 +612,14 @@ class Notebook(ttk.Frame):
         """Return the tab index of TAB_ID."""
         if tab_id == tk.END:
             return len(self._tabs)
-        elif tab_id == tk.CURRENT:
+        if tab_id == tk.CURRENT:
             return self.current_tab
-        elif tab_id in self._tabs:
+        if tab_id in self._tabs:
             return tab_id
-        else:
-            try:
-                return self._indexes[str(tab_id)]
-            except KeyError:
-                raise ValueError('No such tab in the Notebook: %s' % tab_id)
+        try:
+            return self._indexes[str(tab_id)]
+        except KeyError:
+            raise ValueError('No such tab in the Notebook: %s' % tab_id)
 
     def select_next(self, rotate=False):
         """Go to next tab."""
@@ -714,39 +735,57 @@ class Notebook(ttk.Frame):
         tab = self.index(tab_id)
         if option == 'widget':
             return self._tabs[tab]
-        elif option:
+        if option:
             return self._tab_options[tab][option]
-        else:
-            self._tab_options[tab].update(kw)
-            sticky = kw.pop('padding', None)
-            padding = kw.pop('sticky', None)
-            self._tab_labels[tab].tab_configure(**kw)
-            if sticky is not None or padding is not None and self.current_tab == tab:
-                self._show(tab, update=True)
-            if 'text' in kw:
-                self._tab_menu.delete(self._tab_menu_entries[tab])
-                self._menu_insert(tab, kw['text'])
-            if 'state' in kw:
-                self._tab_menu.entryconfigure(self._tab_menu_entries[tab],
-                                              state=kw['state'])
-                if kw['state'] == 'disabled':
-                    if tab in self._active_tabs:
-                        self._active_tabs.remove(tab)
-                    if tab == self.current_tab:
-                        tabs = self._visible_tabs.copy()
-                        if tab in tabs:
-                            tabs.remove(tab)
-                        if tabs:
-                            self._show(tabs[0])
-                        else:
-                            self._tabs[tab].grid_remove()
-                            self.current_tab = -1
-                else:
-                    self._active_tabs = [t for t in self._visible_tabs
-                                         if self._tab_options[t]['state'] == 'normal']
-                    if self.current_tab == -1:
-                        self._show(tab)
+
+        self._tab_options[tab].update(kw)
+        sticky = kw.pop('padding', None)
+        padding = kw.pop('sticky', None)
+        self._tab_labels[tab].tab_configure(**kw)
+        if sticky is not None or padding is not None and self.current_tab == tab:
+            self._show(tab, update=True)
+        if 'text' in kw:
+            self._tab_menu.delete(self._tab_menu_entries[tab])
+            self._menu_insert(tab, kw['text'])
+        if 'state' in kw:
+            self._tab_menu.entryconfigure(self._tab_menu_entries[tab],
+                                          state=kw['state'])
+            if kw['state'] == 'disabled':
+                if tab in self._active_tabs:
+                    self._active_tabs.remove(tab)
+                if tab == self.current_tab:
+                    tabs = self._visible_tabs.copy()
+                    if tab in tabs:
+                        tabs.remove(tab)
+                    if tabs:
+                        self._show(tabs[0])
+                    else:
+                        self._tabs[tab].grid_remove()
+                        self.current_tab = -1
+            else:
+                self._active_tabs = [t for t in self._visible_tabs
+                                     if self._tab_options[t]['state'] == 'normal']
+                if self.current_tab == -1:
+                    self._show(tab)
 
     def tabs(self):
         """Return the tuple of visible tab ids in the order of display."""
         return tuple(self._visible_tabs)
+
+    def tab_bind(self, tab, sequence=None, func=None, add=None, bind_all=True):
+        """
+        Bind to the TAB label at event SEQUENCE a call to function FUNC.
+
+        An additional boolean parameter ADD specifies whether FUNC will be
+        called additionally to the other bound function or whether it will
+        replace the previous function. See bind for the return value.
+
+        If BIND_ALL is true, bind both the Frame and the Label of the tab,
+        otherwise, bind only to the Frame.
+        """
+        self._tab_labels[tab].bind(sequence, func, add, bind_all)
+
+    def tab_unbind(self, tab, sequence, funcids=(None, None)):
+        """Unbind for the TAB label for event SEQUENCE."""
+        self._tab_labels[tab].unbind(sequence, funcids)
+

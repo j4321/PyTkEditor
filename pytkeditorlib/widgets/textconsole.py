@@ -35,16 +35,16 @@ import logging
 
 import jedi
 
-from pytkeditorlib.utils.constants import SERVER_CERT, CLIENT_CERT, CONFIG,\
-    MAGIC_COMMANDS, EXTERNAL_COMMANDS, get_screen, PathCompletion, glob_rel, \
+from pytkeditorlib.utils.constants import SERVER_CERT, CLIENT_CERT,\
+    MAGIC_COMMANDS, EXTERNAL_COMMANDS, PathCompletion, glob_rel, \
     magic_complete, parse_ansi, format_long_output, ANSI_COLORS_DARK, ANSI_COLORS_LIGHT
-from pytkeditorlib.dialogs import askyesno, Tooltip, CompListbox
+from pytkeditorlib.dialogs import askyesno
 from pytkeditorlib.gui_utils import AutoHideScrollbar, RichEditor
 from .base_widget import BaseWidget
 
 
 class TextConsole(RichEditor):
-
+    """Interactive python console based on a Text widget."""
     def __init__(self, master, history, **kw):
         kw.setdefault('width', 50)
         kw.setdefault('wrap', 'word')
@@ -96,7 +96,8 @@ class TextConsole(RichEditor):
         self._re_expanduser = re.compile(r'(~\w*)')
         self._re_trailing_spaces = re.compile(r' *$', re.MULTILINE)
         self._re_prompt = re.compile(rf'^{re.escape(self._prompt2)}?', re.MULTILINE)
-        self._re_prompts = re.compile(rf'^({re.escape(self._prompt2)}|{re.escape(self._prompt1)})?', re.MULTILINE)
+        self._re_prompts = re.compile(rf'^({re.escape(self._prompt2)}|{re.escape(self._prompt1)})?',
+                                      re.MULTILINE)
 
         self._jedi_comp_external = '\n'.join([f'\ndef {cmd}():\n    pass\n'
                                               for cmd in EXTERNAL_COMMANDS])
@@ -194,9 +195,9 @@ class TextConsole(RichEditor):
             result = self.tk.call(cmd)
             if largs[0] == 'delete':
                 self.tag_remove('sel', '1.0', 'end')
-        except tk.TclError as e:
-            if str(e) not in ['bad text index "input"',
-                              'text doesn\'t contain any characters tagged with "sel"']:
+        except tk.TclError as err:
+            if str(err) not in ['bad text index "input"',
+                                'text doesn\'t contain any characters tagged with "sel"']:
                 logging.exception('TclError')
             return
 
@@ -216,12 +217,12 @@ class TextConsole(RichEditor):
         self.tag_configure('background default', background='')
         self.tag_configure('underline', underline=True)
         self.tag_configure('overstrike', overstrike=True)
-        for c in ANSI_COLORS_LIGHT:
-            self.tag_configure('foreground ' + c, foreground=c)
-            self.tag_configure('background ' + c, background=c)
-        for c in ANSI_COLORS_DARK:
-            self.tag_configure('foreground ' + c, foreground=c)
-            self.tag_configure('background ' + c, background=c)
+        for col in ANSI_COLORS_LIGHT:
+            self.tag_configure('foreground ' + col, foreground=col)
+            self.tag_configure('background ' + col, background=col)
+        for col in ANSI_COLORS_DARK:
+            self.tag_configure('foreground ' + col, foreground=col)
+            self.tag_configure('background ' + col, background=col)
         self.tag_raise('sel')
         self._line_height = Font(self, self.cget('font')).metrics('linespace')
 
@@ -237,6 +238,7 @@ class TextConsole(RichEditor):
             pass
 
     def quit(self, event=None):
+        """Close console."""
         self.history.save()
         try:
             self.after_cancel(self._poll_id)
@@ -251,6 +253,7 @@ class TextConsole(RichEditor):
 
     # --- cut / copy / paste
     def cut(self, event=None):
+        """Cut text (remove prompts)."""
         # copy sel
         txt = self._re_prompts.sub('', self.get('sel.first', 'sel.last'))
         if txt:
@@ -262,6 +265,7 @@ class TextConsole(RichEditor):
         return "break"
 
     def copy(self, event=None):
+        """Copy text (remove prompts)."""
         txt = self._re_prompts.sub('', self.get('sel.first', 'sel.last'))
         if txt:
             self.clipboard_clear()
@@ -269,6 +273,7 @@ class TextConsole(RichEditor):
         return "break"
 
     def paste(self, event=None):
+        """Paste text (adding prompts)."""
         self.delete('sel.first', 'sel.last')
         self.tag_remove('sel', 'sel.first', 'sel.last')
         self.edit_separator()
@@ -281,6 +286,7 @@ class TextConsole(RichEditor):
         return 'break'
 
     def raw_copy(self, event=None):
+        """Copy raw text, namely with the prompts."""
         txt = self.get('sel.first', 'sel.last')
         if txt:
             self.clipboard_clear()
@@ -300,6 +306,7 @@ class TextConsole(RichEditor):
 
     # --- remote python interpreter
     def _shell_init(self):
+        """Initialize python shell."""
         context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
         context.verify_mode = ssl.CERT_REQUIRED
         context.load_cert_chain(certfile=SERVER_CERT)
@@ -314,11 +321,12 @@ class TextConsole(RichEditor):
                    join(dirname(dirname(__file__)), 'utils', 'interactive_console.py'),
                    host, str(port)])
         self.shell_pid = p.pid
-        client, addr = self.shell_socket.accept()
+        client = self.shell_socket.accept()[0]
         self.shell_client = context.wrap_socket(client, server_side=True)
         self.shell_client.setblocking(False)
 
     def shell_restart(self, event=None):
+        """Restart python shell."""
         rep = askyesno('Confirmation', 'Do you really want to restart the console?')
         if rep:
             kill(self.shell_pid, signal.SIGTERM)
@@ -335,11 +343,13 @@ class TextConsole(RichEditor):
             self._shell_init()
 
     def shell_clear(self, event=None):
+        """Clear display."""
         self._delete('banner.last', 'end')
         self.insert('insert', '\n')
         self.prompt()
 
     def shell_interrupt(self):
+        """Interrupt python shell."""
         kill(self.shell_pid, signal.SIGINT)
 
     # --- autocompletion / hints
@@ -351,7 +361,8 @@ class TextConsole(RichEditor):
 
         lines = self.get('insert linestart + %ic' % len(self._prompt1), 'input_end').rstrip('\n')
 
-        session_code = '\n\n'.join([self._jedi_comp_external, self._jedi_comp_extra] + self.history.get_session_hist()) + '\n\n'
+        session_code = '\n\n'.join([self._jedi_comp_external,
+                                    self._jedi_comp_extra] + self.history.get_session_hist()) + '\n\n'
 
         offset = len(session_code.splitlines())
         r, c = tuple(map(int, self.index('insert').split(".")))
@@ -399,6 +410,7 @@ class TextConsole(RichEditor):
 
     # --- bindings
     def _post_menu(self, event):
+        """Display right click menu."""
         if self.tag_ranges('sel'):
             self.menu.entryconfigure('Cut', state='normal')
             self.menu.entryconfigure('Copy', state='normal')
@@ -438,17 +450,17 @@ class TextConsole(RichEditor):
         if self.compare('insert', '<', 'input') and event.keysym not in ['Left', 'Right']:
             self._hist_item = self.history.get_length()
             return 'break'
-        elif self.compare('insert', '>', 'input_end') and event.keysym not in ['Left', 'Right']:
+        if self.compare('insert', '>', 'input_end') and event.keysym not in ['Left', 'Right']:
             self._hist_item = self.history.get_length()
             return 'break'
-        elif self._comp.winfo_ismapped():
+        if self._comp.winfo_ismapped():
             if event.char.isalnum():
                 self._comp_display()
             elif event.keysym not in ['Tab', 'Down', 'Up']:
                 self._comp.withdraw()
         else:
             if (event.char in [' ', ':', ',', ';', '(', '[', '{', ')', ']', '}']
-               or event.keysym in ['BackSpace', 'Left', 'Right']):
+                    or event.keysym in ['BackSpace', 'Left', 'Right']):
                 self.edit_separator()
             self.parse()
 
@@ -456,13 +468,13 @@ class TextConsole(RichEditor):
         if self.compare('insert', '<', 'input'):
             self.mark_set('insert', 'input')
             return 'break'
-        elif self.compare('insert', '>', 'input_end'):
+        if self.compare('insert', '>', 'input_end'):
             self.mark_set('insert', 'input_end')
             return 'break'
-        elif self._comp.winfo_ismapped():
+        if self._comp.winfo_ismapped():
             self._comp.sel_prev()
             return 'break'
-        elif self.index('input linestart') == self.index('insert linestart'):
+        if self.index('input linestart') == self.index('insert linestart'):
             line = self.get('input', 'insert')
             self._hist_match = line
             hist_item = self._hist_item
@@ -484,13 +496,13 @@ class TextConsole(RichEditor):
         if self.compare('insert', '<', 'input'):
             self.mark_set('insert', 'input_end')
             return 'break'
-        elif self.compare('insert', '>', 'input_end'):
+        if self.compare('insert', '>', 'input_end'):
             self.mark_set('insert', 'input_end')
             return 'break'
-        elif self._comp.winfo_ismapped():
+        if self._comp.winfo_ismapped():
             self._comp.sel_next()
             return 'break'
-        elif self.compare('insert lineend', '==', 'input_end'):
+        if self.compare('insert lineend', '==', 'input_end'):
             line = self._hist_match
             self._hist_item += 1
             item = self.history.get_history_item(self._hist_item)
@@ -567,16 +579,15 @@ class TextConsole(RichEditor):
         if self.compare('insert', '<', 'input'):
             self.mark_set('insert', 'input_end')
             return 'break'
-        elif self.compare('insert', '>', 'input_end'):
+        if self.compare('insert', '>', 'input_end'):
             self.mark_set('insert', 'input_end')
             return 'break'
-        else:
-            self.mark_set('insert', 'input_end')
-            self.parse()
-            self.insert('insert', '\n')
-            self.insert('insert', self._prompt2, 'prompt')
-            self.see('input_end')
-            self.eval_current(True)
+        self.mark_set('insert', 'input_end')
+        self.parse()
+        self.insert('insert', '\n')
+        self.insert('insert', self._prompt2, 'prompt')
+        self.see('input_end')
+        self.eval_current(True)
 
     def on_return(self, event=None):
         if self.compare('insert', '<', 'input'):
@@ -627,13 +638,15 @@ class TextConsole(RichEditor):
                 self.delete('insert-1c', 'insert+1c')
             elif text in ["''"]:
                 if 'Token.Literal.String.Single' not in self.tag_names('insert-2c'):
-                    # avoid situation where deleting the 2nd quote in '<text>'' result in deletion of both the 2nd and 3rd quotes
+                    # avoid situation where deleting the 2nd quote in '<text>''
+                    # result in deletion of both the 2nd and 3rd quotes
                     self.delete('insert-1c', 'insert+1c')
                 else:
                     self.delete('insert-1c')
             elif text in ['""']:
                 if 'Token.Literal.String.Double' not in self.tag_names('insert-2c'):
-                    # avoid situation where deleting the 2nd quote in "<text>"" result in deletion of both the 2nd and 3rd quotes
+                    # avoid situation where deleting the 2nd quote in "<text>""
+                    # result in deletion of both the 2nd and 3rd quotes
                     self.delete('insert-1c', 'insert+1c')
                 else:
                     self.delete('insert-1c')
@@ -660,6 +673,7 @@ class TextConsole(RichEditor):
         self.see('input_end')
 
     def prompt(self, result=False):
+        """Insert prompt."""
         if result:
             self.edit_separator()
             self.insert('input_end', self._prompt2, 'prompt')
@@ -688,8 +702,7 @@ class TextConsole(RichEditor):
         res = script.goto_definitions()
         if res:
             return res[-1]
-        else:
-            return None
+        return None
 
     # --- execute
     def execute(self, cmd):
@@ -700,6 +713,7 @@ class TextConsole(RichEditor):
         self.eval_current()
 
     def eval_current(self, auto_indent=False):
+        """Evaluate current prompt."""
         index = self.index('input')
         code = self.get('input', 'insert lineend')
         self.mark_set('insert', 'insert lineend')
@@ -793,7 +807,8 @@ class TextConsole(RichEditor):
             self._poll_id = self.after(100, self._poll_output)
         else:
             if cmd:
-                res, output, err, wait, cwd = eval(cmd)
+                #~res, output, err, wait, cwd = eval(cmd)
+                output = eval(cmd)[1]
                 index = self.index('input linestart -1c')
                 if output.strip():
                     output = format_long_output(output, self["width"])
@@ -850,8 +865,7 @@ class TextConsole(RichEditor):
                     self.history.new_session()
                     self.shell_clear()
                     return
-                else:
-                    self.insert('input_end', err, 'Token.Error')
+                self.insert('input_end', err, 'Token.Error')
 
             if not res and self.compare('insert linestart', '>', 'insert'):
                 self.insert('insert', '\n')
@@ -878,24 +892,6 @@ class TextConsole(RichEditor):
             self._poll_id = self.after(100, self._poll_output)
 
     # --- brackets
-    def auto_close(self, event):
-        sel = self.tag_ranges('sel')
-        if sel:
-            self.insert('sel.first', event.char)
-            self.insert('sel.last', self.autoclose[event.char])
-            self.mark_set('insert', 'sel.last+1c')
-            self.tag_remove('sel', 'sel.first', 'sel.last')
-            self.parse()
-        else:
-            self.clear_highlight()
-            self.insert('insert', event.char, ['Token.Punctuation', 'matching_brackets'])
-            if not self.find_matching_par():
-                self.tag_remove('unmatched_bracket', 'insert-1c')
-                self.insert('insert', self.autoclose[event.char], ['Token.Punctuation', 'matching_brackets'])
-                self.mark_set('insert', 'insert-1c')
-        self.edit_separator()
-        return 'break'
-
     def auto_close_string(self, event):
         RichEditor.auto_close_string(self, event)
         self.parse()
@@ -903,6 +899,7 @@ class TextConsole(RichEditor):
 
 
 class ConsoleFrame(BaseWidget):
+    """Console widget."""
     def __init__(self, master, history, **kw):
         BaseWidget.__init__(self, master, 'Console', **kw)
         self.columnconfigure(0, weight=1)
@@ -937,10 +934,3 @@ class ConsoleFrame(BaseWidget):
         else:
             self.console.configure(cursor='xterm')
             self.configure(cursor='')
-
-
-
-
-
-
-

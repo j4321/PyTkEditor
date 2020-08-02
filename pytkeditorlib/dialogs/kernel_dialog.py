@@ -29,7 +29,7 @@ if JUPYTER:
 
 
 class SelectKernel(Toplevel):
-    """About Toplevel."""
+    """Kernel selection Toplevel."""
     def __init__(self, master):
         """Create the Toplevel to select an existing Jupyter kernel."""
         Toplevel.__init__(self, master, class_=master.winfo_class(), padx=10, pady=10)
@@ -63,10 +63,12 @@ class SelectKernel(Toplevel):
         self.grab_set()
 
     def validate(self):
+        """Validate selection."""
         self.selected_kernel = self.entry.get()
         self.destroy()
 
     def select_file(self):
+        """Choose file with filebrowser."""
         filename = askopenfilename(self, "Select connection file",
                                    initialdir=jupyter_runtime_dir(),
                                    defaultextension='.json',
@@ -74,4 +76,3 @@ class SelectKernel(Toplevel):
         if filename:
             self.entry.delete(0, 'end')
             self.entry.insert(0, filename)
-

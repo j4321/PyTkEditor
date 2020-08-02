@@ -57,14 +57,14 @@ class Tooltip(tk.Toplevel):
         frame = ttk.Frame(self, padding=4, style='tooltip.TFrame')
         frame.pack()
 
-        self.im = kwargs.get('image', None)
+        self.image = kwargs.get('image', None)
         title = kwargs.get('title', '')
         titlestyle = kwargs.get('titlestyle', 'title.tooltip.TLabel')
         self.title = ttk.Label(frame, text=title, style=titlestyle)
         if title:
             self.title.pack(fill='x', side='top')
             ttk.Separator(frame, orient='horizontal').pack(fill='x', side='top')
-        self.label = ttk.Label(frame, text=kwargs.get('text', ''), image=self.im,
+        self.label = ttk.Label(frame, text=kwargs.get('text', ''), image=self.image,
                                style='tooltip.TLabel',
                                compound=kwargs.get('compound', 'left'))
         self.label.pack(fill='x', side='bottom')
@@ -72,7 +72,11 @@ class Tooltip(tk.Toplevel):
     def __setitem__(self, key, value):
         self.configure(**{key: value})
 
-    def configure(self, **kwargs):
+    def configure(self, cnf=None, **kw):
+        kwargs = {}
+        if cnf:
+            kwargs.update(cnf)
+        kwargs.update(kw)
         if 'text' in kwargs:
             self.label.configure(text=kwargs.pop('text'))
         if 'title' in kwargs:
@@ -111,14 +115,14 @@ class TooltipTextWrapper:
     def add_tooltip(self, tag, text):
         self.tooltip_text[tag] = text
         id1 = self.text.tag_bind(tag, '<Enter>', lambda e: self._on_enter(e, tag))
-        id2 = self.text.tag_bind(tag, '<Leave>', lambda e: self._on_leave(e, tag))
+        id2 = self.text.tag_bind(tag, '<Leave>', self._on_leave)
         self.tooltip_bind_ids[tag] = (id1, id2)
 
     def _on_enter(self, event, tag):
         if not self.tooltip.winfo_ismapped():
             self._timer_id = event.widget.after(self.delay, self.display_tooltip, tag)
 
-    def _on_leave(self, event, tag):
+    def _on_leave(self, event):
         if self.tooltip.winfo_ismapped():
             x, y = event.widget.winfo_pointerxy()
             try:
@@ -213,8 +217,7 @@ class TooltipNotebookWrapper:
     def cget(self, key):
         if key == 'delay':
             return self._delay
-        else:
-            return self.tooltip.cget(key)
+        return self.tooltip.cget(key)
 
     def configure(self, **kwargs):
         try:
@@ -226,8 +229,8 @@ class TooltipNotebookWrapper:
     def add_tooltip(self, tab, text):
         """Add new widget to wrapper."""
         self.tooltips[tab] = text
-        self.bind_enter_ids[tab] = ttk.Frame.bind(self.notebook._tab_labels[tab], '<Enter>', lambda e: self._on_enter(e, tab))
-        self.bind_leave_ids[tab] = ttk.Frame.bind(self.notebook._tab_labels[tab], '<Leave>', lambda e: self._on_leave(e, tab))
+        self.bind_enter_ids[tab] = self.notebook.tab_bind(tab, '<Enter>', lambda e: self._on_enter(e, tab), bind_all=False)
+        self.bind_leave_ids[tab] = self.notebook.tab_bind(tab, '<Leave>', self._on_leave, bind_all=False)
 
     def set_tooltip_text(self, tab, text):
         """Change tooltip text for given widget."""
@@ -236,8 +239,8 @@ class TooltipNotebookWrapper:
     def remove_all(self):
         """Remove all tooltips."""
         for tab in self.tooltips:
-            ttk.Frame.unbind(self.notebook._tab_labels[tab], '<Enter>', self.bind_enter_ids[tab])
-            ttk.Frame.unbind(self.notebook._tab_labels[tab], '<Leave>', self.bind_leave_ids[tab])
+            self.notebook.tab_unbind(tab, '<Enter>', self.bind_enter_ids[tab])
+            self.notebook.tab_unbind(tab, '<Leave>', self.bind_leave_ids[tab])
         self.tooltips.clear()
         self.bind_enter_ids.clear()
         self.bind_leave_ids.clear()
@@ -246,8 +249,8 @@ class TooltipNotebookWrapper:
         """Remove widget from wrapper."""
         try:
             del self.tooltips[tab]
-            ttk.Frame.unbind(self.notebook._tab_labels[tab], '<Enter>', self.bind_enter_ids[tab])
-            ttk.Frame.unbind(self.notebook._tab_labels[tab], '<Leave>', self.bind_leave_ids[tab])
+            self.notebook.tab_unbind(tab, '<Enter>', self.bind_enter_ids[tab])
+            self.notebook.tab_unbind(tab, '<Leave>', self.bind_leave_ids[tab])
             del self.bind_enter_ids[tab]
             del self.bind_leave_ids[tab]
         except KeyError:
@@ -259,7 +262,7 @@ class TooltipNotebookWrapper:
             self._timer_id = self.notebook.after(self._delay, self.display_tooltip)
             self.current_tab = tab
 
-    def _on_leave(self, event, tab):
+    def _on_leave(self, event):
         """Hide tooltip if visible or cancel tooltip display."""
         if self.tooltip.winfo_ismapped():
             x, y = self.notebook.winfo_pointerxy()
@@ -281,7 +284,7 @@ class TooltipNotebookWrapper:
             return
         x, y = event.widget.winfo_pointerxy()
         try:
-            if not event.widget.winfo_containing(x, y) in self.notebook._tab_labels[self.current_tab].children.values():
+            if event.widget.winfo_containing(x, y) not in self.notebook._tab_labels[self.current_tab].children.values():
                 self.tooltip.withdraw()
         except KeyError:
             self.tooltip.withdraw()
@@ -298,3 +301,4 @@ class TooltipNotebookWrapper:
             x = self.notebook.winfo_pointerx() + 14
             y = self.notebook.winfo_pointery() + 14
             self.tooltip.geometry('+%i+%i' % (x, y))
+

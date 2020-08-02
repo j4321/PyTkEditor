@@ -66,10 +66,10 @@ class OneButtonBox(tk.Toplevel):
         frame.columnconfigure(1, weight=1)
         msg = wrap(message, 50)
         h = len(msg) + 1
-        w = len(max(msg, key=lambda x: len(x)))
+        w = len(max(msg, key=len))
         if h < 3:
             msg = wrap(message, 35)
-            w = len(max(msg, key=lambda x: len(x)))
+            w = len(max(msg, key=len))
             h = len(msg) + 1
 
         theme_name = '{} Theme'.format(CONFIG.get('General', 'theme').capitalize())
@@ -146,14 +146,14 @@ class ShowError(tk.Toplevel):
 
         msg = wrap(message, 50)
         h = len(msg) + 1
-        w = len(max(msg, key=lambda x: len(x)))
+        w = len(max(msg, key=len))
         if not traceback and h < 3:
             msg = wrap(message, 35)
-            w = len(max(msg, key=lambda x: len(x)))
+            w = len(max(msg, key=len))
             h = len(msg) + 1
         if traceback:
             tbk = wrap(traceback, 50)
-            w = max(w, len(max(tbk, key=lambda x: len(x))))
+            w = max(w, len(max(tbk, key=len)))
 
         display = tk.Text(frame, font="TkDefaultFont 10 bold", fg=fg,
                           height=h, width=w, wrap="word")
@@ -476,8 +476,7 @@ def askyesnocancel(title="", message="", parent=None, icon="question"):
     res = askoptions(title, message, parent, icon)
     if res == _('Yes'):
         return True
-    elif res == _('No'):
+    if res == _('No'):
         return False
-    else:
-        return None
+    return None
 

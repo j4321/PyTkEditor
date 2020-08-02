@@ -42,27 +42,29 @@ class About(Toplevel):
         Label(self, image=self.image).grid(row=0, columnspan=2, pady=10)
 
         Label(self,
-              text="{app_name} {version}".format(app_name=APP_NAME, version=__version__)).grid(row=1, columnspan=2)
+              text=f"{APP_NAME} {__version__}").grid(row=1, columnspan=2)
         Label(self, text=_("PyTkEditor - Python IDE")).grid(row=2, columnspan=2, padx=10)
         Label(self, text="Copyright (C) Juliette Monsel 2018-2020").grid(row=3, columnspan=2)
         Label(self, text="j_4321@protonmail.com").grid(row=4, columnspan=2)
-        b = Button(self, text=_("License"), command=self._license)
-        b.grid(row=5, column=0, pady=20, padx=4, sticky='e')
+        btn = Button(self, text=_("License"), command=self._license)
+        btn.grid(row=5, column=0, pady=20, padx=4, sticky='e')
         Button(self, text=_("Close"), command=self.exit).grid(row=5, column=1,
                                                               pady=20, padx=4,
                                                               sticky='w')
 
         self.protocol("WM_DELETE_WINDOW", self.exit)
         self.resizable(0, 0)
-        b.focus_set()
+        btn.focus_set()
         self.grab_set()
 
     def exit(self):
+        """Close dialog."""
         if self.master:
             self.master.focus_set()
         self.destroy()
 
     def _license(self):
+        """Display license."""
         def close():
             self.focus_set()
             fen.destroy()

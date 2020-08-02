@@ -28,6 +28,7 @@ from pytkeditorlib.gui_utils import AutoHideScrollbar, EntryHistory
 
 
 class SearchDialog(tk.Toplevel):
+    """Dialog to search and replace in whole session."""
     def __init__(self, master, text=''):
         tk.Toplevel.__init__(self, master, class_=master.winfo_class(), padx=4, pady=4)
         self.title('Find & replace')
@@ -87,6 +88,7 @@ class SearchDialog(tk.Toplevel):
         self.entry_search.focus_set()
 
     def _show_file(self, event):
+        """Display file corresponding to the selected item."""
         item = self.results.focus()
         try:
             tab, start, end = self.results.item(item, 'values')
@@ -100,6 +102,7 @@ class SearchDialog(tk.Toplevel):
             return
 
     def find(self, event=None):
+        """Find all occurences in whole session."""
         self.results.delete(*self.results.get_children(''))
         pattern = self.entry_search.get()
         self.entry_search.add_to_history(pattern)
@@ -130,6 +133,7 @@ class SearchDialog(tk.Toplevel):
                                         tags='result')
 
     def replace(self):
+        """Search and replace all occurences in whole session."""
         self.find()
         text = self.entry_replace.get()
         self.entry_replace.add_to_history(text)

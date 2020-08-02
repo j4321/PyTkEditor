@@ -183,9 +183,10 @@ class CodeAnalysis(BaseWidget):
             line = f'{line_nb}.0'
             if mtype not in self.tree.get_children():
                 self.tree.insert('', 'end', mtype, text=f' {mtype.capitalize()} ({nb})',
-                                 open=True, image=f'img_menu_dummy')
+                                 open=True, image='img_menu_dummy')
             self.tree.insert(mtype, 'end', text=message, values=(line,))
         self.tree.column('#0', width=max_width, minwidth=max_width)
+
 
 
 
