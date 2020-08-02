@@ -30,6 +30,7 @@ from .base_widget import BaseWidget
 
 
 class CodeAnalysis(BaseWidget):
+    """Widegt to display the static code analysis with pylint."""
     def __init__(self, master, **kw):
         BaseWidget.__init__(self, master, 'Code analysis', **kw)
         self.rowconfigure(1, weight=1)
@@ -93,9 +94,11 @@ class CodeAnalysis(BaseWidget):
         self.tree.tag_configure('empty', foreground=CONFIG.get(theme, 'disabledfg'))
 
     def set_callback(self, fct):
+        """Set click callback."""
         self.callback = fct
 
     def set_file(self, filename, file):
+        """Set analyzed file."""
         if file != self.file:
             self.interrupt()
             if file in self._records:
@@ -107,6 +110,7 @@ class CodeAnalysis(BaseWidget):
         self.file = file
 
     def clear(self):
+        """Clear display."""
         self.tree.delete(*self.tree.get_children())
         self.tree.insert('', 'end', 'global_ev', text='Global evaluation:', tag='heading')
 
@@ -131,21 +135,23 @@ class CodeAnalysis(BaseWidget):
             else:
                 try:
                     prev = '(previous run: {global_note:.1f})'.format(**old_stats)
-                except Exception:
+                except (ValueError, KeyError):
                     prev = ''
                 try:
                     ev = 'Global evaluation: {global_note:.1f} '.format(**stats)
-                except Exception:
+                except (ValueError, KeyError):
                     ev = 'Global evaluation: ?? '
                 label = f'{ev} {prev}'
                 self.populate(msgs, stats, label)
-                nbs = {elt: stats.get(elt, 0) for elt in ['error', 'warning', 'convention', 'refactor']}
+                nbs = {elt: stats.get(elt, 0)
+                       for elt in ['error', 'warning', 'convention', 'refactor']}
                 self._records[self.file] = {'msgs': msgs, 'stats': nbs, 'label': label}
             self.stop_btn.state(['disabled'])
             self.start_btn.state(['!disabled'])
             self.busy(False)
 
     def analyze(self):
+        """Start code analysis."""
         if self.file:
             self.start_btn.state(['disabled'])
             self.busy(True)
@@ -155,15 +161,17 @@ class CodeAnalysis(BaseWidget):
             self._check_finished()
 
     def interrupt(self):
+        """Interrupt code analysis."""
         if self._process:
             self._process.kill()
 
     def populate(self, msgs, stats, label):
+        """Display analysis results."""
         self.tree.delete(*self.tree.get_children())
         self.tree.insert('', 'end', 'global_ev', text=label, tag='heading')
         max_width = max(self.min_width, self.font_heading.measure(label) + 20)
 
-        for elt in ['error', 'warning', 'convention', 'refactor']:
+        for elt in ['error', 'warning', 'convention', 'refactor', 'info']:
             nb = stats.get(elt, 0)
             tags = () if nb else ('empty',)
             self.tree.insert('', 'end', elt, text=f' {elt.capitalize()} ({nb})',
@@ -173,8 +181,12 @@ class CodeAnalysis(BaseWidget):
             message = msg.splitlines()[0]
             max_width = max(max_width, self.font.measure(message) + 40)
             line = f'{line_nb}.0'
+            if mtype not in self.tree.get_children():
+                self.tree.insert('', 'end', mtype, text=f' {mtype.capitalize()} ({nb})',
+                                 open=True, image=f'img_menu_dummy')
             self.tree.insert(mtype, 'end', text=message, values=(line,))
         self.tree.column('#0', width=max_width, minwidth=max_width)
+
 
 
 

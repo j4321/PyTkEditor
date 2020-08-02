@@ -8,36 +8,36 @@
    xmlns:xlink="http://www.w3.org/1999/xlink"
    xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
    xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
-   version="1.1"
-   width="16"
-   height="16"
-   id="svg4027"
-   sodipodi:docname="convention.svg"
-   inkscape:version="1.0 (4035a4fb49, 2020-05-01)"
+   inkscape:export-ydpi="72"
+   inkscape:export-xdpi="72"
    inkscape:export-filename="/home/juliette/Documents/python/PyTkEditor/pytkeditorlib/images/convention.png"
-   inkscape:export-xdpi="96"
-   inkscape:export-ydpi="96">
+   inkscape:version="1.0 (4035a4fb49, 2020-05-01)"
+   sodipodi:docname="convention.svg"
+   id="svg4027"
+   height="16"
+   width="16"
+   version="1.1">
   <sodipodi:namedview
-     inkscape:document-rotation="0"
-     pagecolor="#ffffff"
-     bordercolor="#666666"
-     borderopacity="1"
-     objecttolerance="10"
-     gridtolerance="10"
-     guidetolerance="10"
-     inkscape:pageopacity="0"
-     inkscape:pageshadow="2"
-     inkscape:window-width="1920"
-     inkscape:window-height="1027"
-     id="namedview19"
-     showgrid="false"
-     inkscape:zoom="20.484375"
-     inkscape:cx="18.688215"
-     inkscape:cy="11.743667"
-     inkscape:window-x="0"
-     inkscape:window-y="27"
+     inkscape:current-layer="g894"
      inkscape:window-maximized="1"
-     inkscape:current-layer="g894" />
+     inkscape:window-y="27"
+     inkscape:window-x="0"
+     inkscape:cy="11.743667"
+     inkscape:cx="18.688215"
+     inkscape:zoom="20.484375"
+     showgrid="false"
+     id="namedview19"
+     inkscape:window-height="1027"
+     inkscape:window-width="1920"
+     inkscape:pageshadow="2"
+     inkscape:pageopacity="0"
+     guidetolerance="10"
+     gridtolerance="10"
+     objecttolerance="10"
+     borderopacity="1"
+     bordercolor="#666666"
+     pagecolor="#ffffff"
+     inkscape:document-rotation="0" />
   <metadata
      id="metadata84044">
     <rdf:RDF>
@@ -53,83 +53,87 @@
   <defs
      id="defs4029">
     <linearGradient
-       x1="63.397362"
-       y1="-12.489107"
-       x2="63.397362"
-       y2="5.4675598"
-       id="linearGradient2832"
-       xlink:href="#linearGradient4873"
+       gradientTransform="matrix(0.51455032,0,0,0.51453856,-24.005236,9.8064595)"
        gradientUnits="userSpaceOnUse"
-       gradientTransform="matrix(0.51455032,0,0,0.51453856,-24.005236,9.8064595)" />
+       xlink:href="#linearGradient4873"
+       id="linearGradient2832"
+       y2="5.4675598"
+       x2="63.397362"
+       y1="-12.489107"
+       x1="63.397362" />
     <linearGradient
        id="linearGradient4873">
       <stop
-         id="stop4875"
+         offset="0"
          style="stop-color:#ffffff;stop-opacity:1"
-         offset="0" />
+         id="stop4875" />
       <stop
-         id="stop4877"
+         offset="1"
          style="stop-color:#ffffff;stop-opacity:0"
-         offset="1" />
+         id="stop4877" />
     </linearGradient>
     <radialGradient
-       cx="23.895569"
-       cy="3.9900031"
-       r="20.397499"
-       fx="23.895569"
-       fy="3.9900031"
-       id="radialGradient4023"
-       xlink:href="#linearGradient3242-7-3-8-0-4-58-06"
+       gradientTransform="matrix(0,0.64524082,-0.85170617,0,11.39831,-13.333564)"
        gradientUnits="userSpaceOnUse"
-       gradientTransform="matrix(0,0.64524082,-0.85170617,0,11.39831,-13.333564)" />
+       xlink:href="#linearGradient3242-7-3-8-0-4-58-06"
+       id="radialGradient4023"
+       fy="3.9900031"
+       fx="23.895569"
+       r="20.397499"
+       cy="3.9900031"
+       cx="23.895569" />
     <linearGradient
        id="linearGradient3242-7-3-8-0-4-58-06">
       <stop
-         id="stop3244-5-8-5-6-4-3-8"
+         offset="0"
          style="stop-color:#cdf87e;stop-opacity:1"
-         offset="0" />
+         id="stop3244-5-8-5-6-4-3-8" />
       <stop
-         id="stop3246-9-5-1-5-3-0-7"
+         offset="0.26238"
          style="stop-color:#a2e34f;stop-opacity:1"
-         offset="0.26238" />
+         id="stop3246-9-5-1-5-3-0-7" />
       <stop
-         id="stop3248-7-2-0-7-5-35-9"
+         offset="0.66093999"
          style="stop-color:#68b723;stop-opacity:1"
-         offset="0.66093999" />
+         id="stop3248-7-2-0-7-5-35-9" />
       <stop
-         id="stop3250-8-2-8-5-6-40-4"
+         offset="1"
          style="stop-color:#1d7e0d;stop-opacity:1"
-         offset="1" />
+         id="stop3250-8-2-8-5-6-40-4" />
     </linearGradient>
   </defs>
   <g
-     id="g848"
-     transform="matrix(1.0187995,0,0,1.0187995,-0.15039559,-0.15039559)">
+     transform="matrix(1.0187995,0,0,1.0187995,-0.15039559,-0.15039559)"
+     id="g848">
     <g
-       transform="matrix(1.3087299,0,0,1.3087299,-2.4698394,-2.4698394)"
-       id="g894">
-      <path
-         style="fill:url(#radialGradient4023);fill-opacity:1;stroke:none;stroke-width:1;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
-         id="path2555"
-         d="M 8.0000007,2.5 C 4.9652912,2.5 2.5,4.9652892 2.5,8.0000002 2.5,11.034712 4.9652912,13.500003 8.0000007,13.5 11.034709,13.5 13.500003,11.034712 13.5,8.0000002 13.5,4.9652892 11.034709,2.5 8.0000007,2.5 Z" />
-      <path
-         style="opacity:0.4;fill:none;stroke:url(#linearGradient2832);stroke-width:1;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
-         id="path2463"
-         d="M 12.5,7.9998378 C 12.5,10.485198 10.485132,12.5 8.0000561,12.5 5.5147526,12.5 3.5,10.48518 3.5,7.9998378 3.5,5.5145945 5.5147526,3.5000005 8.0000561,3.5000005 10.485132,3.5000005 12.5,5.5145945 12.5,7.9998378 Z" />
-      <path
-         d="M 8.0000007,2.5 C 4.9652912,2.5 2.5,4.9652892 2.5,8.0000002 2.5,11.034712 4.9652912,13.500003 8.0000007,13.5 11.034709,13.5 13.500003,11.034712 13.5,8.0000002 13.5,4.9652892 11.034709,2.5 8.0000007,2.5 Z"
-         id="path881"
-         style="opacity:0.5;fill:none;fill-opacity:1;stroke:#0f5a00;stroke-width:1;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1" />
+       id="g894"
+       transform="matrix(1.3087299,0,0,1.3087299,-2.4698394,-2.4698394)">
+      <g
+         transform="matrix(0.87499998,0,0,0.87499998,1,1)"
+         id="g1454">
+        <path
+           style="fill:url(#radialGradient4023);fill-opacity:1;stroke:none;stroke-width:1;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
+           id="path2555"
+           d="M 8.0000007,2.5 C 4.9652912,2.5 2.5,4.9652892 2.5,8.0000002 2.5,11.034712 4.9652912,13.500003 8.0000007,13.5 11.034709,13.5 13.500003,11.034712 13.5,8.0000002 13.5,4.9652892 11.034709,2.5 8.0000007,2.5 Z" />
+        <path
+           style="opacity:0.4;fill:none;stroke:url(#linearGradient2832);stroke-width:1;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+           id="path2463"
+           d="M 12.5,7.9998378 C 12.5,10.485198 10.485132,12.5 8.0000561,12.5 5.5147526,12.5 3.5,10.48518 3.5,7.9998378 3.5,5.5145945 5.5147526,3.5000005 8.0000561,3.5000005 10.485132,3.5000005 12.5,5.5145945 12.5,7.9998378 Z" />
+        <path
+           d="M 8.0000007,2.5 C 4.9652912,2.5 2.5,4.9652892 2.5,8.0000002 2.5,11.034712 4.9652912,13.500003 8.0000007,13.5 11.034709,13.5 13.500003,11.034712 13.5,8.0000002 13.5,4.9652892 11.034709,2.5 8.0000007,2.5 Z"
+           id="path881"
+           style="opacity:0.5;fill:none;fill-opacity:1;stroke:#0f5a00;stroke-width:1;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1" />
+      </g>
     </g>
   </g>
   <text
-     xml:space="preserve"
-     style="font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;font-size:12px;line-height:1.25;font-family:'Latin Modern Roman';-inkscape-font-specification:'Latin Modern Roman,  Bold';fill:#fcfcfc;fill-opacity:1;stroke:none"
-     x="2.6273139"
+     id="text852"
      y="12.307924"
-     id="text852"><tspan
-       sodipodi:role="line"
-       id="tspan850"
+     x="2.6273139"
+     style="font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;font-size:12px;line-height:1.25;font-family:'Latin Modern Roman';-inkscape-font-specification:'Latin Modern Roman,  Bold';fill:#fcfcfc;fill-opacity:1;stroke:none"
+     xml:space="preserve"><tspan
+       y="12.307924"
        x="2.6273139"
-       y="12.307924">C</tspan></text>
+       id="tspan850"
+       sodipodi:role="line">C</tspan></text>
 </svg>
