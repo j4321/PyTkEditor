@@ -244,6 +244,7 @@ class RichEditor(RichText):
         self.bind("<bracketright>", self.close_brackets)
         self.bind("<braceright>", self.close_brackets)
 
+        self.bind("<Escape>", self._on_escape)
         self.bind("<KeyRelease>", self._on_key_release)
         self.bind("<KeyRelease-Left>", self._on_key_release_left_right)
         self.bind("<KeyRelease-Right>", self._on_key_release_left_right)
@@ -256,7 +257,11 @@ class RichEditor(RichText):
     def _on_key_release_left_right(self, event):
         self._comp.withdraw()
 
-    def _on_focusout(self, event):
+    def _on_escape(self, event):
+        self._comp.withdraw()
+        self._tooltip.withdraw()
+
+    def _on_focus_out(self, event):
         self._comp.withdraw()
         self._tooltip.withdraw()
         self.clear_highlight()
@@ -305,10 +310,11 @@ class RichEditor(RichText):
     def _jedi_script(self):
         """Return jedi script for insert position."""
         index = self.index('insert')
-        row, col = str(index).split('.')
-        return jedi.Script(self.get('1.0', 'end'), int(row), int(col), 'args_hint.py')
+        row, col = map(int, str(index).split('.'))
+        return jedi.Script(self.get('1.0', 'end'), row, col, 'args_hint.py')
 
     def _args_hint(self, event=None):
+        self._tooltip.configure(text='')
         index = self.index('insert')
         try:
             script = self._jedi_script()
@@ -322,6 +328,8 @@ class RichEditor(RichText):
                 args = res[-1].docstring().splitlines()[0]
             except Exception:
                 # usually caused by an exception raised in Jedi
+                return
+            if args in ['', 'NoneType()']:
                 return
             self._tooltip.configure(text=args)
             xb, yb, w, h = self.bbox('insert')
@@ -401,4 +409,5 @@ class RichEditor(RichText):
             self.mark_set('insert', 'insert-1c')
         self.edit_separator()
         return 'break'
+
 

@@ -69,8 +69,27 @@ class Tooltip(tk.Toplevel):
                                compound=kwargs.get('compound', 'left'))
         self.label.pack(fill='x', side='bottom')
 
+    def __getitem__(self, key):
+        return self.cget(key)
+
     def __setitem__(self, key, value):
         self.configure(**{key: value})
+
+    def deiconify(self):
+        """Only deiconify tooltip if it constains text."""
+        if self['text']:
+            tk.Toplevel.deiconify(self)
+
+    def cget(self, key):
+        if key == 'text':
+            return self.label.cget('text')
+        if key == 'title':
+            return self.title.cget('text')
+        if key == 'image':
+            return self.label.cget('image')
+        if key == 'alpha':
+            return self.attributes('-alpha')
+        return tk.Toplevel.cget(self, key)
 
     def configure(self, cnf=None, **kw):
         kwargs = {}
@@ -301,4 +320,5 @@ class TooltipNotebookWrapper:
             x = self.notebook.winfo_pointerx() + 14
             y = self.notebook.winfo_pointery() + 14
             self.tooltip.geometry('+%i+%i' % (x, y))
+
 

@@ -63,7 +63,6 @@ class EditorText(RichEditor):
 
         # --- regexp
         self._re_paths = re.compile(rf'("|\')(\{sep}\w+)+\{sep}?$')
-        self._re_empty = re.compile(r'^ *$')
         self._re_indent = re.compile(r'^( *)')
         self._re_indents = re.compile(r'^( *)(?=.*\S+.*$)', re.MULTILINE)
         self._re_tab = re.compile(r' {4}$')
@@ -417,14 +416,6 @@ class Editor(ttk.Frame):
 
         self.columnconfigure(2, weight=1)
         self.rowconfigure(0, weight=1)
-
-        # --- regexp
-        self._re_paths = re.compile(rf'("|\')(\{sep}\w+)+\{sep}?$')
-        self._re_empty = re.compile(r'^ *$')
-        self._re_indent = re.compile(r'^( *)')
-        self._re_indents = re.compile(r'^( *)(?=.*\S+.*$)', re.MULTILINE)
-        self._re_tab = re.compile(r' {4}$')
-        self._re_colon = re.compile(r':( *)$')
 
         self._valid_nb = self.register(valide_entree_nb)
 
@@ -1067,6 +1058,7 @@ class Editor(ttk.Frame):
                 self.syntax_issues_menuentries.append((category, m, lambda l=line: self.show_line(l)))
         self.syntax_checks.configure(state='disabled')
         self.syntax_checks.yview_moveto(self.line_nb.yview()[0])
+
 
 
 
