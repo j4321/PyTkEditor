@@ -270,6 +270,7 @@ class RichEditor(RichText):
         self.clear_highlight()
         self._comp.withdraw()
         self._tooltip.withdraw()
+        self.edit_separator()
 
     def _on_left_par(self, event):
         self._args_hint()
@@ -409,5 +410,3 @@ class RichEditor(RichText):
             self.mark_set('insert', 'insert-1c')
         self.edit_separator()
         return 'break'
-
-
