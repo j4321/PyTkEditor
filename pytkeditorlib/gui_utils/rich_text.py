@@ -351,14 +351,12 @@ class RichEditor(RichText):
         if self._comp.winfo_ismapped():
             self._comp.sel_next()
             return "break"
-        self._parse(self.get('insert linestart', 'insert lineend'), 'insert linestart')
 
     def on_up(self, event):
         """Up arrow."""
         if self._comp.winfo_ismapped():
             self._comp.sel_prev()
             return "break"
-        self._parse(self.get('insert linestart', 'insert lineend'), 'insert linestart')
 
     def close_brackets(self, event):
         """Close brackets."""
