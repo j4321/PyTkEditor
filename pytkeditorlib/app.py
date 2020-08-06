@@ -187,6 +187,9 @@ class App(tk.Tk):
         self.menu_file.add_command(label='Save as', command=self.saveas,
                                    image='img_saveas',
                                    accelerator='Ctrl+Alt+S', compound='left')
+        self.menu_file.add_command(label='Save copy as', command=self.editor.save_copy_as,
+                                   image='img_saveas',
+                                   accelerator='Ctrl+Alt+Shift+S', compound='left')
         self.menu_file.add_command(label='Save all', command=self.saveall,
                                    image='img_saveall',
                                    accelerator='Ctrl+Shift+S', compound='left')
@@ -442,7 +445,7 @@ class App(tk.Tk):
         self.bind('<Control-o>', lambda e: self.open())
         self.bind('<Control-Shift-W>', self.editor.closeall)
         self.bind('<Control-Shift-R>', self.search)
-        self.bind('<Control-Shift-S>', self.saveall)
+        self.bind('<Control-Alt-Shift-S>', self.editor.save_copy_as)
         self.bind('<Control-Alt-s>', self.saveas)
         self.bind('<Control-Shift-E>', self.switch_to_editor)
         self.bind('<Control-Shift-P>', lambda e: self.switch_to_widget(e, self.widgets['Console']))
@@ -1489,6 +1492,7 @@ class App(tk.Tk):
                 self.menu_errors.add_command(label=msg,
                                              image=self._images[category],
                                              compound='left', command=cmd)
+
 
 
 

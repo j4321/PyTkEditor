@@ -444,6 +444,24 @@ class EditorNotebook(Notebook):
             return True
         return False
 
+    def save_copy_as(self, event=None):
+        tab = self.current_tab
+        file = self.files.get(tab, '')
+        if file:
+            initialdir, initialfile = os.path.split(file)
+        else:
+            initialdir, initialfile = '', 'new.py'
+        name = asksaveasfilename(self, title='Save Copy As',
+                                 initialfile=initialfile,
+                                 initialdir=initialdir, defaultext='.py',
+                                 filetypes=[('Python', '*.py'), ('All files', '*')])
+        if name:
+            try:
+                with open(name, 'w') as f:
+                    f.write(self.get(tab))
+            except PermissionError as e:
+                showerror("Error", f"PermissionError: {e.strerror}: {file}", parent=self)
+
     # --- goto
     def goto_line(self):
         if self.current_tab >= 0:
@@ -559,3 +577,4 @@ the external terminal configuration in the settings.",
         tab = self.current_tab
         if tab >= 0:
             self._tabs[self.current_tab].choose_color()
+
