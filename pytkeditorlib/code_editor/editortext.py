@@ -56,7 +56,6 @@ class EditorText(RichEditor):
 
         # --- regexp
         self._re_paths = re.compile(rf'("|\')(\{sep}\w+)+\{sep}?$')
-        self._re_indent = re.compile(r'^( *)')
         self._re_indents = re.compile(r'^( *)(?=.*\S+.*$)', re.MULTILINE)
         self._re_tab = re.compile(r' {4}$')
         self._re_colon = re.compile(r':( *)$')
@@ -124,23 +123,19 @@ class EditorText(RichEditor):
                 pass # jedi raised an exception
         return comp
 
-    def _get_indent(self):
-        """Get current indentation depth."""
-        line_nb, col = [int(i) for i in str(self.index('insert')).split('.')]
+    def _indent_forward(self):
+        """Return the adequate indentation."""
+        line_nb, col = map(int, str(self.index('insert')).split('.'))
         if line_nb == 1:
             return '    '
         line_nb -= 1
         prev_line = self.get('%i.0' % line_nb, '%i.end' % line_nb)
         line = self.get('insert linestart', 'insert lineend')
-        res = self._re_indent.match(line)
-        if res.end() < col:
-            return '    '
-        indent_prev = len(self._re_indent.match(prev_line).group())
-        indent = len(res.group())
+        indent_prev = len(prev_line) - len(prev_line.lstrip())
+        indent = len(line) - len(line.lstrip())
         if indent < indent_prev:
             return ' ' * (indent_prev - indent)
-        else:
-            return '    '
+        return '    '
 
     def undo(self, event=None):
         try:
@@ -214,29 +209,62 @@ class EditorText(RichEditor):
         elif self.filetype == 'Python':
             txt = self.get('insert linestart', 'insert')
             if force_indent:
-                self.insert('insert linestart', self._get_indent())
+                self.insert('insert linestart', self._indent_forward())
             elif txt == ' ' * len(txt):
-                self.insert('insert', self._get_indent())
+                self.insert('insert', self._indent_forward())
             else:
                 self._comp_display()
         else:
             self.insert('insert', '\t')
         return "break"
 
+    def _unindent_single_line(self, line_nb):
+        if line_nb == 1:
+            line = self.get('%i.0' % line_nb, '%i.end' % line_nb)
+            indent_prev = -5
+        else:
+            prev_line, line = self.get('%i.0' % (line_nb - 1), '%i.end' % line_nb).splitlines()
+            indent_prev = len(prev_line) - len(prev_line.lstrip())
+        indent = len(line) - len(line.lstrip())
+        if not indent:
+            return
+        diff = indent - indent_prev
+        if 0 < diff <= 4:  # align current line with above line
+            self.delete('%i.0' % line_nb, '%i.%i' % (line_nb, diff))
+        else:
+            dedent = indent % 4  # if indent not multiple of 4, correct it
+            if not dedent:  # ident is a multiple of 4
+                dedent = 4
+            self.delete('%i.0' % line_nb, '%i.%i' % (line_nb, dedent))
+
+    def _unindent_block(self, start_line, end_line):
+        text = self.get('%i.0' % start_line, '%i.end' % end_line)
+        # minimal indent of the block (neglecting non indented lines):
+        try:
+            indent = len(min(self._re_indents.findall(text)))
+        except ValueError:
+            return  # no line is indented
+        dedent = indent % 4  # fix indent if not multiple of 4
+        if not dedent:  # indent is a multiple of 4
+            dedent = 4
+        for line_nb, line in enumerate(text.splitlines(), start_line):
+            nb_spaces = min(len(line) - len(line.lstrip()), dedent)
+            self.delete('%i.0' % line_nb, '%i.%i' % (line_nb, nb_spaces))
+
     def unindent(self, event=None):
         self.edit_separator()
         sel = self.tag_ranges('sel')
-        if sel:
-            start = str(self.index('sel.first'))
-            end = str(self.index('sel.last'))
+        if not sel:
+            self._unindent_single_line(int(str(self.index('insert')).split('.')[0]))
+            return "break"
+
+        start_line = int(str(self.index('sel.first')).split('.')[0])
+        end_line = int(str(self.index('sel.last')).split('.')[0])
+
+        if end_line > start_line:  # block unindent
+            self._unindent_block(start_line, end_line)
         else:
-            start = str(self.index('insert'))
-            end = str(self.index('insert'))
-        start_line = int(start.split('.')[0])
-        end_line = int(end.split('.')[0]) + 1
-        for line in range(start_line, end_line):
-            if self.get('%i.0' % line, '%i.4' % line) == '    ':
-                self.delete('%i.0' % line, '%i.4' % line)
+            self._unindent_single_line(start_line)
         return "break"
 
     def on_return(self, event):
@@ -248,18 +276,35 @@ class EditorText(RichEditor):
         sel = self.tag_ranges('sel')
         if sel:
             self.delete('sel.first', 'sel.last')
-        index = self.index('insert linestart')
-        t = self.get("insert linestart", "insert")
-        self.parse(t, index)
-        indent = self._re_indent.match(t).group()
-        colon = self._re_colon.search(t)
-        if colon:
-            nb_spaces = len(colon.groups()[0])
-            if len(colon.group()) > 1:
-                self.delete(f'insert-{nb_spaces}c', 'insert')
-            indent = indent + '    '
+        line_start = self.get("insert linestart", "insert")
+        line_end = self.get("insert", "insert lineend").lstrip() # remove leading spaces
+        self.parse(line_start, self.index('insert linestart'))
+        # find opening bracket if any on the line
+        line_start_r = line_start[::-1]
+        bracket_index = None
+        for match in re.finditer(r'(\(|\[|\{)', line_start_r):
+            open_char = match.group()
+            close_char = self.autoclose[open_char]
+            sub_str = line_start_r[:match.start() + 1]
+            if sub_str.count(open_char) > sub_str.count(close_char):
+                bracket_index = len(line_start_r) - match.start()
+                break
+        if bracket_index is not None:
+            indent = bracket_index * ' '
+        else:
+            indent = (len(line_start) - len(line_start.lstrip())) * ' '
+            colon = self._re_colon.search(line_start)
+            if colon:
+                nb_spaces = len(colon.groups()[0])
+                if len(colon.group()) > 1:
+                    self.delete(f'insert-{nb_spaces}c', 'insert')
+                indent = indent + '    '
 
-        self.insert('insert', '\n' + indent)
+
+        self.replace('insert', 'insert lineend', f'\n{indent}')
+        index = self.index('insert')
+        self.insert('insert', line_end)
+        self.mark_set('insert', index)
         self.master.update_nb_lines()
         # update whole syntax highlighting
         self.parse_part()
@@ -271,6 +316,7 @@ class EditorText(RichEditor):
         sel = self.tag_ranges('sel')
         if sel:
             self.delete('sel.first', 'sel.last')
+
         else:
             text = self.get('insert-1c', 'insert+1c')
             linestart = self.get('insert linestart', 'insert')
@@ -400,6 +446,7 @@ class EditorText(RichEditor):
             self.edit_separator()
             self.replace('sel.first', 'sel.last',
                          self.get('sel.first', 'sel.last').lower())
+
 
 
 

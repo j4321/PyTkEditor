@@ -102,8 +102,6 @@ class TextConsole(RichEditor):
         self._jedi_comp_external = '\n'.join([f'\ndef {cmd}():\n    pass\n'
                                               for cmd in EXTERNAL_COMMANDS])
         self._jedi_comp_extra = ''
-        #~self._comp = CompListbox(self)
-        #~self._comp.set_callback(self._comp_sel)
 
         # --- shell socket
         self._shell_init()
