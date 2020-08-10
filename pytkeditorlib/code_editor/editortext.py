@@ -113,14 +113,14 @@ class EditorText(RichEditor):
             if len(paths) == 1 and paths[0] == before_completion:
                 return
             comp = [PathCompletion(before_completion, path) for path in paths]
-
         # --- jedi code autocompletion
         if not comp:
             row, col = str(self.index('insert')).split('.')
             try:
                 script = jedi.Script(self.get('1.0', 'end'), int(row), int(col), self.master.file)
                 comp = script.completions()
-            except Exception:
+            except Exception as e:
+                print(e)
                 pass # jedi raised an exception
         return comp
 
@@ -400,3 +400,6 @@ class EditorText(RichEditor):
             self.edit_separator()
             self.replace('sel.first', 'sel.last',
                          self.get('sel.first', 'sel.last').lower())
+
+
+

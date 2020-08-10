@@ -58,7 +58,7 @@ class TextConsole(RichEditor):
 
         self._line_height = 17
 
-        self._inspect_obj = '', None
+        self.inspect_obj = '', None
 
         self.cwd = getcwd()  # console current working directory
 
@@ -134,7 +134,6 @@ class TextConsole(RichEditor):
         self.bind('<Control-Shift-C>', self.raw_copy)
         self.bind('<Control-y>', self.redo)
         self.bind('<Control-z>', self.undo)
-        self.bind("<Control-i>", self.inspect)
         self.bind("<Control-l>", self.shell_clear)
         self.bind("<Control-period>", self.shell_restart)
         self.bind('<<Cut>>', self.cut)
@@ -683,16 +682,6 @@ class TextConsole(RichEditor):
         self.mark_set('input', 'input_end')
 
     # --- docstrings
-    def inspect(self, event=None):
-        if self.tag_ranges('sel'):
-            obj = self.get('sel.first wordstart', 'sel.first wordend')
-        else:
-            obj = self.get('insert wordstart', 'insert wordend')
-        if obj[0].isalpha():
-            self._inspect_obj = obj, "Console"
-            self.event_generate('<<Inspect>>')
-        return "break"
-
     def get_docstring(self, obj):
         session_code = self._jedi_comp_extra + '\n\n'.join(self.history.get_session_hist()) + '\n\n'
         script = jedi.Script(session_code + obj,
@@ -934,3 +923,4 @@ class ConsoleFrame(BaseWidget):
         else:
             self.console.configure(cursor='xterm')
             self.configure(cursor='')
+

@@ -243,13 +243,13 @@ class RichEditor(RichText):
         self.bind("<parenright>", self.close_brackets)
         self.bind("<bracketright>", self.close_brackets)
         self.bind("<braceright>", self.close_brackets)
-
         self.bind("<Escape>", self._on_escape)
         self.bind("<KeyRelease>", self._on_key_release)
         self.bind("<KeyRelease-Left>", self._on_key_release_left_right)
         self.bind("<KeyRelease-Right>", self._on_key_release_left_right)
         self.bind("<Down>", self.on_down)
         self.bind("<Up>", self.on_up)
+        self.bind("<Control-i>", self.inspect)
 
     def _on_key_release(self, event):
         pass  # to be overriden in subclass
@@ -346,6 +346,16 @@ class RichEditor(RichText):
             self._tooltip.geometry('+%i+%i' % (x, y))
             self._tooltip.deiconify()
 
+    def inspect(self, event=None):
+        if self.tag_ranges('sel'):
+            obj = self.get('sel.first linestart', 'sel.first wordend').split()[-1]
+        else:
+            obj = self.get('insert wordstart', 'insert wordend')
+        if obj[0].isalpha():
+            self.inspect_obj = obj, self.wtype
+            self.event_generate('<<Inspect>>')
+        return "break"
+
     def on_down(self, event):
         """Down arrow."""
         if self._comp.winfo_ismapped():
@@ -408,3 +418,5 @@ class RichEditor(RichText):
             self.mark_set('insert', 'insert-1c')
         self.edit_separator()
         return 'break'
+
+

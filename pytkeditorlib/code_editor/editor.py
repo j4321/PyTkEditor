@@ -167,7 +167,7 @@ class Editor(ttk.Frame):
         self.filetype = 'Python' if (not file or file.endswith('.py')) else 'Other'
 
         # --- bindings
-        self.text.bind("<Control-i>", self.inspect)
+        #~self.text.bind("<Control-i>", self.inspect)
         self.text.bind("<Control-Shift-C>", self.choose_color)
         self.text.bind("<Control-Return>", self.on_ctrl_return)
         self.text.bind("<Shift-Return>", self.on_shift_return)
@@ -585,16 +585,6 @@ class Editor(ttk.Frame):
         else:
             return None
 
-    def inspect(self, event):
-        if self.text.tag_ranges('sel'):
-            obj = self.text.get('sel.first wordstart', 'sel.first wordend')
-        else:
-            obj = self.text.get('insert wordstart', 'insert wordend')
-        if obj[0].isalpha():
-            self._inspect_obj = obj, "Editor"
-            self.event_generate('<<Inspect>>')
-        return "break"
-
     # --- text edit
     def delete(self, index1, index2=None):
         self.text.edit_separator()
@@ -691,3 +681,4 @@ class Editor(ttk.Frame):
                 self.syntax_issues_menuentries.append((category, m, lambda l=line: self.show_line(l)))
         self.syntax_checks.configure(state='disabled')
         self.syntax_checks.yview_moveto(self.line_nb.yview()[0])
+

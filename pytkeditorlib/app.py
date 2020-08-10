@@ -1086,7 +1086,7 @@ class App(tk.Tk):
     def show_help(self, event):
         help = self.widgets['Help']
         try:
-            help.inspect(*event.widget._inspect_obj)
+            help.inspect(*event.widget.inspect_obj)
         except AttributeError:
             return
         self.right_nb.select(help)
@@ -1492,6 +1492,7 @@ class App(tk.Tk):
                 self.menu_errors.add_command(label=msg,
                                              image=self._images[category],
                                              compound='left', command=cmd)
+
 
 
 

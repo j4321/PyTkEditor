@@ -111,9 +111,9 @@ class TooltipTextWrapper:
     """Tooltip wrapper for a Text widget."""
     def __init__(self, text, delay=1000, **kwargs):
         """
-        Create a Tooltip wrapper for the Treeview tree.
+        Create a Tooltip wrapper for the Text widget.
 
-        This wrapper enables the creation of tooltips for tree's items with all
+        This wrapper enables the creation of tooltips for text's tags with all
         the bindings to make them appear/disappear.
 
         Options:
@@ -320,5 +320,6 @@ class TooltipNotebookWrapper:
             x = self.notebook.winfo_pointerx() + 14
             y = self.notebook.winfo_pointery() + 14
             self.tooltip.geometry('+%i+%i' % (x, y))
+
 
 
