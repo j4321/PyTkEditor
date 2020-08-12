@@ -29,6 +29,7 @@ import jedi
 
 from pytkeditorlib.gui_utils import RichEditor
 from pytkeditorlib.utils.constants import CONFIG, PathCompletion
+from pytkeditorlib.dialogs import showerror
 
 
 class EditorText(RichEditor):
@@ -38,6 +39,8 @@ class EditorText(RichEditor):
         self.parse = self._parse
 
         self.filetype = 'Python'
+
+        self._tcl_error_msg = ''
 
         # --- bindings
         self.bind("<<Paste>>", self.on_paste)
@@ -70,9 +73,13 @@ class EditorText(RichEditor):
 
         try:
             result = self.tk.call(cmd)
-        except tk.TclError:
+        except tk.TclError as e:
             logging.exception('TclError')
-            return
+            tcl_error_msg = str(e)
+            print(tcl_error_msg)
+            if tcl_error_msg.startswith("couldn't compile regular expression pattern"):
+                showerror("Error", f"Invalid regular expression: {tcl_error_msg.split(':')[1]}.")
+            return ''
 
         if args[0] == 'delete':
             self.master.update_nb_lines()
@@ -446,6 +453,7 @@ class EditorText(RichEditor):
             self.edit_separator()
             self.replace('sel.first', 'sel.last',
                          self.get('sel.first', 'sel.last').lower())
+
 
 
 

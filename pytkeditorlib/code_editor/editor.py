@@ -682,3 +682,4 @@ class Editor(ttk.Frame):
         self.syntax_checks.configure(state='disabled')
         self.syntax_checks.yview_moveto(self.line_nb.yview()[0])
 
+
