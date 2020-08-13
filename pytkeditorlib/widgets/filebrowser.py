@@ -49,14 +49,14 @@ class Filebrowser(BaseWidget):
                                      command=self.browse_backward)
         self.b_forward = ttk.Button(frame_btn, image='img_right', padding=0,
                                     command=self.browse_forward)
-        self.b_backward.pack(side='left', padx=2)
-        self.b_forward.pack(side='left', padx=2)
-        self.b_up.pack(side='left', padx=2)
+        self.b_backward.pack(side='left')
+        self.b_forward.pack(side='left', padx=4)
+        self.b_up.pack(side='left')
         self.b_forward.state(['disabled'])
         self.b_backward.state(['disabled'])
 
         ttk.Button(frame_btn, image='img_properties', padding=0,
-                   command=self.edit_filter).pack(side='right', padx=2)
+                   command=self.edit_filter).pack(side='right')
 
         # --- filetree
         self.filetree = ttk.Treeview(self, show='tree', selectmode='none',
@@ -214,3 +214,4 @@ class Filebrowser(BaseWidget):
             self.history_index = -1
         if history:
             self.history_add(path)
+

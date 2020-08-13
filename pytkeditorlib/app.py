@@ -38,7 +38,7 @@ from pygments.formatters import HtmlFormatter
 from PIL import Image, ImageTk
 
 from pytkeditorlib.code_editor import EditorNotebook
-from pytkeditorlib.utils.constants import IMAGES, CONFIG, IM_CLOSE, IM_SELECTED
+from pytkeditorlib.utils.constants import IMAGES, CONFIG, IM_CLOSE, IM_SELECTED, IM_UP, IM_LEFT, IM_RIGHT
 from pytkeditorlib.utils import constants as cst
 from pytkeditorlib.utils import check_file
 from pytkeditorlib.dialogs import showerror, About, Config, SearchDialog, \
@@ -68,6 +68,9 @@ class App(tk.Tk):
         self._im_close = tk.PhotoImage(name='img_close', master=self)
         self._im_close_menu = ImageTk.PhotoImage(Image.new('RGBA', (18, 18)), name='img_close_menu', master=self)
         self._im_selected = tk.PhotoImage(name='img_selected', master=self)
+        self._im_up = tk.PhotoImage(name='img_up', master=self)
+        self._im_left = tk.PhotoImage(name='img_left', master=self)
+        self._im_right = tk.PhotoImage(name='img_right', master=self)
         self.iconphoto(True, 'img_icon')
 
         self.option_add('*Menu.borderWidth', 1)
@@ -531,6 +534,9 @@ class App(tk.Tk):
         img2.paste(img, (d, d))
         self._im_close_menu.paste(img2)
         self._im_selected.configure(file=IM_SELECTED.format(theme=theme_name))
+        self._im_up.configure(file=IM_UP.format(theme=theme_name))
+        self._im_left.configure(file=IM_LEFT.format(theme=theme_name))
+        self._im_right.configure(file=IM_RIGHT.format(theme=theme_name))
 
         # --- configuration dict
         button_style_config = {'bordercolor': theme['bordercolor'],
@@ -652,6 +658,7 @@ class App(tk.Tk):
         style.configure("url.TLabel",
                         foreground="light" * (theme_name == 'dark') + "blue")
         style.configure("txt.TFrame", background=theme['fieldbg'])
+        style.configure("txt.TLabel", background=theme['fieldbg'])
         style.layout('Down.TButton',
                      [('Button.padding',
                        {'sticky': 'nswe',
@@ -1492,6 +1499,7 @@ class App(tk.Tk):
                 self.menu_errors.add_command(label=msg,
                                              image=self._images[category],
                                              compound='left', command=cmd)
+
 
 
 
