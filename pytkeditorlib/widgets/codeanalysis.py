@@ -25,6 +25,7 @@ from tkinter.font import Font
 
 from pytkeditorlib.utils.constants import CONFIG
 from pytkeditorlib.gui_utils import AutoHideScrollbar
+from pytkeditorlib.dialogs import TooltipWrapper
 from pytkeditorlib.utils.syntax_check import pylint_check
 from .base_widget import BaseWidget
 
@@ -35,6 +36,8 @@ class CodeAnalysis(BaseWidget):
         BaseWidget.__init__(self, master, 'Code analysis', **kw)
         self.rowconfigure(1, weight=1)
         self.columnconfigure(0, weight=1)
+
+        tooltips = TooltipWrapper(self)
 
         header = ttk.Frame(self)
         header.columnconfigure(0, weight=1)
@@ -48,6 +51,8 @@ class CodeAnalysis(BaseWidget):
         self.start_btn.grid(row=0, column=1, sticky='e', padx=2)
         self.stop_btn.grid(row=0, column=2, padx=(0, 4))
         self.stop_btn.state(['disabled'])
+        tooltips.add_tooltip(self.start_btn, 'Run analysis')
+        tooltips.add_tooltip(self.stop_btn, 'Stop current analysis')
 
         # --- result tree
         self.tree = ttk.Treeview(self, show='tree', selectmode='none',
@@ -186,6 +191,7 @@ class CodeAnalysis(BaseWidget):
                                  open=True, image='img_menu_dummy')
             self.tree.insert(mtype, 'end', text=message, values=(line,))
         self.tree.column('#0', width=max_width, minwidth=max_width)
+
 
 
 

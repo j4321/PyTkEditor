@@ -1,4 +1,3 @@
-#! /usr/bin/python3
 # -*- coding: utf-8 -*-
 """
 PyTkEditor - Python IDE
@@ -107,125 +106,35 @@ class Tooltip(tk.Toplevel):
         tk.Toplevel.configure(self, **kwargs)
 
 
-class TooltipTextWrapper:
-    """Tooltip wrapper for a Text widget."""
-    def __init__(self, text, delay=1000, **kwargs):
+class TooltipBaseWrapper:
+    """Base class for tooltip wrapper."""
+    def __init__(self, master, delay=1000, **kwargs):
         """
-        Create a Tooltip wrapper for the Text widget.
-
-        This wrapper enables the creation of tooltips for text's tags with all
-        the bindings to make them appear/disappear.
+        Create a Tooltip wrapper with parent master.
 
         Options:
-            * text: wrapped Text
+
             * delay: hover delay before displaying the tooltip (ms)
             * all keyword arguments of a Tooltip
-        """
-        self.text = text
-        self.delay = int(delay)
-        self._timer_id = ''
-        self.tooltip_text = {}
-        self.tooltip_bind_ids = {}
-        self.tooltip = Tooltip(text, **kwargs)
-        self.tooltip.withdraw()
-
-        self.tooltip.bind('<Leave>', self._on_leave_tooltip)
-
-    def add_tooltip(self, tag, text):
-        self.tooltip_text[tag] = text
-        id1 = self.text.tag_bind(tag, '<Enter>', lambda e: self._on_enter(e, tag))
-        id2 = self.text.tag_bind(tag, '<Leave>', self._on_leave)
-        self.tooltip_bind_ids[tag] = (id1, id2)
-
-    def _on_enter(self, event, tag):
-        if not self.tooltip.winfo_ismapped():
-            self._timer_id = event.widget.after(self.delay, self.display_tooltip, tag)
-
-    def _on_leave(self, event):
-        if self.tooltip.winfo_ismapped():
-            x, y = event.widget.winfo_pointerxy()
-            try:
-                if event.widget.winfo_containing(x, y) != self.tooltip:
-                    self.tooltip.withdraw()
-            except KeyError:
-                self.tooltip.withdraw()
-        else:
-            try:
-                event.widget.after_cancel(self._timer_id)
-            except ValueError:
-                pass
-
-    def _on_leave_tooltip(self, event):
-        x, y = event.widget.winfo_pointerxy()
-        try:
-            if event.widget.winfo_containing(x, y) != self.tooltip:
-                self.tooltip.withdraw()
-        except KeyError:
-            self.tooltip.withdraw()
-
-    def display_tooltip(self, tag):
-        self.tooltip['text'] = self.tooltip_text[tag]
-        self.tooltip.update_idletasks()
-        xb, yb, w, h = self.text.bbox(self.text.tag_ranges(tag)[-1])
-        xr = self.text.winfo_rootx()
-        yr = self.text.winfo_rooty()
-        ht = self.tooltip.winfo_reqheight()
-        screen = get_screen(xr, yr)
-        y = yr + yb + h
-        x = xr + xb + w
-        if y + ht > screen[3]:
-            y = yr + yb - ht
-
-        self.tooltip.geometry('+%i+%i' % (x, y))
-        self.tooltip.deiconify()
-
-    def reset(self):
-        for tag, (id1, id2) in self.tooltip_bind_ids.items():
-            self.text.tag_unbind(tag, '<Enter>', id1)
-            self.text.tag_unbind(tag, '<Leave>', id2)
-        self.tooltip_text.clear()
-        self.tooltip_bind_ids.clear()
-
-
-class TooltipNotebookWrapper:
-    """
-    Tooltip wrapper widget handle tooltip display when the mouse hovers over
-    widgets.
-    """
-    def __init__(self, notebook, **kwargs):
-        """
-        Construct a Tooltip wrapper with parent master.
-
-        Keyword Options
-        ---------------
-
-        Tooltip options,
-
-        delay: time (ms) the mouse has to stay still over the widget before
-        the Tooltip is displayed.
 
         """
-        self.tooltips = {}  # {widget name: tooltip text, ...}
+        self.master = master
+        self.tooltips = {}  # {object name: tooltip text, ...}
         # keep track of binding ids to cleanly remove them
-        self.bind_enter_ids = {}  # {widget name: bind id, ...}
-        self.bind_leave_ids = {}  # {widget name: bind id, ...}
+        self.bind_enter_ids = {}  # {object name: bind id, ...}
+        self.bind_leave_ids = {}  # {object name: bind id, ...}
 
         # time delay before displaying the tooltip
-        self._delay = 1000
+        self._delay = int(delay)
         self._timer_id = None
 
-        self.notebook = notebook
-
-        self.tooltip = Tooltip(notebook)
+        self.tooltip = Tooltip(master, **kwargs)
         self.tooltip.withdraw()
-        # widget currently under the mouse if among wrapped widgets:
-        self.current_tab = None
 
-        self.configure(**kwargs)
-
-        self.config = self.configure
+        self._current = None
 
         self.tooltip.bind('<Leave>', self._on_leave_tooltip)
+        self.tooltip.bind('<Destroy>', self.quit)  # cleanly remove all bindings and scheduled callbacks
 
     def __setitem__(self, key, value):
         self.configure(**{key: value})
@@ -245,81 +154,202 @@ class TooltipNotebookWrapper:
             raise ValueError('expected integer for the delay option.')
         self.tooltip.configure(**kwargs)
 
-    def add_tooltip(self, tab, text):
-        """Add new widget to wrapper."""
-        self.tooltips[tab] = text
-        self.bind_enter_ids[tab] = self.notebook.tab_bind(tab, '<Enter>', lambda e: self._on_enter(e, tab), bind_all=False)
-        self.bind_leave_ids[tab] = self.notebook.tab_bind(tab, '<Leave>', self._on_leave, bind_all=False)
+    def _bind(self, object_id, sequence, function):
+        """
+        Bind to object at event sequence a call to function function.
 
-    def set_tooltip_text(self, tab, text):
-        """Change tooltip text for given widget."""
-        self.tooltips[tab] = text
+        Return identifier
+        """
+        return ''
+
+    def _unbind(self, object_id, sequence, funcid):
+        """Unbind for object for event sequence and delete the associated funcid."""
+
+    @staticmethod
+    def _obj_to_id(obj):
+        """Return id corresponding to object."""
+        return obj
+
+    def _tooltip_pos(self):
+        """Return tooltip position."""
+        x = self.master.winfo_pointerx() + 14
+        y = self.master.winfo_pointery() + 14
+
+        h = self.tooltip.winfo_reqheight()
+        w = self.tooltip.winfo_reqwidth()
+
+        screen = get_screen(*self.tooltip.winfo_pointerxy())
+
+        if y + h > screen[3]:
+            y -= h
+        if x + w > screen[2]:
+            x -= w
+
+        return x, y
+
+    def add_tooltip(self, obj, text):
+        """Add new object to wrapper."""
+        object_id = self._obj_to_id(obj)
+        self.tooltips[object_id] = text
+        self.bind_enter_ids[object_id] = self._bind(object_id, '<Enter>',
+                                                    lambda e: self._on_enter(e, object_id))
+        self.bind_leave_ids[object_id] = self._bind(object_id, '<Leave>',
+                                                    self._on_leave)
+
+    def remove_tooltip(self, object_id):
+        """Remove object from wrapper."""
+        try:
+            del self.tooltips[object_id]
+            self._unbind(object_id, '<Enter>', self.bind_enter_ids[object_id])
+            self._unbind(object_id, '<Leave>', self.bind_leave_ids[object_id])
+            del self.bind_enter_ids[object_id]
+            del self.bind_leave_ids[object_id]
+            if self._current == object_id:
+                self._current = None
+        except KeyError:
+            pass
+
+    def set_tooltip_text(self, object_id, text):
+        """Change tooltip text for given object."""
+        self.tooltips[object_id] = text
 
     def remove_all(self):
         """Remove all tooltips."""
-        for tab in self.tooltips:
-            self.notebook.tab_unbind(tab, '<Enter>', self.bind_enter_ids[tab])
-            self.notebook.tab_unbind(tab, '<Leave>', self.bind_leave_ids[tab])
+        for object_id in self.tooltips:
+            self._unbind(object_id, '<Enter>', self.bind_enter_ids[object_id])
+            self._unbind(object_id, '<Leave>', self.bind_leave_ids[object_id])
         self.tooltips.clear()
         self.bind_enter_ids.clear()
         self.bind_leave_ids.clear()
 
-    def remove_tooltip(self, tab):
-        """Remove widget from wrapper."""
-        try:
-            del self.tooltips[tab]
-            self.notebook.tab_unbind(tab, '<Enter>', self.bind_enter_ids[tab])
-            self.notebook.tab_unbind(tab, '<Leave>', self.bind_leave_ids[tab])
-            del self.bind_enter_ids[tab]
-            del self.bind_leave_ids[tab]
-        except KeyError:
-            pass
-
-    def _on_enter(self, event, tab):
-        """Change current widget and launch timer to display tooltip."""
+    def _on_enter(self, event, object_id):
+        """Change current object and launch timer to display tooltip."""
         if not self.tooltip.winfo_ismapped():
-            self._timer_id = self.notebook.after(self._delay, self.display_tooltip)
-            self.current_tab = tab
+            self._timer_id = self.master.after(self._delay, self.display_tooltip)
+            self._current = object_id
 
     def _on_leave(self, event):
         """Hide tooltip if visible or cancel tooltip display."""
         if self.tooltip.winfo_ismapped():
-            x, y = self.notebook.winfo_pointerxy()
+            x, y = event.widget.winfo_pointerxy()
             try:
-                if self.notebook.winfo_containing(x, y) != self.tooltip:
+                if event.widget.winfo_containing(x, y) != self.tooltip:
                     self.tooltip.withdraw()
             except KeyError:
                 self.tooltip.withdraw()
         else:
             try:
-                self.notebook.after_cancel(self._timer_id)
+                self.master.after_cancel(self._timer_id)
             except ValueError:
                 pass
-        self.current_tab = None
+        self._current = None
 
     def _on_leave_tooltip(self, event):
         """Hide tooltip."""
-        if self.current_tab is None:
-            return
         x, y = event.widget.winfo_pointerxy()
         try:
-            if event.widget.winfo_containing(x, y) not in self.notebook._tab_labels[self.current_tab].children.values():
+            if event.widget.winfo_containing(x, y) != self.tooltip:
                 self.tooltip.withdraw()
         except KeyError:
             self.tooltip.withdraw()
 
     def display_tooltip(self):
         """Display tooltip with text corresponding to current widget."""
-        if self.current_tab is None:
-            return
-        disabled = "disabled" in self.notebook.state()
-
-        if not disabled:
-            self.tooltip['text'] = self.tooltips[self.current_tab]
+        if self._current is not None:
+            self.tooltip['text'] = self.tooltips[self._current]
+            self.tooltip.update_idletasks()
+            self.tooltip.geometry('+%i+%i' % (self._tooltip_pos()))
             self.tooltip.deiconify()
-            x = self.notebook.winfo_pointerx() + 14
-            y = self.notebook.winfo_pointery() + 14
-            self.tooltip.geometry('+%i+%i' % (x, y))
+
+    def quit(self, event=None):
+        """Remove all bindings and cancel timer."""
+        try:
+            self.master.after_cancel(self._timer_id)
+        except ValueError:
+            pass
+        self.remove_all()
 
 
+class TooltipWrapper(TooltipBaseWrapper):
+    """Wrapper for tooltips displayed when the mouse hovers over widgets."""
 
+    def _bind(self, object_id, sequence, function):
+        """
+        Bind to object at event sequence a call to function function.
+
+        Return identifier
+        """
+        widget = self.master.nametowidget(object_id)
+        return widget.bind(sequence, function)
+
+    def _unbind(self, object_id, sequence, funcid):
+        """Unbind for object for event sequence."""
+        widget = self.master.nametowidget(object_id)
+        widget.unbind(sequence, funcid)
+
+    @staticmethod
+    def _obj_to_id(obj):
+        """Return id corresponding to object."""
+        return str(obj)
+
+    def _tooltip_pos(self):
+        """Return tooltip position."""
+        widget = self.master.nametowidget(self._current)
+        x = widget.winfo_pointerx() + 14
+        y = widget.winfo_rooty() + widget.winfo_height() + 2
+
+        h = self.tooltip.winfo_reqheight()
+        w = self.tooltip.winfo_reqwidth()
+
+        screen = get_screen(*self.tooltip.winfo_pointerxy())
+
+        if y + h > screen[3]:
+            y = widget.winfo_rooty() - h
+        if x + w > screen[2]:
+            x = widget.winfo_pointerx() - w
+        return x, y
+
+
+class TooltipTextWrapper(TooltipBaseWrapper):
+    """Tooltip wrapper for a Text widget."""
+
+    def _bind(self, object_id, sequence, function):
+        """
+        Bind to object at event sequence a call to function function.
+
+        Return identifier
+        """
+        return self.master.tag_bind(object_id, sequence, function)
+
+    def _unbind(self, object_id, sequence, funcid):
+        """Unbind for object for event sequence."""
+        self.master.tag_unbind(object_id, sequence, funcid)
+
+    def _tooltip_pos(self):
+        """Return tooltip position."""
+        x_b, y_b, w, h = self.master.bbox(self.master.tag_ranges(self._current)[-1])
+        x_r = self.master.winfo_rootx()
+        y_r = self.master.winfo_rooty()
+        h_t = self.tooltip.winfo_reqheight()
+        screen = get_screen(x_r, y_r)
+        y = y_r + y_b + h
+        x = x_r + x_b + w
+        if y + h_t > screen[3]:
+            y = y_r + y_b - h_t
+        return x, y
+
+
+class TooltipNotebookWrapper(TooltipBaseWrapper):
+    """Tooltip wrapper for a Notebook widget."""
+
+    def _bind(self, object_id, sequence, function):
+        """
+        Bind to object at event sequence a call to function function.
+
+        Return identifier
+        """
+        return self.master.tab_bind(object_id, sequence, function, bind_all=False)
+
+    def _unbind(self, object_id, sequence, funcid):
+        """Unbind for object for event sequence and delete the associated funcid."""
+        self.master.tab_unbind(object_id, sequence, funcid)

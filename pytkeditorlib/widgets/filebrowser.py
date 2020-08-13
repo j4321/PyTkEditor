@@ -28,6 +28,7 @@ import re
 
 from pytkeditorlib.gui_utils import AutoHideScrollbar as Scrollbar
 from pytkeditorlib.utils.constants import CONFIG
+from pytkeditorlib.dialogs import TooltipWrapper
 from .base_widget import BaseWidget
 
 
@@ -39,6 +40,8 @@ class Filebrowser(BaseWidget):
 
         self.history = []
         self.history_index = -1
+
+        tooltips = TooltipWrapper(self)
 
         self.load_filters()
         # --- browsing buttons
@@ -52,11 +55,16 @@ class Filebrowser(BaseWidget):
         self.b_backward.pack(side='left')
         self.b_forward.pack(side='left', padx=4)
         self.b_up.pack(side='left')
+        tooltips.add_tooltip(self.b_up, 'Parent')
+        tooltips.add_tooltip(self.b_forward, 'Next')
+        tooltips.add_tooltip(self.b_backward, 'Previous')
         self.b_forward.state(['disabled'])
         self.b_backward.state(['disabled'])
 
-        ttk.Button(frame_btn, image='img_properties', padding=0,
-                   command=self.edit_filter).pack(side='right')
+        btn_prop = ttk.Button(frame_btn, image='img_properties', padding=0,
+                              command=self.edit_filter)
+        btn_prop.pack(side='right')
+        tooltips.add_tooltip(btn_prop, 'Edit filename filters')
 
         # --- filetree
         self.filetree = ttk.Treeview(self, show='tree', selectmode='none',

@@ -28,4 +28,5 @@ from .kernel_dialog import SelectKernel
 from .messagebox import showerror, showinfo, askokcancel, askyesno, askyesnocancel, askoptions
 from .print import PrintDialog
 from .search import SearchDialog
-from .tooltip import TooltipNotebookWrapper, TooltipTextWrapper, Tooltip
+from .tooltip import TooltipNotebookWrapper, TooltipTextWrapper, Tooltip, TooltipWrapper
+

@@ -30,6 +30,7 @@ import logging
 
 from pytkeditorlib.gui_utils import AutoHideScrollbar, AutoCompleteCombobox2
 from pytkeditorlib.utils.constants import CONFIG
+from pytkeditorlib.dialogs import TooltipWrapper
 from .base_widget import BaseWidget
 
 
@@ -199,6 +200,8 @@ class CodeStructure(BaseWidget):
 
         self._manager = manager
 
+        tooltips = TooltipWrapper(self)
+
         # tree
         self.codetree = CodeTree(self)
         self._sx = AutoHideScrollbar(self, orient='horizontal', command=self.codetree.xview)
@@ -209,14 +212,22 @@ class CodeStructure(BaseWidget):
 
         # header
         header = Frame(self, padding=(1, 2, 1, 1))
-        header.columnconfigure(2, weight=1)
-        Button(header, padding=0, command=self.codetree.expand_all,
-               image='img_expand_all').grid(row=0, column=0)
-        Button(header, padding=0, command=self.codetree.collapse_all,
-               image='img_collapse_all').grid(row=0, column=1, padx=4)
+        header.columnconfigure(3, weight=1)
+        btn_exp = Button(header, padding=0, command=self.codetree.expand_all,
+                         image='img_expand_all')
+        btn_exp.grid(row=0, column=0)
+        tooltips.add_tooltip(btn_exp, 'Expand all')
+        btn_col = Button(header, padding=0, command=self.codetree.collapse_all,
+                         image='img_collapse_all')
+        btn_col.grid(row=0, column=1, padx=4)
+        tooltips.add_tooltip(btn_col, 'Collapse all')
+        self.btn_refresh = Button(header, padding=0, command=lambda: self.event_generate('<<Refresh>>'),
+                                  image='img_refresh')
+        self.btn_refresh.grid(row=0, column=2)
+        tooltips.add_tooltip(self.btn_refresh, 'Refresh')
         self._close_btn = Button(header, style='close.TButton', padding=1,
                                  command=lambda: self.visible.set(False))
-        self._close_btn.grid(row=0, column=2, sticky='e')
+        self._close_btn.grid(row=0, column=3, sticky='e')
 
         self.filename = Label(self, style='txt.TLabel', padding=(4, 0))
 
@@ -314,6 +325,7 @@ class CodeStructure(BaseWidget):
     def clear(self, event=None):
         self.codetree.delete(*self.codetree.get_children())
         self.filename.configure(text='')
+        self.btn_refresh.state(['disabled'])
 
     def populate(self, title, text):
         reset = self.filename.cget('text') != title
@@ -329,6 +341,7 @@ class CodeStructure(BaseWidget):
         names.sort()
         self.goto_entry.delete(0, "end")
         self.goto_entry.set_completion_list(names)
+        self.btn_refresh.state(['!disabled'])
         self.event_generate('<<Populate>>')
 
     def goto(self, event):

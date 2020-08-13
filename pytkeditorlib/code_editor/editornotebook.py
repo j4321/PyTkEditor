@@ -40,7 +40,7 @@ class EditorNotebook(Notebook):
         Notebook.__init__(self, master, **kw)
         self._closecommand = self.close
         self.files = {}      # tab: file_path
-        self.wrapper = TooltipNotebookWrapper(self)
+        self.tooltips = TooltipNotebookWrapper(self)
         self.last_closed = []
         self.menu = Menu(self, tearoff=False)
         self.menu.add_command(label='Set Console working directory',
@@ -341,7 +341,7 @@ class EditorNotebook(Notebook):
     # --- close
     def _close(self, tab):
         """Close a tab."""
-        self.wrapper.remove_tooltip(self._tab_labels[tab])
+        self.tooltips.remove_tooltip(tab)
         ed = self._tabs[tab]
         if self.files[tab]:
             self.last_closed.append(self.files[tab])
@@ -438,7 +438,7 @@ class EditorNotebook(Notebook):
             self.files[tab] = name
             self._tabs[tab].file = name
             self.tab(tab, text=os.path.split(name)[1])
-            self.wrapper.set_tooltip_text(tab, os.path.abspath(name))
+            self.tooltips.set_tooltip_text(tab, os.path.abspath(name))
             self.save(tab, force=True)
             self._files_check_deletion[tab] = True
             return True
@@ -526,7 +526,7 @@ the external terminal configuration in the settings.",
         self._tab_menu.entryconfigure(self._tab_menu_entries[tab],
                                       label="{} - {}".format(title, os.path.dirname(file)))
         #~self._tabs[tab].file = file
-        self.wrapper.add_tooltip(tab, file if file else title)
+        self.tooltips.add_tooltip(tab, file if file else title)
         editor.text.bind('<<Modified>>', lambda e: self.edit_modified(widget=editor, generate=True))
         editor.text.bind('<Control-Tab>', self._select_next)
         editor.text.bind('<Shift-Control-ISO_Left_Tab>', self._select_prev)
@@ -577,4 +577,5 @@ the external terminal configuration in the settings.",
         tab = self.current_tab
         if tab >= 0:
             self._tabs[self.current_tab].choose_color()
+
 

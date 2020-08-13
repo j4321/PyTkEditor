@@ -99,7 +99,7 @@ class Tab(ttk.Frame):
             funcid2 = self.label.bind(sequence, func, add)
         else:
             funcid2 = None
-        return funcid, funcid2 
+        return funcid, funcid2
 
     def unbind(self, sequence, funcids=(None, None)):
         self.label.unbind(sequence, funcids[1])
@@ -783,9 +783,10 @@ class Notebook(ttk.Frame):
         If BIND_ALL is true, bind both the Frame and the Label of the tab,
         otherwise, bind only to the Frame.
         """
-        self._tab_labels[tab].bind(sequence, func, add, bind_all)
+        return self._tab_labels[tab].bind(sequence, func, add, bind_all)
 
     def tab_unbind(self, tab, sequence, funcids=(None, None)):
         """Unbind for the TAB label for event SEQUENCE."""
         self._tab_labels[tab].unbind(sequence, funcids)
+
 

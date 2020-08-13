@@ -24,6 +24,7 @@ import tkinter as tk
 from tkinter import ttk
 import traceback
 import os
+import sys
 import signal
 import logging
 from subprocess import Popen, PIPE
@@ -426,6 +427,7 @@ class App(tk.Tk):
                         lambda e: e.widget.selection_clear(), True)
         self.bind_class('TEntry', '<Control-a>', self._select_all)
         self.bind_class('TCombobox', '<Control-a>', self._select_all)
+        self.codestruct.bind('<<Refresh>>', self._populate_codestructure)
         self.codestruct.bind('<<Populate>>', self._on_populate)
         self.editor.bind('<<NotebookEmpty>>', self._on_empty_notebook)
         self.editor.bind('<<NotebookFirstTab>>', self._on_first_tab_creation)
@@ -811,7 +813,7 @@ class App(tk.Tk):
         cells = self.codestruct.get_cells()
         self.editor.set_cells(cells)
 
-    def _populate_codestructure(self):
+    def _populate_codestructure(self, event=None):
         if self.filetype.get() == 'Python':
             self.codestruct.populate(self.editor.filename, self.editor.get(strip=False))
         else:
@@ -1064,6 +1066,7 @@ class App(tk.Tk):
                 self.destroy()
                 self.splash.terminate()
                 self.splash.wait()
+                sys.exit()
 
     def new(self, event=None):
         try:

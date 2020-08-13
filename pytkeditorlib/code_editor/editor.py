@@ -28,7 +28,7 @@ import jedi
 from pygments.lexers import get_lexer_by_name, get_lexer_for_filename, ClassNotFound
 
 from pytkeditorlib.dialogs import showerror, showinfo, \
-    TooltipTextWrapper, ColorPicker
+    TooltipTextWrapper, ColorPicker, TooltipWrapper
 from pytkeditorlib.gui_utils import AutoHideScrollbar, EntryHistory
 from pytkeditorlib.utils.constants import PYTHON_LEX, CONFIG, IMAGES, \
     valide_entree_nb
@@ -99,6 +99,7 @@ class Editor(ttk.Frame):
         self.update_idletasks()
 
         # --- search and replace
+        tooltips = TooltipWrapper(self)
         self._highlighted = ''
         self.frame_search = ttk.Frame(self, padding=2)
         self.frame_search.columnconfigure(1, weight=1)
@@ -111,23 +112,31 @@ class Editor(ttk.Frame):
         self.entry_replace.bind('<Control-f>', self.find)
         self.entry_replace.bind('<Escape>', lambda e: self.frame_search.grid_remove())
         search_buttons = ttk.Frame(self.frame_search)
-        ttk.Button(search_buttons, style='Up.TButton', padding=0,
-                   command=lambda: self.search(backwards=True)).pack(side='left', padx=2, pady=4)
-        ttk.Button(search_buttons, style='Down.TButton', padding=0,
-                   command=lambda: self.search(forwards=True)).pack(side='left', padx=2, pady=4)
+        btn_up = ttk.Button(search_buttons, style='Up.TButton', padding=0,
+                            command=lambda: self.search(backwards=True))
+        btn_up.pack(side='left', padx=2, pady=4)
+        tooltips.add_tooltip(btn_up, 'Find previous')
+        btn_down = ttk.Button(search_buttons, style='Down.TButton', padding=0,
+                              command=lambda: self.search(forwards=True))
+        btn_down.pack(side='left', padx=2, pady=4)
+        tooltips.add_tooltip(btn_down, 'Find next')
         self.case_sensitive = ttk.Checkbutton(search_buttons, text='aA')
         self.case_sensitive.state(['selected', '!alternate'])
         self.case_sensitive.pack(side='left', padx=2, pady=4)
+        tooltips.add_tooltip(self.case_sensitive, 'Case sensitive')
         self.regexp = ttk.Checkbutton(search_buttons, text='regexp')
         self.regexp.state(['!selected', '!alternate'])
         self.regexp.pack(side='left', padx=2, pady=4)
+        tooltips.add_tooltip(self.regexp, 'Regular expression')
         self.full_word = ttk.Checkbutton(search_buttons, text='[-]')
         self.full_word.state(['!selected', '!alternate'])
         self.full_word.pack(side='left', padx=2, pady=4)
+        tooltips.add_tooltip(self.full_word, 'Whole words')
         self._highlight_btn = ttk.Checkbutton(search_buttons, image='img_highlight',
                                               padding=0, style='toggle.TButton',
                                               command=self.highlight_all)
         self._highlight_btn.pack(side='left', padx=2, pady=4)
+        tooltips.add_tooltip(self._highlight_btn, 'Highlight matches')
         self.replace_buttons = ttk.Frame(self.frame_search)
         ttk.Button(self.replace_buttons, text='Replace', padding=0,
                    command=self.replace_sel).pack(side='left', padx=2, pady=4)
@@ -664,7 +673,7 @@ class Editor(ttk.Frame):
         self.syntax_checks.configure(state='normal')
         self.syntax_checks.delete('1.0', 'end')
         self.syntax_issues_menuentries.clear()
-        self.textwrapper.reset()
+        self.textwrapper.remove_all()
         self.filebar.clear_syntax_issues()
         end = int(str(self.text.index('end')).split('.')[0]) - 2
         self.syntax_checks.insert('end', '\n' * end)
@@ -681,5 +690,6 @@ class Editor(ttk.Frame):
                 self.syntax_issues_menuentries.append((category, m, lambda l=line: self.show_line(l)))
         self.syntax_checks.configure(state='disabled')
         self.syntax_checks.yview_moveto(self.line_nb.yview()[0])
+
 
 

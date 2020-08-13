@@ -158,6 +158,7 @@ class HistoryFrame(BaseWidget):
                                   variable=self._current_session)
         self.menu.add_command(label='Find',
                               command=self.find,
+                              accelerator='Ctrl+F',
                               image='img_menu_dummy',
                               compound='left')
 
@@ -310,4 +311,5 @@ class HistoryFrame(BaseWidget):
         else:
             if notify_no_match:
                 showinfo("Search complete", "No match found")
+
 
