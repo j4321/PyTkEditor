@@ -119,6 +119,9 @@ for img in os.listdir(PATH_IMG):
 
 IM_CLOSE = os.path.join(PATH_IMG, 'close_{theme}.png')
 IM_SELECTED = os.path.join(PATH_IMG, 'selected_{theme}.png')
+IM_UP = os.path.join(PATH_IMG, 'up_{theme}.png')
+IM_LEFT = os.path.join(PATH_IMG, 'left_{theme}.png')
+IM_RIGHT = os.path.join(PATH_IMG, 'right_{theme}.png')
 ANIM_LOADING = [os.path.join(PATH_IMG, 'animation', file)
                 for file in os.listdir(os.path.join(PATH_IMG, 'animation'))]
 ANIM_LOADING.sort()
@@ -518,6 +521,7 @@ def parse_ansi(text, line_offset=1):
         tag_ranges[tag].append('end')
 
     return tag_ranges, stripped_text
+
 
 
 

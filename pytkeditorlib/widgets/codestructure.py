@@ -102,6 +102,28 @@ class CodeTree(Treeview):
             rec(item)
         return opened
 
+    def expand_all(self):
+        """Expand all items."""
+
+        def expand(item):
+            self.item(item, open=True)
+            for c in self.get_children(item):
+                expand(c)
+
+        for c in self.get_children(""):
+            expand(c)
+
+    def collapse_all(self):
+        """Collapse all items."""
+
+        def collapse(item):
+            self.item(item, open=False)
+            for c in self.get_children(item):
+                collapse(c)
+
+        for c in self.get_children(""):
+            collapse(c)
+
     def populate(self, text, reset):
         if reset:
             opened = []
@@ -172,41 +194,52 @@ class CodeTree(Treeview):
 class CodeStructure(BaseWidget):
     def __init__(self, master, manager):
         BaseWidget.__init__(self, master, 'Code structure', style='border.TFrame')
-        self.rowconfigure(1, weight=1)
+        self.rowconfigure(2, weight=1)
         self.columnconfigure(0, weight=1)
 
         self._manager = manager
 
-        header = Frame(self)
-        header.columnconfigure(0, weight=1)
-        self._close_btn = Button(header, style='close.TButton', padding=0,
-                                 command=lambda: self.visible.set(False))
-        self._close_btn.grid(row=0, column=1)
-        self.filename = Label(header, padding=(4, 0))
-        self.filename.grid(row=0, column=0, sticky='w')
-
+        # tree
         self.codetree = CodeTree(self)
         self._sx = AutoHideScrollbar(self, orient='horizontal', command=self.codetree.xview)
         self._sy = AutoHideScrollbar(self, orient='vertical', command=self.codetree.yview)
+        self.codetree.configure(xscrollcommand=self._sx.set,
+                                yscrollcommand=self._sy.set)
 
+
+        # header
+        header = Frame(self, padding=(1, 2, 1, 1))
+        header.columnconfigure(2, weight=1)
+        Button(header, padding=0, command=self.codetree.expand_all,
+               image='img_expand_all').grid(row=0, column=0)
+        Button(header, padding=0, command=self.codetree.collapse_all,
+               image='img_collapse_all').grid(row=0, column=1, padx=4)
+        self._close_btn = Button(header, style='close.TButton', padding=1,
+                                 command=lambda: self.visible.set(False))
+        self._close_btn.grid(row=0, column=2, sticky='e')
+
+        self.filename = Label(self, style='txt.TLabel', padding=(4, 0))
+
+        # goto bar
         self.goto_frame = Frame(self)
         Label(self.goto_frame, text='Go to:').pack(side='left')
         self.goto_entry = AutoCompleteCombobox2(self.goto_frame, completevalues=[])
         self.goto_entry.pack(side='left', fill='x', expand=True, pady=4, padx=4)
         self._goto_index = 0
 
-        self.codetree.configure(xscrollcommand=self._sx.set,
-                                yscrollcommand=self._sy.set)
 
+        # placement
         header.grid(row=0, columnspan=2, sticky='we')
-        self.codetree.grid(row=1, column=0, sticky='ewns')
-        self._sx.grid(row=2, column=0, sticky='ew')
-        self._sy.grid(row=1, column=1, sticky='ns')
-        Frame(self, style='separator.TFrame', height=1).grid(row=3, column=0, columnspan=2, sticky='ew')
-        self.goto_frame.grid(row=4, column=0, columnspan=2, sticky='nsew')
+        self.filename.grid(row=1, columnspan=2, sticky='we')
+        self.codetree.grid(row=2, column=0, sticky='ewns')
+        self._sx.grid(row=3, column=0, sticky='ew')
+        self._sy.grid(row=2, column=1, sticky='ns')
+        Frame(self, style='separator.TFrame', height=1).grid(row=4, column=0, columnspan=2, sticky='ew')
+        self.goto_frame.grid(row=5, column=0, columnspan=2, sticky='nsew')
 
         self.set_callback = self.codetree.set_callback
 
+        # bindings
         self.goto_entry.bind('<Return>', self.goto)
         self.goto_entry.bind('<<ComboboxSelected>>', self.goto)
         self.goto_entry.bind('<Key>', self._reset_goto)
@@ -308,3 +341,4 @@ class CodeStructure(BaseWidget):
             self.codetree.selection_remove(*self.codetree.selection())
             self.codetree.selection_set(res[self._goto_index])
             self._goto_index += 1
+
