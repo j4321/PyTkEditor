@@ -40,9 +40,28 @@ class EditorText(RichEditor):
 
         self.filetype = 'Python'
 
+        self.menu = tk.Menu(self)
+        self.menu.add_command(label='Cut',
+                              command=lambda: self.event_generate('<<Cut>>'),
+                              accelerator='Ctrl+X')
+        self.menu.add_command(label='Copy',
+                              command=lambda: self.event_generate('<<Copy>>'),
+                              accelerator='Ctrl+C')
+        self.menu.add_command(label='Paste',
+                              command=lambda: self.event_generate('<<Paste>>'),
+                              accelerator='Ctrl+V')
+        self.menu.add_command(label='Select all',
+                              command=self.select_all, accelerator='Ctrl+A')
+        self.menu.add_separator()
+        self.menu.add_command(label='Toggle comment',
+                              command=self.toggle_comment,
+                              accelerator='Ctrl+E')
+
+
         self._tcl_error_msg = ''
 
         # --- bindings
+        self.bind('<3>', self._post_menu)
         self.bind("<<Paste>>", self.on_paste)
         self.bind("<Tab>", self.on_tab)
         self.bind("<ISO_Left_Tab>", self.unindent)
@@ -87,6 +106,16 @@ class EditorText(RichEditor):
             self.event_generate("<<CursorChange>>", when="tail")
             self.find_matching_par()
         return result
+
+    def _post_menu(self, event):
+        """Display right click menu."""
+        if self.tag_ranges('sel'):
+            self.menu.entryconfigure('Cut', state='normal')
+            self.menu.entryconfigure('Copy', state='normal')
+        else:
+            self.menu.entryconfigure('Cut', state='disabled')
+            self.menu.entryconfigure('Copy', state='disabled')
+        self.menu.tk_popup(event.x_root, event.y_root)
 
     def _on_key_release(self, event):
         key = event.keysym
@@ -453,6 +482,7 @@ class EditorText(RichEditor):
             self.edit_separator()
             self.replace('sel.first', 'sel.last',
                          self.get('sel.first', 'sel.last').lower())
+
 
 
 
