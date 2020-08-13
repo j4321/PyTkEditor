@@ -1045,6 +1045,7 @@ class App(tk.Tk):
         self.editor.update_style()
         for widget in self.widgets.values():
             widget.update_style()
+        self.codestruct.update_style()
 
     def kill(self, *args):
         self.splash.kill()

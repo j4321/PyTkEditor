@@ -20,7 +20,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 GUI widget to display the code structure
 """
-from tkinter import TclError
+from tkinter import TclError, Menu
 from tkinter.ttk import Treeview, Frame, Label, Button
 from tkinter.font import Font
 import tokenize
@@ -74,6 +74,14 @@ class CodeTree(Treeview):
         self.callback = None
         self.cells = []
 
+        # right click menu
+        self.menu = Menu(self)
+        self.menu.add_command(label='Expand section', command=self._expand_section)
+        self.menu.add_command(label='Collapse section', command=self._collapse_section)
+        self._row_menu = ''  # row where the pointer was when the menu was opened
+
+        # bindings
+        self.bind('<3>', self._post_menu)
         self.bind('<1>', self._on_click)
         self.bind('<<TreeviewSelect>>', self._on_select)
 
@@ -103,27 +111,39 @@ class CodeTree(Treeview):
             rec(item)
         return opened
 
+
+    def _post_menu(self, event):
+        self._row_menu = self.identify_row(event.y_root - self.winfo_rooty())
+        if self._row_menu:
+            self.menu.tk_popup(event.x_root, event.y_root)
+
+    def _collapse_section(self):
+        self.collapse(self._row_menu)
+
+    def _expand_section(self):
+        self.expand(self._row_menu)
+
+    def expand(self, item):
+        """Expand item and all its children recursively."""
+        self.item(item, open=True)
+        for c in self.get_children(item):
+            self.expand(c)
+
     def expand_all(self):
         """Expand all items."""
-
-        def expand(item):
-            self.item(item, open=True)
-            for c in self.get_children(item):
-                expand(c)
-
         for c in self.get_children(""):
-            expand(c)
+            self.expand(c)
+
+    def collapse(self, item):
+        """Collapse item and all its children recursively."""
+        self.item(item, open=False)
+        for c in self.get_children(item):
+            self.collapse(c)
 
     def collapse_all(self):
         """Collapse all items."""
-
-        def collapse(item):
-            self.item(item, open=False)
-            for c in self.get_children(item):
-                collapse(c)
-
         for c in self.get_children(""):
-            collapse(c)
+            self.collapse(c)
 
     def populate(self, text, reset):
         if reset:
@@ -191,6 +211,15 @@ class CodeTree(Treeview):
             self.item(item, open=True)
         return names
 
+    def update_style(self):
+        fg = self.menu.option_get('foreground', '*Menu')
+        bg = self.menu.option_get('background', '*Menu')
+        activebackground = self.menu.option_get('activeBackground', '*Menu')
+        disabledforeground = self.menu.option_get('disabledForeground', '*Menu')
+        self.menu.configure(bg=bg, activebackground=activebackground,
+                            fg=fg, selectcolor=fg, activeforeground=fg,
+                            disabledforeground=disabledforeground)
+
 
 class CodeStructure(BaseWidget):
     def __init__(self, master, manager):
@@ -208,8 +237,6 @@ class CodeStructure(BaseWidget):
         self._sy = AutoHideScrollbar(self, orient='vertical', command=self.codetree.yview)
         self.codetree.configure(xscrollcommand=self._sx.set,
                                 yscrollcommand=self._sy.set)
-
-
         # header
         header = Frame(self, padding=(1, 2, 1, 1))
         header.columnconfigure(3, weight=1)
@@ -249,6 +276,7 @@ class CodeStructure(BaseWidget):
         self.goto_frame.grid(row=5, column=0, columnspan=2, sticky='nsew')
 
         self.set_callback = self.codetree.set_callback
+        self.update_style = self.codetree.update_style
 
         # bindings
         self.goto_entry.bind('<Return>', self.goto)

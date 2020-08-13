@@ -51,7 +51,6 @@ class BaseWidget(Frame):
 
     def update_style(self):
         """Update widget style."""
-        pass  # to be overriden in subclass
 
     def busy(self, busy):
         """Toggle busy cursor."""
