@@ -164,7 +164,7 @@ else:
     external_console = ''
 
 sections = ['General', 'Layout', 'Editor', 'Code structure', 'Code analysis', 'Console', 'History',
-            'Help', 'File browser', 'Run', 'Dark Theme', 'Light Theme']
+            'Help', 'File browser', 'Namespace', 'Run', 'Dark Theme', 'Light Theme']
 
 def create_config():
     CONFIG.add_section('General')
@@ -213,6 +213,10 @@ def create_config():
     CONFIG.set('File browser', 'filename_filter', "README, INSTALL, LICENSE, CHANGELOG, *.npy, *.npz, *.csv, *.txt, *.jpg, *.png, *.gif, *.tif, *.pkl, *.pickle, *.json, *.py, *.ipynb, *.txt, *.rst, *.md, *.dat, *.pdf, *.png, *.svg, *.eps")
     CONFIG.set('File browser', 'visible', "True")
     CONFIG.set('File browser', 'order', "3")
+    CONFIG.add_section('Namespace')
+    CONFIG.set('Namespace', 'visible', "True")
+    CONFIG.set('Namespace', 'order', "3")
+    CONFIG.set('Namespace', 'all_scopes', "False")
     CONFIG.add_section('Run')
     CONFIG.set('Run', 'console', "external")
     CONFIG.set('Run', 'external_interactive', "True")
@@ -521,6 +525,7 @@ def parse_ansi(text, line_offset=1):
         tag_ranges[tag].append('end')
 
     return tag_ranges, stripped_text
+
 
 
 

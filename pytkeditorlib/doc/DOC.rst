@@ -26,6 +26,7 @@ Main features
         + File browser with filter on file extensions
         + Code analysis widget (available only if pylint is installed)
         + Code structure (classes, functions, TODOs, cells, comments ``# ---``)
+        + Namespace overview widget
 
     - Autocompletion on Tab key :kbd:`⇥` in editor and console
 
@@ -78,6 +79,8 @@ Global
 
         :kbd:`Ctrl` :kbd:`Shift` :kbd:`F`
 
+        :kbd:`Ctrl` :kbd:`Shift` :kbd:`N`
+
         :kbd:`Ctrl` :kbd:`Shift` :kbd:`G`
 
         :kbd:`Ctrl` :kbd:`Shift` :kbd:`R`
@@ -119,6 +122,8 @@ Global
         Switch to Help
 
         Switch to File browser
+
+        Switch to Namespace overview
 
         Switch to Code structure (Go to entry)
 

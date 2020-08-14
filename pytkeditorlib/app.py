@@ -45,7 +45,7 @@ from pytkeditorlib.utils import check_file
 from pytkeditorlib.dialogs import showerror, About, Config, SearchDialog, \
     PrintDialog, HelpDialog, SelectKernel, askyesno
 from pytkeditorlib.widgets import WidgetNotebook, Help, HistoryFrame, \
-    ConsoleFrame, Filebrowser, CodeStructure, CodeAnalysis
+    ConsoleFrame, Filebrowser, CodeStructure, CodeAnalysis, NameOverview
 from pytkeditorlib.gui_utils import LongMenu
 
 
@@ -127,7 +127,7 @@ class App(tk.Tk):
         self.editor = EditorNotebook(self._horizontal_pane, width=696)
         # --- --- widgets
         self.right_nb = WidgetNotebook(self._horizontal_pane)
-        widgets = ['Code structure', 'Console', 'History', 'Help', 'File browser']
+        widgets = ['Code structure', 'Console', 'History', 'Help', 'File browser', 'Namespace']
         if cst.PYLINT:
             widgets.append('Code analysis')
         widgets.sort(key=lambda w: CONFIG.getint(w, 'order', fallback=0))
@@ -149,6 +149,8 @@ class App(tk.Tk):
                                                'Console': self.console.get_docstring})
         # --- --- --- filebrowser
         self.widgets['File browser'] = Filebrowser(self.right_nb, self.open_file)
+        # --- --- --- nameoverview
+        self.widgets['Namespace'] = NameOverview(self.right_nb)
 
         # --- --- placement
         self._frame.pack(fill='both', expand=True)
@@ -427,6 +429,7 @@ class App(tk.Tk):
                         lambda e: e.widget.selection_clear(), True)
         self.bind_class('TEntry', '<Control-a>', self._select_all)
         self.bind_class('TCombobox', '<Control-a>', self._select_all)
+        self.widgets['Namespace'].bind('<<Refresh>>', self._populate_namespace)
         self.codestruct.bind('<<Refresh>>', self._populate_codestructure)
         self.codestruct.bind('<<Populate>>', self._on_populate)
         self.editor.bind('<<NotebookEmpty>>', self._on_empty_notebook)
@@ -457,6 +460,7 @@ class App(tk.Tk):
         self.bind('<Control-Shift-H>', lambda e: self.switch_to_widget(e, self.widgets['Help']))
         self.bind('<Control-Shift-I>', lambda e: self.switch_to_widget(e, self.widgets['History']))
         self.bind('<Control-Shift-F>', lambda e: self.switch_to_widget(e, self.widgets['File browser']))
+        self.bind('<Control-Shift-N>', lambda e: self.switch_to_widget(e, self.widgets['Namespace']))
         if cst.PYLINT:
             self.bind('<Control-Shift-A>', lambda e: self.switch_to_widget(e, self.widgets['Code analysis']))
         self.bind('<Control-Shift-G>', lambda e: self.switch_to_widget(e, self.codestruct))
@@ -695,6 +699,7 @@ class App(tk.Tk):
                        {'sticky': 'nswe',
                         'children': [('Treeview.treearea', {'sticky': 'nswe'})]})])
         style.configure('flat.Treeview', background=theme['fieldbg'])
+        style.configure('flat.Treeview.Heading', font='TkDefaultFont 9')
         style.configure('Treeview', background=theme['fieldbg'])
         style.layout('widget.TNotebook.Tab',
                      [('Notebook.tab',
@@ -813,6 +818,12 @@ class App(tk.Tk):
         cells = self.codestruct.get_cells()
         self.editor.set_cells(cells)
 
+    def _populate_namespace(self, event=None):
+        if self.filetype.get() == 'Python':
+            self.widgets['Namespace'].populate(self.editor.filepath, self.editor.get(strip=False))
+        else:
+            self.widgets['Namespace'].populate(None, None)
+
     def _populate_codestructure(self, event=None):
         if self.filetype.get() == 'Python':
             self.codestruct.populate(self.editor.filename, self.editor.get(strip=False))
@@ -826,6 +837,8 @@ class App(tk.Tk):
             self.widgets['Code analysis'].set_callback(self.editor.highlight_line)
             self.widgets['Code analysis'].set_file(self.editor.filename, self.editor.filepath)
         self._populate_codestructure()
+        self._populate_namespace()
+        self.widgets['Namespace'].set_callback(self.editor.goto_item)
         self.update_menu_errors()
         self.editor.focus_tab()
 
@@ -1173,6 +1186,7 @@ class App(tk.Tk):
                     self.widgets['Code analysis'].set_file(self.editor.filename, self.editor.filepath)
                 self.check_syntax()
                 self.editor.goto_start()
+                self._populate_namespace()
                 self._update_recent_files(file)
                 CONFIG.set('General', 'recent_files', ', '.join(self.recent_files))
                 CONFIG.save()
@@ -1238,6 +1252,7 @@ class App(tk.Tk):
             self._edit_modified(0, tab=tab)
             self.check_syntax()
             self._populate_codestructure()
+            self._populate_namespace()
             if cst.PYLINT:
                 self.widgets['Code analysis'].set_file(self.editor.filename, self.editor.filepath)
         self.editor.focus_tab()
@@ -1503,3 +1518,4 @@ class App(tk.Tk):
                 self.menu_errors.add_command(label=msg,
                                              image=self._images[category],
                                              compound='left', command=cmd)
+
