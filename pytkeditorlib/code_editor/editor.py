@@ -91,11 +91,10 @@ class Editor(ttk.Frame):
             sy.set(y0, y1)
             self.line_nb.yview_moveto(y0)
             self.syntax_checks.yview_moveto(y0)
+            self.filebar.update_positions()
 
         self.filebar = FileBar(self, self, width=10, cursor='watch')
         self.text.configure(xscrollcommand=xscroll, yscrollcommand=yscroll)
-        self.line_nb.configure(yscrollcommand=sy.set)
-        self.syntax_checks.configure(yscrollcommand=sy.set)
         self.update_idletasks()
 
         # --- search and replace
@@ -441,7 +440,7 @@ class Editor(ttk.Frame):
                 self.text.mark_set('insert', '%s-1c' % (res))
             else:
                 self.text.mark_set('insert', '%s+%ic' % (res, self._search_count.get()))
-            self.see(res)
+            self.text.see(res)
         else:
             if notify_no_match:
                 showinfo("Search complete", "No match found", self)
@@ -492,7 +491,7 @@ class Editor(ttk.Frame):
         def goto(event):
             try:
                 line = int(e.get())
-                self.see('%i.0' % line)
+                self.text.see('%i.0' % line)
                 self.text.mark_set('insert', '%i.0' % line)
             except ValueError:
                 pass
@@ -515,7 +514,7 @@ class Editor(ttk.Frame):
 
     def goto_item(self, start, end):
         self.mark_set('insert', start)
-        self.see(start)
+        self.text.see(start)
         self.text.tag_remove('sel', '1.0', 'end')
         self.text.tag_add('sel', start, end)
 
@@ -624,12 +623,6 @@ class Editor(ttk.Frame):
         picker.bind("<<ColorSelected>>", insert)
 
     # --- view
-    def see(self, index):
-        i = self.text.index(index)
-        self.text.see(i)
-        self.line_nb.see(i)
-        self.syntax_checks.see(i)
-
     def highlight_line(self, line):
         self.text.mark_set('insert', line)
         self.goto_item(line, f'{line} lineend')
@@ -665,7 +658,7 @@ class Editor(ttk.Frame):
 
     # --- syntax issues highlighting
     def show_line(self, line):
-        self.see('%i.0' % line)
+        self.text.see('%i.0' % line)
         self.text.tag_remove('sel', '1.0', 'end')
         self.text.tag_add('sel', '%i.0' % line, '%i.end' % line)
 
@@ -690,7 +683,3 @@ class Editor(ttk.Frame):
                 self.syntax_issues_menuentries.append((category, m, lambda l=line: self.show_line(l)))
         self.syntax_checks.configure(state='disabled')
         self.syntax_checks.yview_moveto(self.line_nb.yview()[0])
-
-
-
-

@@ -1,4 +1,3 @@
-#! /usr/bin/python3
 # -*- coding: utf-8 -*-
 """
 PyTkEditor - Python IDE
@@ -474,7 +473,7 @@ class EditorNotebook(Notebook):
     def goto_start(self):
         if self._current_tab >= 0:
             self._tabs[self._current_tab].text.mark_set('insert', '1.0')
-            self._tabs[self._current_tab].see('1.0')
+            self._tabs[self._current_tab].text.see('1.0')
 
     def goto_item(self, *args):
         if self.current_tab >= 0:
@@ -577,5 +576,6 @@ the external terminal configuration in the settings.",
         tab = self.current_tab
         if tab >= 0:
             self._tabs[self.current_tab].choose_color()
+
 
 

@@ -249,7 +249,7 @@ class EditorText(RichEditor):
         self.master.update_nb_lines()
         lines = len(txt.splitlines())//2
         self.parse_part(f'insert linestart - {lines} lines', nblines=lines + 10)
-        self.master.see('insert')
+        self.see('insert')
         return "break"
 
     def on_tab(self, event=None, force_indent=False):
@@ -368,7 +368,7 @@ class EditorText(RichEditor):
         self.master.update_nb_lines()
         # update whole syntax highlighting
         self.parse_part()
-        self.master.see(self.index('insert'))
+        self.see(self.index('insert'))
         return "break"
 
     def on_backspace(self, event):
