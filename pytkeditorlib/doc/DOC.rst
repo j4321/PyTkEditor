@@ -169,6 +169,8 @@ Editor
 
         :kbd:`Ctrl` :kbd:`G`
 
+        :kbd:`Ctrl` :kbd:`H`
+
         :kbd:`Ctrl` :kbd:`Shift` :kbd:`P`
 
         :kbd:`Ctrl` :kbd:`S`
@@ -225,7 +227,9 @@ Editor
 
         Go to line
 
-        Go to definition
+        Go to definition of object under cursor
+
+        Highlight references to object under cursor
 
         Print
 
@@ -340,6 +344,7 @@ Troubleshooting
 
 If you encounter bugs or if you have suggestions, please open an issue
 on `Github <https://github.com/j4321/PyTkEditor/issues>`_.
+
 
 
 

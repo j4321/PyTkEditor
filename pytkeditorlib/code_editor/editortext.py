@@ -61,6 +61,9 @@ class EditorText(RichEditor):
         self.menu.add_command(label='Go to definition', command=self.goto_definition,
                               accelerator='Ctrl+G')
 
+        self.menu.add_command(label='Highlight references', command=self.highlight_references,
+                              accelerator='Ctrl+H')
+
 
         self._tcl_error_msg = ''
 
@@ -75,6 +78,7 @@ class EditorText(RichEditor):
         self.bind("<Control-z>", self.undo)
         self.bind("<Control-y>", self.redo)
         self.bind("<Control-g>", self.goto_definition)
+        self.bind("<Control-h>", self.highlight_references)
         self.bind("<Control-a>", self.select_all)
         self.bind('<Control-e>', self.toggle_comment)
         self.bind("<BackSpace>", self.on_backspace)
@@ -167,10 +171,22 @@ class EditorText(RichEditor):
                 logging.exception('Jedi Error')   # jedi raised an exception
         return comp
 
-    def goto_definition(self, event=None):
+    def highlight_references(self, event=None):
+        """Highlight all references to object under cursor."""
         self.tag_remove('highlight_find', '1.0', 'end')
         script, row, column = self._jedi_script()
-        res = script.goto(row, column)
+        res = script.get_references(row, column, scope='file', include_builtins=False)
+        for obj in res:
+            start = f'{obj.line}.{obj.column}'
+            end = f'{start} wordend'
+            self.tag_add('highlight_find', start, end)
+        return "break"
+
+    def goto_definition(self, event=None):
+        """Go to definition of object under cursor."""
+        self.tag_remove('highlight_find', '1.0', 'end')
+        script, row, column = self._jedi_script()
+        res = script.goto(row, column, follow_imports=False, follow_builtin_imports=False)
         if not res:
             return
         obj = res[-1]
@@ -178,10 +194,10 @@ class EditorText(RichEditor):
             return
         start = f'{obj.line}.{obj.column}'
         end = f'{start} wordend'
-
-        self.mark_set('insert', start)
-        self.see(start)
-        self.tag_add('highlight_find', start, end)
+        if self.get(start, end) == obj.name:
+            self.mark_set('insert', start)
+            self.see(start)
+            self.tag_add('highlight_find', start, end)
 
     def _indent_forward(self):
         """Return the adequate indentation."""
@@ -507,11 +523,3 @@ class EditorText(RichEditor):
             self.edit_separator()
             self.replace('sel.first', 'sel.last',
                          self.get('sel.first', 'sel.last').lower())
-
-
-
-
-
-
-
-
