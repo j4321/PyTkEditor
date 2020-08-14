@@ -167,6 +167,8 @@ Editor
 
         :kbd:`Ctrl` :kbd:`L`
 
+        :kbd:`Ctrl` :kbd:`G`
+
         :kbd:`Ctrl` :kbd:`Shift` :kbd:`P`
 
         :kbd:`Ctrl` :kbd:`S`
@@ -222,6 +224,8 @@ Editor
         Replace
 
         Go to line
+
+        Go to definition
 
         Print
 
@@ -336,5 +340,6 @@ Troubleshooting
 
 If you encounter bugs or if you have suggestions, please open an issue
 on `Github <https://github.com/j4321/PyTkEditor/issues>`_.
+
 
 

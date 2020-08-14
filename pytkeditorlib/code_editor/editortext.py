@@ -40,6 +40,7 @@ class EditorText(RichEditor):
 
         self.filetype = 'Python'
 
+        # --- right click menu
         self.menu = tk.Menu(self)
         self.menu.add_command(label='Cut',
                               command=lambda: self.event_generate('<<Cut>>'),
@@ -56,6 +57,9 @@ class EditorText(RichEditor):
         self.menu.add_command(label='Toggle comment',
                               command=self.toggle_comment,
                               accelerator='Ctrl+E')
+        self.menu.add_separator()
+        self.menu.add_command(label='Go to definition', command=self.goto_definition,
+                              accelerator='Ctrl+G')
 
 
         self._tcl_error_msg = ''
@@ -70,6 +74,7 @@ class EditorText(RichEditor):
         self.bind("<Control-k>", self.delete_lines)
         self.bind("<Control-z>", self.undo)
         self.bind("<Control-y>", self.redo)
+        self.bind("<Control-g>", self.goto_definition)
         self.bind("<Control-a>", self.select_all)
         self.bind('<Control-e>', self.toggle_comment)
         self.bind("<BackSpace>", self.on_backspace)
@@ -161,6 +166,22 @@ class EditorText(RichEditor):
             except Exception:
                 logging.exception('Jedi Error')   # jedi raised an exception
         return comp
+
+    def goto_definition(self, event=None):
+        self.tag_remove('highlight_find', '1.0', 'end')
+        script, row, column = self._jedi_script()
+        res = script.goto(row, column)
+        if not res:
+            return
+        obj = res[-1]
+        if obj.in_builtin_module():
+            return
+        start = f'{obj.line}.{obj.column}'
+        end = f'{start} wordend'
+
+        self.mark_set('insert', start)
+        self.see(start)
+        self.tag_add('highlight_find', start, end)
 
     def _indent_forward(self):
         """Return the adequate indentation."""
