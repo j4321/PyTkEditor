@@ -100,3 +100,4 @@ class About(Toplevel):
         b_close.pack(side="bottom")
         b_close.focus_set()
         fen.wait_window(fen)
+

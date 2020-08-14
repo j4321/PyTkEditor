@@ -116,25 +116,33 @@ class Filebrowser(BaseWidget):
     def edit_filter(self):
 
         def ok(event=None):
-            CONFIG.set('File browser', 'filename_filter', entry.get())
+            CONFIG.set('File browser', 'filename_filter', filters.get('1.0', 'end').strip())
             CONFIG.save()
             self.load_filters()
             self.populate(self.filetree.get_children()[0], history=False)
             top.destroy()
 
         top = tk.Toplevel(self, padx=4, pady=4)
+        style = ttk.Style(self)
         top.title('Filename filters')
-        top.resizable(True, False)
         top.columnconfigure(0, weight=1)
         top.columnconfigure(1, weight=1)
+        top.rowconfigure(1, weight=1)
         ttk.Label(top, text='Name filters:').grid(columnspan=2, sticky='w')
-        entry = ttk.Entry(top)
-        entry.grid(columnspan=2, sticky='ew', pady=4)
-        entry.insert(0, CONFIG.get('File browser', 'filename_filter',
-                                   fallback='README, *.py, *.rst'))
-        entry.bind('<Return>', ok)
-        entry.bind('<Escape>', lambda e: top.destroy())
-        entry.focus_set()
+        frame = ttk.Frame(top, style='txt.TFrame', padding=1, relief='sunken', borderwidth=1)
+        filters = tk.Text(frame, wrap='word', height=5,
+                          bg=style.lookup('TEntry', 'fieldbackground'),
+                          fg=style.lookup('TEntry', 'foreground'))
+        filters.pack(expand=True, fill='both')
+        yscroll = Scrollbar(top, orient='vertical', command=filters.yview, threshold=0)
+        filters.configure(yscrollcommand=yscroll.set)
+        frame.grid(columnspan=2, sticky='ewns', pady=4)
+        yscroll.grid(row=1, column=2, sticky='ns', pady=4)
+        filters.insert('1.0', CONFIG.get('File browser', 'filename_filter',
+                                         fallback='README, *.py, *.rst'))
+        filters.bind('<Return>', ok)
+        filters.bind('<Escape>', lambda e: top.destroy())
+        filters.focus_set()
         ttk.Button(top, text='Ok', command=ok).grid(row=2, column=0, padx=4, sticky='e')
         ttk.Button(top, text='Cancel',
                    command=top.destroy).grid(row=2, column=1, padx=4, sticky='w')
@@ -222,4 +230,6 @@ class Filebrowser(BaseWidget):
             self.history_index = -1
         if history:
             self.history_add(path)
+
+
 
