@@ -132,6 +132,11 @@ class EditorText(RichEditor):
             self.parse(self.get("insert linestart", "insert lineend"),
                                 "insert linestart")
 
+    def _jedi_script(self):
+        """Return jedi script and row, column number."""
+        row, col = map(int, self.index('insert').split('.'))
+        return jedi.Script(self.get('1.0', 'end'), path=self.master.file), row, col
+
     def _comp_generate(self):
         """Generate autocompletion list."""
         index = self.index('insert wordend')
@@ -150,13 +155,11 @@ class EditorText(RichEditor):
             comp = [PathCompletion(before_completion, path) for path in paths]
         # --- jedi code autocompletion
         if not comp:
-            row, col = str(self.index('insert')).split('.')
             try:
-                script = jedi.Script(self.get('1.0', 'end'), int(row), int(col), self.master.file)
-                comp = script.completions()
-            except Exception as e:
-                print(e)
-                pass # jedi raised an exception
+                script, row, col = self._jedi_script()
+                comp = script.complete(row, col)
+            except Exception:
+                logging.exception('Jedi Error')   # jedi raised an exception
         return comp
 
     def _indent_forward(self):
@@ -482,6 +485,7 @@ class EditorText(RichEditor):
             self.edit_separator()
             self.replace('sel.first', 'sel.last',
                          self.get('sel.first', 'sel.last').lower())
+
 
 
 

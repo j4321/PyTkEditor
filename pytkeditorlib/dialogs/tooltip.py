@@ -134,7 +134,7 @@ class TooltipBaseWrapper:
         self._current = None
 
         self.tooltip.bind('<Leave>', self._on_leave_tooltip)
-        self.tooltip.bind('<Destroy>', self.quit)  # cleanly remove all bindings and scheduled callbacks
+        self.tooltip.bind('<Destroy>', self._on_destroy)  # cleanly remove all bindings and scheduled callbacks
 
     def __setitem__(self, key, value):
         self.configure(**{key: value})
@@ -261,13 +261,12 @@ class TooltipBaseWrapper:
             self.tooltip.geometry('+%i+%i' % (self._tooltip_pos()))
             self.tooltip.deiconify()
 
-    def quit(self, event=None):
-        """Remove all bindings and cancel timer."""
+    def _on_destroy(self, event):
+        """Cancel timer."""
         try:
             self.master.after_cancel(self._timer_id)
         except ValueError:
             pass
-        self.remove_all()
 
 
 class TooltipWrapper(TooltipBaseWrapper):
@@ -353,3 +352,4 @@ class TooltipNotebookWrapper(TooltipBaseWrapper):
     def _unbind(self, object_id, sequence, funcid):
         """Unbind for object for event sequence and delete the associated funcid."""
         self.master.tab_unbind(object_id, sequence, funcid)
+

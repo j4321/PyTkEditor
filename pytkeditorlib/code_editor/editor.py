@@ -586,9 +586,8 @@ class Editor(ttk.Frame):
     # --- docstrings
     def get_docstring(self, obj):
         txt = self.text.get('1.0', 'end')
-        script = jedi.Script(txt + obj, len(txt.splitlines()) + 1,
-                             len(obj), self.file)
-        res = script.goto_definitions()
+        script = jedi.Script(code=txt + obj, path=self.file)
+        res = script.infer(len(txt.splitlines()) + 1, len(obj))
         if res:
             return res[-1]
         else:
@@ -690,6 +689,7 @@ class Editor(ttk.Frame):
                 self.syntax_issues_menuentries.append((category, m, lambda l=line: self.show_line(l)))
         self.syntax_checks.configure(state='disabled')
         self.syntax_checks.yview_moveto(self.line_nb.yview()[0])
+
 
 
 

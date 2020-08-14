@@ -355,18 +355,21 @@ class TextConsole(RichEditor):
         self.parse()
 
     def _jedi_script(self):
-
-        lines = self.get('insert linestart + %ic' % len(self._prompt1), 'input_end').rstrip('\n')
+        """Return jedi script and row, column number."""
+        prompt_code = self.get('input', 'input_end')
+        # remove trailing spaces
+        prompt_code = self._re_trailing_spaces.sub('', prompt_code)
+        # remove leading prompts
+        prompt_code = self._re_prompt.sub('', prompt_code)
 
         session_code = '\n\n'.join([self._jedi_comp_external,
                                     self._jedi_comp_extra] + self.history.get_session_hist()) + '\n\n'
 
         offset = len(session_code.splitlines())
-        r, c = tuple(map(int, self.index('insert').split(".")))
+        row0 = int(self.index('input').split(".")[0])
+        row, col = tuple(map(int, self.index('insert').split(".")))
 
-        script = jedi.Script(session_code + lines, offset + 1, c - len(self._prompt1),
-                             'completion.py')
-        return script
+        return jedi.Script(session_code + prompt_code), offset + row - row0 + 1, col - len(self._prompt1)
 
     def _comp_generate(self):
         """Generate autocompletion list."""
@@ -398,11 +401,10 @@ class TextConsole(RichEditor):
             # --- jedi code autocompletion
             if not comp or jedi_comp:
                 try:
-                    script = self._jedi_script()
-                    comp.extend(script.completions())
+                    script, row, col = self._jedi_script()
+                    comp.extend(script.complete(row, col))
                 except Exception:
-                    # jedi raised an exception
-                    pass
+                    logging.exception('Jedi error')  # jedi raised an exception
         return comp
 
     # --- bindings
@@ -682,11 +684,8 @@ class TextConsole(RichEditor):
     # --- docstrings
     def get_docstring(self, obj):
         session_code = self._jedi_comp_extra + '\n\n'.join(self.history.get_session_hist()) + '\n\n'
-        script = jedi.Script(session_code + obj,
-                             len(session_code.splitlines()) + 1,
-                             len(obj),
-                             'help.py')
-        res = script.goto_definitions()
+        script = jedi.Script(session_code + obj)
+        res = script.infer(len(session_code.splitlines()) + 1, len(obj))
         if res:
             return res[-1]
         return None
@@ -921,4 +920,5 @@ class ConsoleFrame(BaseWidget):
         else:
             self.console.configure(cursor='xterm')
             self.configure(cursor='')
+
 

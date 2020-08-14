@@ -309,26 +309,25 @@ class RichEditor(RichText):
             self._comp.deiconify()
 
     def _jedi_script(self):
-        """Return jedi script for insert position."""
-        index = self.index('insert')
-        row, col = map(int, str(index).split('.'))
-        return jedi.Script(self.get('1.0', 'end'), row, col, 'args_hint.py')
+        """Return jedi script and row, column number."""
+        row, col = map(int, self.index('insert').split('.'))
+        return jedi.Script(self.get('1.0', 'end')), row, col
 
     def _args_hint(self, event=None):
         self._tooltip.configure(text='')
         index = self.index('insert')
         try:
-            script = self._jedi_script()
-            res = script.goto_definitions()
-        except Exception as e:
-            print(e)
+            script, row, col = self._jedi_script()
+            res = script.infer(row, col)
+        except Exception:
+            logging.exception('Jedi Error')   # jedi raised an exception
             return
         self.mark_set('insert', index)
         if res:
             try:
                 args = res[-1].docstring().splitlines()[0]
             except Exception:
-                # usually caused by an exception raised in Jedi
+                logging.exception('Jedi Error') # usually caused by an exception raised in Jedi
                 return
             if args in ['', 'NoneType()']:
                 return
@@ -418,5 +417,6 @@ class RichEditor(RichText):
             self.mark_set('insert', 'insert-1c')
         self.edit_separator()
         return 'break'
+
 
 
