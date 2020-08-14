@@ -514,6 +514,7 @@ class Editor(ttk.Frame):
         e.bind('<Return>', goto)
 
     def goto_item(self, start, end):
+        self.mark_set('insert', start)
         self.see(start)
         self.text.tag_remove('sel', '1.0', 'end')
         self.text.tag_add('sel', start, end)
