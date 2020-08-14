@@ -1503,16 +1503,3 @@ class App(tk.Tk):
                 self.menu_errors.add_command(label=msg,
                                              image=self._images[category],
                                              compound='left', command=cmd)
-
-
-
-
-
-
-
-
-
-
-
-
-

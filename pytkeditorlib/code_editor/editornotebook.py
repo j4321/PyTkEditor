@@ -114,6 +114,15 @@ class EditorNotebook(Notebook):
         for i, (label, key) in enumerate(menu):
             self._tab_menu_entries[key] = i
 
+    def _fallback_attr(self, name, *args, **kwargs):
+        """Workaround to make the __getattr__ method work properly when called in a tk.Menu"""
+        if self.current_tab >= 0:
+            getattr(self._tabs[self.current_tab], name)(*args, **kwargs)
+
+    def __getattr__(self, name):
+        """Fallback to the current tab attributes."""
+        return lambda *args, **kwargs: self._fallback_attr(name, *args, **kwargs)
+
     def get_open_files(self):
         return [self.files[tab] for tab in self._visible_tabs]
 
@@ -143,15 +152,6 @@ class EditorNotebook(Notebook):
                                  disabledforeground=disabledforeground)
         self._canvas.configure(bg=self._canvas.option_get('background', '*Canvas'))
 
-    # --- undo / redo
-    def undo(self):
-        if self.current_tab >= 0:
-            self._tabs[self.current_tab].undo()
-
-    def redo(self):
-        if self.current_tab >= 0:
-            self._tabs[self.current_tab].redo()
-
     # --- cut / copy / paste
     def cut(self):
         if self.current_tab >= 0:
@@ -178,10 +178,6 @@ class EditorNotebook(Notebook):
         if tab >= 0:
             self._tabs[tab].delete(index1, index2)
 
-    def edit_reset(self):
-        if self.current_tab >= 0:
-            self._tabs[self.current_tab].text.edit_reset()
-
     def edit_modified(self, *args, widget=None, generate=False, tab=None):
         if widget is None:
             if tab is None:
@@ -198,14 +194,6 @@ class EditorNotebook(Notebook):
             self.event_generate('<<Modified>>')
         return b
 
-    def delete_lines(self):
-        if self.current_tab >= 0:
-            self._tabs[self.current_tab].delete_lines()
-
-    def duplicate_lines(self):
-        if self.current_tab >= 0:
-            self._tabs[self.current_tab].duplicate_lines()
-
     # --- filetype
     def get_filetype(self):
         if self.current_tab >= 0:
@@ -219,30 +207,10 @@ class EditorNotebook(Notebook):
     def set_console_wdir(self):
         self.event_generate('<<SetConsoleWDir>>')
 
-    # --- formatting
-    def toggle_comment(self):
-        if self.current_tab >= 0:
-            self._tabs[self.current_tab].toggle_comment()
-
-    def upper_case(self):
-        if self.current_tab >= 0:
-            self._tabs[self.current_tab].upper_case()
-
-    def lower_case(self):
-        if self.current_tab >= 0:
-            self._tabs[self.current_tab].lower_case()
-
-    def set_cells(self, cells):
-        self._tabs[self.current_tab].set_cells(cells)
-
     # --- indent
     def indent(self):
         if self.current_tab >= 0:
             self._tabs[self.current_tab].on_tab(force_indent=True)
-
-    def unindent(self):
-        if self.current_tab >= 0:
-            self._tabs[self.current_tab].unindent()
 
     # --- select
     def select(self, tab_id=None):
@@ -252,18 +220,11 @@ class EditorNotebook(Notebook):
             self._tabs[tab].focus_set()
         return res
 
-    def select_all(self):
-        if self.current_tab >= 0:
-            self._tabs[self.current_tab].select_all()
-
     def focus_tab(self):
         if self.current_tab >= 0:
             self._tabs[self.current_tab].text.focus_set()
 
     # --- find / replace
-    def find(self):
-        if self.current_tab >= 0:
-            self._tabs[self.current_tab].find()
 
     def find_all(self, pattern, case_sensitive, regexp, full_word):
         options = {'regexp': regexp,
@@ -281,10 +242,6 @@ class EditorNotebook(Notebook):
 
         return results
 
-    def replace(self):
-        if self.current_tab >= 0:
-            self._tabs[self.current_tab].replace()
-
     def replace_all(self, pattern, new_text, replacements):
         try:
             for tab, matches in replacements.items():
@@ -295,10 +252,6 @@ class EditorNotebook(Notebook):
             showerror("Error", f"Replacement error: {e.msg}", parent=self)
 
     # --- syntax check
-    def show_syntax_issues(self, results):
-        if self.current_tab >= 0:
-            self._tabs[self.current_tab].show_syntax_issues(results)
-
     def get_syntax_issues(self):
         if self.current_tab >= 0:
             return self._tabs[self.current_tab].syntax_issues_menuentries
@@ -462,22 +415,10 @@ class EditorNotebook(Notebook):
                 showerror("Error", f"PermissionError: {e.strerror}: {file}", parent=self)
 
     # --- goto
-    def goto_line(self):
-        if self.current_tab >= 0:
-            self._tabs[self.current_tab].goto_line()
-
-    def highlight_line(self, *args):
-        if self.current_tab >= 0:
-            self._tabs[self.current_tab].highlight_line(*args)
-
     def goto_start(self):
         if self._current_tab >= 0:
             self._tabs[self._current_tab].text.mark_set('insert', '1.0')
             self._tabs[self._current_tab].text.see('1.0')
-
-    def goto_item(self, *args):
-        if self.current_tab >= 0:
-            self._tabs[self.current_tab].goto_item(*args)
 
     # --- misc
     def run(self, interactive=True):
@@ -570,12 +511,3 @@ the external terminal configuration in the settings.",
         file_swicther.bind('<<ItemSelect>>', sel)
         file_swicther.focus_set()
         return "break"
-
-    def choose_color(self):
-        """Display color picker."""
-        tab = self.current_tab
-        if tab >= 0:
-            self._tabs[self.current_tab].choose_color()
-
-
-

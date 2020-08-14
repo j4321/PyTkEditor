@@ -204,8 +204,8 @@ class Editor(ttk.Frame):
         self.text.edit_modified(0)
 
     def __getattr__(self, name):
-        """Fallback to the text' attributes."""
-        return self.text.__getattribute__(name)
+        """Fallback to the text's attributes."""
+        return getattr(self.text, name)
 
     @property
     def filetype(self):
@@ -683,3 +683,4 @@ class Editor(ttk.Frame):
                 self.syntax_issues_menuentries.append((category, m, lambda l=line: self.show_line(l)))
         self.syntax_checks.configure(state='disabled')
         self.syntax_checks.yview_moveto(self.line_nb.yview()[0])
+
