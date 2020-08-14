@@ -279,12 +279,13 @@ class EditorText(RichEditor):
         return "break"
 
     def _unindent_single_line(self, line_nb):
-        if line_nb == 1:
+        lines = self.get('%i.0' % (line_nb - 1), '%i.end' % line_nb).splitlines()
+        if len(lines) == 2:
+            prev_line, line = lines
+            indent_prev = len(prev_line) - len(prev_line.lstrip())
+        else:
             line = self.get('%i.0' % line_nb, '%i.end' % line_nb)
             indent_prev = -5
-        else:
-            prev_line, line = self.get('%i.0' % (line_nb - 1), '%i.end' % line_nb).splitlines()
-            indent_prev = len(prev_line) - len(prev_line.lstrip())
         indent = len(line) - len(line.lstrip())
         if not indent:
             return
@@ -506,6 +507,7 @@ class EditorText(RichEditor):
             self.edit_separator()
             self.replace('sel.first', 'sel.last',
                          self.get('sel.first', 'sel.last').lower())
+
 
 
 
