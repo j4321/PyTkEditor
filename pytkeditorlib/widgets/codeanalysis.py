@@ -130,30 +130,32 @@ class CodeAnalysis(BaseWidget):
         if self._process.is_alive():
             self._check_id = self.after(100, self._check_finished)
         else:
-            msgs = []
-            while not self._queue.empty():
-                msgs.append(self._queue.get(False))
             try:
-                stats, old_stats = msgs.pop(-1)
-            except ValueError:
-                pass
-            else:
+                msgs = []
+                while not self._queue.empty():
+                    msgs.append(self._queue.get(False))
                 try:
-                    prev = '(previous run: {global_note:.1f})'.format(**old_stats)
-                except (ValueError, KeyError):
-                    prev = ''
-                try:
-                    ev = 'Global evaluation: {global_note:.1f} '.format(**stats)
-                except (ValueError, KeyError):
-                    ev = 'Global evaluation: ?? '
-                label = f'{ev} {prev}'
-                self.populate(msgs, stats, label)
-                nbs = {elt: stats.get(elt, 0)
-                       for elt in ['error', 'warning', 'convention', 'refactor']}
-                self._records[self.file] = {'msgs': msgs, 'stats': nbs, 'label': label}
-            self.stop_btn.state(['disabled'])
-            self.start_btn.state(['!disabled'])
-            self.busy(False)
+                    stats, old_stats = msgs.pop(-1)
+                except (ValueError, IndexError):
+                    pass
+                else:
+                    try:
+                        prev = '(previous run: {global_note:.1f})'.format(**old_stats)
+                    except (ValueError, KeyError):
+                        prev = ''
+                    try:
+                        ev = 'Global evaluation: {global_note:.1f} '.format(**stats)
+                    except (ValueError, KeyError):
+                        ev = 'Global evaluation: ?? '
+                    label = f'{ev} {prev}'
+                    self.populate(msgs, stats, label)
+                    nbs = {elt: stats.get(elt, 0)
+                           for elt in ['error', 'warning', 'convention', 'refactor']}
+                    self._records[self.file] = {'msgs': msgs, 'stats': nbs, 'label': label}
+            finally:
+                self.stop_btn.state(['disabled'])
+                self.start_btn.state(['!disabled'])
+                self.busy(False)
 
     def analyze(self):
         """Start code analysis."""
@@ -191,6 +193,7 @@ class CodeAnalysis(BaseWidget):
                                  open=True, image='img_menu_dummy')
             self.tree.insert(mtype, 'end', text=message, values=(line,))
         self.tree.column('#0', width=max_width, minwidth=max_width)
+
 
 
 
