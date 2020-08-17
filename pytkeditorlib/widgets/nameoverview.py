@@ -32,10 +32,15 @@ from .base_widget import BaseWidget
 
 
 class NameOverview(BaseWidget):
+    """Namespace overview widget."""
     def __init__(self, master, **kw):
         BaseWidget.__init__(self, master, 'Namespace', padding=2, **kw)
         self.rowconfigure(1, weight=1)
         self.columnconfigure(0, weight=1)
+
+        # current code
+        self._filepath = None
+        self._code = None
 
         tooltips = TooltipWrapper(self)
         self.callback = None
@@ -89,6 +94,7 @@ class NameOverview(BaseWidget):
         self.treeview.bind('<<TreeviewSelect>>', self._on_select)
         self.treeview.bind('<<TreeviewOpen>>', self._on_item_open)
         self.treeview.bind('<<TreeviewClose>>', self._on_item_close)
+        self.treeview.bind('<<TreeviewClose>>', self._on_item_close)
 
         self.update_style()
 
@@ -99,10 +105,12 @@ class NameOverview(BaseWidget):
         self._sy.grid(row=1, column=1, sticky='ns')
 
     def update_style(self):
+        """Update widget's style."""
         self.treeview.tag_configure('0', background=self.style.lookup('flat.Treeview', 'background'))
         self.treeview.tag_configure('1', background=self.style.lookup('flat.Treeview.Heading', 'background'))
 
     def _toggle_scopes(self):
+        """Save all_scopes state in CONFIG and refresh the view."""
         CONFIG.set('Namespace', 'all_scopes', str('selected' in self.all_scopes.state()))
         self.event_generate('<<Refresh>>')
 
@@ -125,6 +133,7 @@ class NameOverview(BaseWidget):
         return row_tag
 
     def _on_item_close(self, event):
+        """Re-color rows when item is closed."""
         item = self.treeview.focus()
         row_tag = int(self.treeview.item(item, 'tags')[0])
         if row_tag != int(self.treeview.item(self.treeview.get_children(item)[-1], 'tags')[0]):
@@ -134,6 +143,7 @@ class NameOverview(BaseWidget):
                 item = self.treeview.next(item)
 
     def _on_item_open(self, event):
+        """Re-color rows when item is opened."""
         item = self.treeview.focus()
         tag = int(self.treeview.item(item, 'tags')[0])
         row_tag = tag
@@ -146,15 +156,18 @@ class NameOverview(BaseWidget):
                 item = self.treeview.next(item)
 
     def set_callback(self, fct):
+        """Set callback called on item selection."""
         self.callback = fct
 
     def _on_select(self, event):
+        """Trigger callback."""
         sel = self.treeview.selection()
         if self.callback is not None and sel:
             index = self.treeview.set(sel[0], 'Index')
             self.callback(index, f'{index} wordend')
 
     def clear(self, event=None):
+        """Clear widget."""
         self.treeview.delete(*self.treeview.get_children())
 
     def _expand(self, item):
@@ -180,6 +193,7 @@ class NameOverview(BaseWidget):
             self._collapse(c)
 
     def _sort_column0(self, reverse):
+        """Sort tree column."""
         l = [(self.treeview.item(k, 'text'), k) for k in self.treeview.get_children(self._module)]
         l.sort(reverse=reverse)
         # rearrange items in sorted positions
@@ -190,6 +204,7 @@ class NameOverview(BaseWidget):
         self._row_tag(self._module, 0)
 
     def _sort_column(self, col, reverse):
+        """Sort column col."""
         l = [(self.treeview.set(k, col), k) for k in self.treeview.get_children(self._module)]
         l.sort(reverse=reverse)
         # rearrange items in sorted positions
@@ -199,11 +214,14 @@ class NameOverview(BaseWidget):
         self.treeview.heading(col, command=lambda: self._sort_column(col, not reverse))
         self._row_tag(self._module, 0)
 
-    def populate(self, filepath=None, code=None):
-        self.treeview.delete(*self.treeview.get_children())
-        if filepath is None and code is None:
+    def _display(self):
+        """Display the content of the namespace."""
+        if not self.visible.get():
             return
-        script = jedi.Script(code=code, path=filepath)
+        self.treeview.delete(*self.treeview.get_children())
+        if self._filepath is None and self._code is None:
+            return
+        script = jedi.Script(code=self._code, path=self._filepath)
         names = script.get_names(all_scopes='selected' in self.all_scopes.state())
         if not names:
             return
@@ -225,3 +243,8 @@ class NameOverview(BaseWidget):
             except tk.TclError:
                 pass
 
+    def populate(self, filepath=None, code=None):
+        """Populate widget with namespace content from filepath or code."""
+        self._filepath = filepath
+        self._code = code
+        self._display()

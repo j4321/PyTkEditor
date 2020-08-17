@@ -41,6 +41,8 @@ class EditorNotebook(Notebook):
         self.files = {}      # tab: file_path
         self.tooltips = TooltipNotebookWrapper(self)
         self.last_closed = []
+
+        # --- tab menu
         self.menu = Menu(self, tearoff=False)
         self.menu.add_command(label='Set Console working directory',
                               command=self.set_console_wdir)

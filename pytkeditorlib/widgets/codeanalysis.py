@@ -1,4 +1,3 @@
-#! /usr/bin/python3
 # -*- coding: utf-8 -*-
 """
 PyTkEditor - Python IDE
@@ -106,13 +105,19 @@ class CodeAnalysis(BaseWidget):
         """Set analyzed file."""
         if file != self.file:
             self.interrupt()
-            if file in self._records:
-                data = self._records[file]
-                self.populate(data['msgs'], data['stats'], data['label'])
-            else:
-                self.clear()
         self.filename.configure(text=filename)
         self.file = file
+        self._display()
+
+    def _display(self):
+        """Display analysis results."""
+        if not self.visible.get():
+            return
+        if self.file in self._records:
+            data = self._records[self.file]
+            self.populate(data['msgs'], data['stats'], data['label'])
+        else:
+            self.clear()
 
     def clear(self):
         """Clear display."""
@@ -160,6 +165,7 @@ class CodeAnalysis(BaseWidget):
     def analyze(self):
         """Start code analysis."""
         if self.file:
+            self.event_generate('<Control-s>')
             self.start_btn.state(['disabled'])
             self.busy(True)
             self.stop_btn.state(['!disabled'])
@@ -193,10 +199,5 @@ class CodeAnalysis(BaseWidget):
                                  open=True, image='img_menu_dummy')
             self.tree.insert(mtype, 'end', text=message, values=(line,))
         self.tree.column('#0', width=max_width, minwidth=max_width)
-
-
-
-
-
 
 

@@ -41,6 +41,8 @@ class Filebrowser(BaseWidget):
         self.history = []
         self.history_index = -1
 
+        self._path = ''
+
         tooltips = TooltipWrapper(self)
 
         self.load_filters()
@@ -212,24 +214,32 @@ class Filebrowser(BaseWidget):
             elif self.filter.search(name):
                 self.filetree.insert(path, 'end', ipath, text=name, tags='file')
 
-    def populate(self, path, history=True, reset=False):
+    def _display(self):
+        if not self.visible.get():
+            return
+
+        p = os.path.abspath(self._path)
+        root = self.filetree.get_children('')
+        if root and p == root[0]:
+            return
+
         self.configure(cursor='watch')
         self.update_idletasks()
         self._sx.timer = self._sx.threshold + 1
         self._sy.timer = self._sy.threshold + 1
 
         self.filetree.delete(*self.filetree.get_children())
-        p = os.path.abspath(path)
         self.filetree.insert('', 0, p, text=p, image='img_folder', open=True)
 
         self._lazy_populate(p)
 
         self.configure(cursor='')
+
+    def populate(self, path, history=True, reset=False):
+        self._path = path
+        self._display()
         if reset:
             self.history = []
             self.history_index = -1
         if history:
             self.history_add(path)
-
-
-

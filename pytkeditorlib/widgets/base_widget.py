@@ -29,6 +29,15 @@ from pytkeditorlib.utils.constants import CONFIG
 class BaseWidget(Frame):
     """Base class for the side widgets."""
     def __init__(self, master, name, **kw):
+        """
+        Create widget.
+
+        Arguments:
+
+            * master: parent widget
+            * name: widget name
+            * kw: ttk.Frame keyword options
+        """
         kw.setdefault('padding', 2)
         Frame.__init__(self, master, **kw)
 
@@ -36,6 +45,7 @@ class BaseWidget(Frame):
 
         self.menu = None
 
+        # whether the widget is visible
         self.visible = BooleanVar(self)
         self.visible.trace_add('write', self._visibility_trace)
 
@@ -59,12 +69,16 @@ class BaseWidget(Frame):
         else:
             self.configure(cursor='')
 
+    def _display(self):
+        """Callback when the widget becomes visible."""
+
     def _visibility_trace(self, *args):
         """Callback when widget's visibilty changes."""
         visible = self.visible.get()
         if visible:
             self.master.add(self)
             self.master.select(self)
+            self._display()
         else:
             self.master.hide(self)
         CONFIG.set(self.name, 'visible', str(visible))
@@ -146,3 +160,4 @@ class WidgetNotebook(Notebook):
         if tab:
             return tab
         self._tabs[self.index(tab_id)].visible.set(True)
+

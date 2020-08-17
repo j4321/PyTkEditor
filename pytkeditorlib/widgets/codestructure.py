@@ -74,6 +74,9 @@ class CodeTree(Treeview):
         self.callback = None
         self.cells = []
 
+        self._re_cell1 = re.compile(r'^# In(\[.*\].*)$')
+        self._re_cell2 = re.compile(r'^# ?%% ?(.*)$')
+
         # right click menu
         self.menu = Menu(self)
         self.menu.add_command(label='Expand section', command=self._expand_section)
@@ -145,6 +148,18 @@ class CodeTree(Treeview):
         for c in self.get_children(""):
             self.collapse(c)
 
+    def get_cells(self, text):
+        self.cells.clear()
+
+        for i, line in enumerate(text.splitlines(), 1):
+            match = self._re_cell1.match(line)
+            if match:
+                self.cells.append(i)
+            else:
+                match = self._re_cell2.match(line)
+                if match:
+                    self.cells.append(i)
+
     def populate(self, text, reset):
         if reset:
             opened = []
@@ -181,7 +196,7 @@ class CodeTree(Treeview):
                     name = token.string[1:]
                     add = True
                 else:
-                    match = re.match(r'^# In(\[.*\].*)$', token.string)
+                    match = self._re_cell1.match(token.string)
                     if match:
                         obj_type = 'cell'
                         indent = 0
@@ -189,7 +204,7 @@ class CodeTree(Treeview):
                         add = True
                         self.cells.append(token.start[0])
                     else:
-                        match = re.match(r'^# ?%% ?(.*)$', token.string)
+                        match = self._re_cell2.match(token.string)
                         if match:
                             obj_type = 'cell'
                             indent = 0
@@ -228,6 +243,9 @@ class CodeStructure(BaseWidget):
         self.columnconfigure(0, weight=1)
 
         self._manager = manager
+
+        self._text = ''
+        self._title = ''
 
         tooltips = TooltipWrapper(self)
 
@@ -342,6 +360,7 @@ class CodeStructure(BaseWidget):
         visible = self.visible.get()
         if visible:
             self.show()
+            self._display()
         else:
             self.hide()
         CONFIG.set('Code structure', 'visible', str(visible))
@@ -355,13 +374,14 @@ class CodeStructure(BaseWidget):
         self.filename.configure(text='')
         self.btn_refresh.state(['disabled'])
 
-    def populate(self, title, text):
-        reset = self.filename.cget('text') != title
-        self.filename.configure(text=title)
+    def _display(self):
+        """Display code structure."""
+        reset = self.filename.cget('text') != self._title
+        self.filename.configure(text=self._title)
         self._sx.timer = self._sx.threshold + 1
         self._sy.timer = self._sy.threshold + 1
         try:
-            names = list(self.codetree.populate(text, reset))
+            names = list(self.codetree.populate(self._text, reset))
         except TclError:
             logging.exception('CodeStructure Error')
             self.codetree.delete(*self.codetree.get_children())
@@ -370,6 +390,14 @@ class CodeStructure(BaseWidget):
         self.goto_entry.delete(0, "end")
         self.goto_entry.set_completion_list(names)
         self.btn_refresh.state(['!disabled'])
+
+    def populate(self, title, text):
+        self._text = text
+        self._title = title
+        if not self.visible.get():
+            self.codetree.get_cells(text)
+        else:
+            self._display()
         self.event_generate('<<Populate>>')
 
     def goto(self, event):
@@ -382,4 +410,5 @@ class CodeStructure(BaseWidget):
             self.codetree.selection_remove(*self.codetree.selection())
             self.codetree.selection_set(res[self._goto_index])
             self._goto_index += 1
+
 
