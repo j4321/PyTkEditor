@@ -553,7 +553,7 @@ class Editor(ttk.Frame):
         if strip:
             self.text.parse_part()
             self.strip()
-        txt = self.text.get('1.0', 'end')
+        txt = self.text.get('1.0', 'end-1c') # remove final space
         self.text.edit_separator()
         return txt
 

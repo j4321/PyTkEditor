@@ -513,3 +513,4 @@ the external terminal configuration in the settings.",
         file_swicther.bind('<<ItemSelect>>', sel)
         file_swicther.focus_set()
         return "break"
+

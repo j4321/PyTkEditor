@@ -416,6 +416,3 @@ class RichEditor(RichText):
             self.mark_set('insert', 'insert-1c')
         self.edit_separator()
         return 'break'
-
-
-
