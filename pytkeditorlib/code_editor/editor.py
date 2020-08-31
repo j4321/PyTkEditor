@@ -66,7 +66,7 @@ class Editor(ttk.Frame):
                                width=81, height=45, wrap='none', cursor='watch')
 
         self.sep = tk.Frame(self.text)
-        self._sep_x = 0
+        self._sep_x = 1
 
         self.line_nb = tk.Text(self, width=1, cursor='watch')
         self.line_nb.insert('1.0', '1')
@@ -85,7 +85,9 @@ class Editor(ttk.Frame):
 
         def xscroll(x0, x1):
             sx.set(x0, x1)
-            self.sep.place_configure(relx=self._sep_x / self.text.winfo_width() - float(x0))
+            x0, x1 = float(x0), float(x1)
+            width = round((self.text.winfo_width() - 2) / (x1 - x0))
+            self.sep.place_configure(x=self._sep_x - width*x0)
 
         def yscroll(y0, y1):
             sy.set(y0, y1)
@@ -292,7 +294,9 @@ class Editor(ttk.Frame):
                 CONFIG.getint("General", "fontsize"))
         tkfont = Font(self, font)
         self._sep_x = tkfont.measure(' ' * 79)
-        self.sep.place(y=0, relheight=1, relx=self._sep_x / self.text.winfo_width(), width=1)
+        x0, x1 = self.text.xview()
+        width = round((self.text.winfo_width() - 2) / (x1 - x0))
+        self.sep.place(y=0, relheight=1, width=1, x=self._sep_x - width*x0)
 
         theme = f"{CONFIG.get('General', 'theme').capitalize()} Theme"
 
