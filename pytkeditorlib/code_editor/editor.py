@@ -544,6 +544,7 @@ class Editor(ttk.Frame):
         self.text.see(start)
         self.text.tag_remove('sel', '1.0', 'end')
         self.text.tag_add('sel', start, end)
+        self.text.focus_set()
 
     def goto_prev_cell(self, event):
         if not self.cells:

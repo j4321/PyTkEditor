@@ -31,7 +31,7 @@ from .base_widget import BaseWidget
 
 class CodeAnalysis(BaseWidget):
     """Widegt to display the static code analysis with pylint."""
-    def __init__(self, master, **kw):
+    def __init__(self, master, click_callback=None, **kw):
         BaseWidget.__init__(self, master, 'Code analysis', **kw)
         self.rowconfigure(1, weight=1)
         self.columnconfigure(0, weight=1)
@@ -67,7 +67,7 @@ class CodeAnalysis(BaseWidget):
 
         self.font = Font(self, font="TkDefaultFont 9")
         self.font_heading = Font(self, font="TkDefaultFont 9 bold")
-        self.callback = None
+        self.callback = click_callback
         self.file = ''
         self._process = None
         self._queue = None
@@ -96,10 +96,6 @@ class CodeAnalysis(BaseWidget):
     def update_style(self):
         theme = f"{CONFIG.get('General', 'theme').capitalize()} Theme"
         self.tree.tag_configure('empty', foreground=CONFIG.get(theme, 'disabledfg'))
-
-    def set_callback(self, fct):
-        """Set click callback."""
-        self.callback = fct
 
     def set_file(self, filename, file):
         """Set analyzed file."""

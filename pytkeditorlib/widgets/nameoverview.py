@@ -33,7 +33,7 @@ from .base_widget import BaseWidget
 
 class NameOverview(BaseWidget):
     """Namespace overview widget."""
-    def __init__(self, master, **kw):
+    def __init__(self, master, click_callback=None, **kw):
         BaseWidget.__init__(self, master, 'Namespace', padding=2, **kw)
         self.rowconfigure(1, weight=1)
         self.columnconfigure(0, weight=1)
@@ -43,7 +43,7 @@ class NameOverview(BaseWidget):
         self._code = None
 
         tooltips = TooltipWrapper(self)
-        self.callback = None
+        self.callback = click_callback
         self.font = Font(self, font="TkDefaultFont 9")
         self.style = ttk.Style(self)
 
@@ -154,10 +154,6 @@ class NameOverview(BaseWidget):
             while item:
                 row_tag = self._row_tag(item, row_tag + 1)
                 item = self.treeview.next(item)
-
-    def set_callback(self, fct):
-        """Set callback called on item selection."""
-        self.callback = fct
 
     def _on_select(self, event):
         """Trigger callback."""

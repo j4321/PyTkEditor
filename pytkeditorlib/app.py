@@ -132,10 +132,12 @@ class App(tk.Tk):
             widgets.append('Code analysis')
         widgets.sort(key=lambda w: CONFIG.getint(w, 'order', fallback=0))
         # --- --- --- code structure tree
-        self.codestruct = CodeStructure(self._horizontal_pane, self.right_nb)
+        self.codestruct = CodeStructure(self._horizontal_pane, self.right_nb,
+                                        self.editor.goto_item)
         # --- --- --- code analysis
         if cst.PYLINT:
-            self.widgets['Code analysis'] = CodeAnalysis(self.right_nb, padding=1)
+            self.widgets['Code analysis'] = CodeAnalysis(self.right_nb, padding=1,
+                                                         click_callback=self.editor.highlight_line)
         # --- --- --- command history
         self.widgets['History'] = HistoryFrame(self.right_nb, padding=1)
         # --- --- --- python console
@@ -150,7 +152,7 @@ class App(tk.Tk):
         # --- --- --- filebrowser
         self.widgets['File browser'] = Filebrowser(self.right_nb, self.open_file)
         # --- --- --- nameoverview
-        self.widgets['Namespace'] = NameOverview(self.right_nb)
+        self.widgets['Namespace'] = NameOverview(self.right_nb, self.editor.goto_item)
 
         # --- --- placement
         self._frame.pack(fill='both', expand=True)
@@ -834,13 +836,10 @@ class App(tk.Tk):
 
     def _on_tab_changed(self, event):
         self.filetype.set(self.editor.get_filetype())
-        self.codestruct.set_callback(self.editor.goto_item)
         if cst.PYLINT:
-            self.widgets['Code analysis'].set_callback(self.editor.highlight_line)
             self.widgets['Code analysis'].set_file(self.editor.filename, self.editor.filepath)
         self._populate_codestructure()
         self._populate_namespace()
-        self.widgets['Namespace'].set_callback(self.editor.goto_item)
         self.update_menu_errors()
         self.editor.focus_tab()
 

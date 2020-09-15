@@ -60,7 +60,7 @@ class Tree:
 
 
 class CodeTree(Treeview):
-    def __init__(self, master):
+    def __init__(self, master, click_callback=None):
         Treeview.__init__(self, master, show='tree', selectmode='none',
                           style='flat.Treeview', padding=4)
 
@@ -71,7 +71,7 @@ class CodeTree(Treeview):
         self.tag_configure('_def', image="img_hf")
         self.tag_configure('#', image='img_sep')
         self.tag_configure('cell', image='img_cell')
-        self.callback = None
+        self.callback = click_callback
         self.cells = []
 
         self._re_cell1 = re.compile(r'^# In(\[.*\].*)$')
@@ -92,9 +92,6 @@ class CodeTree(Treeview):
         if 'indicator' not in self.identify_element(event.x, event.y):
             self.selection_remove(*self.selection())
             self.selection_set(self.identify_row(event.y))
-
-    def set_callback(self, fct):
-        self.callback = fct
 
     def _on_select(self, event):
         sel = self.selection()
@@ -237,7 +234,7 @@ class CodeTree(Treeview):
 
 
 class CodeStructure(BaseWidget):
-    def __init__(self, master, manager):
+    def __init__(self, master, manager, click_callback):
         BaseWidget.__init__(self, master, 'Code structure', style='border.TFrame')
         self.rowconfigure(2, weight=1)
         self.columnconfigure(0, weight=1)
@@ -250,7 +247,7 @@ class CodeStructure(BaseWidget):
         tooltips = TooltipWrapper(self)
 
         # tree
-        self.codetree = CodeTree(self)
+        self.codetree = CodeTree(self, click_callback=click_callback)
         self._sx = AutoHideScrollbar(self, orient='horizontal', command=self.codetree.xview)
         self._sy = AutoHideScrollbar(self, orient='vertical', command=self.codetree.yview)
         self.codetree.configure(xscrollcommand=self._sx.set,
@@ -283,7 +280,6 @@ class CodeStructure(BaseWidget):
         self.goto_entry.pack(side='left', fill='x', expand=True, pady=4, padx=4)
         self._goto_index = 0
 
-
         # placement
         header.grid(row=0, columnspan=2, sticky='we')
         self.filename.grid(row=1, columnspan=2, sticky='we')
@@ -293,10 +289,10 @@ class CodeStructure(BaseWidget):
         Frame(self, style='separator.TFrame', height=1).grid(row=4, column=0, columnspan=2, sticky='ew')
         self.goto_frame.grid(row=5, column=0, columnspan=2, sticky='nsew')
 
-        self.set_callback = self.codetree.set_callback
         self.update_style = self.codetree.update_style
 
         # bindings
+        self.filename.bind('<1>', self._header_callback)
         self.goto_entry.bind('<Return>', self.goto)
         self.goto_entry.bind('<<ComboboxSelected>>', self.goto)
         self.goto_entry.bind('<Key>', self._reset_goto)
@@ -325,6 +321,10 @@ class CodeStructure(BaseWidget):
 
     def _reset_goto(self, event):
         self._goto_index = 0
+
+    def _header_callback(self, event):
+        if self.codetree.callback is not None:
+            self.codetree.callback('1.0', '1.0')
 
     def focus_set(self):
         self.goto_entry.focus_set()
