@@ -132,15 +132,24 @@ class NameOverview(BaseWidget):
                 row_tag = self._row_tag(ch, row_tag + 1)
         return row_tag
 
+    def _add_tag_from_row(self, item, tag):
+        """Add tag to item, then add alternate tags to all following rows."""
+        current_item = item
+        row_tag = self._row_tag(current_item, tag)
+        next_item = self.treeview.next(current_item)
+        while not next_item:
+            current_item = self.treeview.parent(current_item)
+            if not current_item:
+                return # root reached
+            next_item = self.treeview.next(current_item)
+        self._add_tag_from_row(next_item, row_tag + 1)
+
     def _on_item_close(self, event):
         """Re-color rows when item is closed."""
         item = self.treeview.focus()
         row_tag = int(self.treeview.item(item, 'tags')[0])
         if row_tag != int(self.treeview.item(self.treeview.get_children(item)[-1], 'tags')[0]):
-            item = self.treeview.next(item)
-            while item:
-                row_tag = self._row_tag(item, row_tag + 1)
-                item = self.treeview.next(item)
+            self._add_tag_from_row(item, row_tag)
 
     def _on_item_open(self, event):
         """Re-color rows when item is opened."""
@@ -150,10 +159,7 @@ class NameOverview(BaseWidget):
         for ch in self.treeview.get_children(item):
             row_tag = self._row_tag(ch, row_tag + 1)
         if row_tag % 2 != tag:  # change coloring of next items
-            item = self.treeview.next(item)
-            while item:
-                row_tag = self._row_tag(item, row_tag + 1)
-                item = self.treeview.next(item)
+            self._add_tag_from_row(ch, row_tag)
 
     def _on_select(self, event):
         """Trigger callback."""
