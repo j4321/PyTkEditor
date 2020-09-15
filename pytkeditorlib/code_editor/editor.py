@@ -139,12 +139,23 @@ class Editor(ttk.Frame):
         self._highlight_btn.pack(side='left', padx=2, pady=4)
         tooltips.add_tooltip(self._highlight_btn, 'Highlight matches')
         self.replace_buttons = ttk.Frame(self.frame_search)
-        ttk.Button(self.replace_buttons, text='Replace', padding=0,
-                   command=self.replace_sel).pack(side='left', padx=2, pady=4)
-        ttk.Button(self.replace_buttons, text='Replace and Find', padding=0,
-                   command=self.replace_find).pack(side='left', padx=2, pady=4)
-        ttk.Button(self.replace_buttons, text='Replace All', padding=0,
-                   command=self.replace_all).pack(side='left', padx=2, pady=4)
+        btn_rup = ttk.Button(self.replace_buttons, style='red.Up.TButton', padding=0,
+                             command=lambda: self.replace_find(backwards=True))
+        btn_rup.pack(side='left', padx=2, pady=4)
+        tooltips.add_tooltip(btn_rup, 'Replace and find previous')
+        btn_rdown = ttk.Button(self.replace_buttons, style='red.Down.TButton', padding=0,
+                               command=self.replace_find)
+        btn_rdown.pack(side='left', padx=2, pady=4)
+        tooltips.add_tooltip(btn_rdown, 'Replace and find next')
+        btn_rall = ttk.Button(self.replace_buttons, padding=0,
+                              command=self.replace_all, image='img_replace_all')
+        btn_rall.pack(side='left', padx=2, pady=4)
+        tooltips.add_tooltip(btn_rall, 'Replace all')
+        btn_rall_sel = ttk.Button(self.replace_buttons, padding=0,
+                                  command=self.replace_all_in_sel,
+                                  image='img_replace_selection')
+        btn_rall_sel.pack(side='left', padx=2, pady=4)
+        tooltips.add_tooltip(btn_rall_sel, 'Replace all in selection')
 
         frame_find = ttk.Frame(self.frame_search)
         ttk.Button(frame_find, padding=0,
@@ -398,9 +409,21 @@ class Editor(ttk.Frame):
                 self.search(notify_no_match=notify_no_match)
                 return False
 
-    def replace_find(self):
+    def replace_find(self, backwards=False):
         if self.replace_sel():
-            self.search()
+            self.search(backwards=backwards)
+
+    def replace_all_in_sel(self):
+        self.text.edit_separator()
+        res = True
+        if not self.text.tag_ranges('sel'):
+            return
+        index_stop = self.text.index('sel.last')
+        self.text.mark_set('insert', 'sel.first')
+        # replace all occurences in selection
+        while res:
+            self.search(notify_no_match=False, stopindex=index_stop)
+            res = self.replace_sel(notify_no_match=False)
 
     def replace_all(self):
         self.text.edit_separator()

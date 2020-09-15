@@ -691,6 +691,8 @@ class App(tk.Tk):
         style.configure('separator.TFrame', background=theme['bordercolor'], padding=1)
         style.configure('Up.TButton', arrowsize=20)
         style.configure('Down.TButton', arrowsize=20)
+        style.configure('red.Up.TButton', arrowcolor='#CA0000')
+        style.configure('red.Down.TButton', arrowcolor='#CA0000')
         style.configure('close.TButton', borderwidth=1, relief='flat')
         style.map('close.TButton', relief=[('active', 'raised')])
         style.map('toggle.TButton', relief=[('selected', 'sunken'), ('!selected', 'flat')])
