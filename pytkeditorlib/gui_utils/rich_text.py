@@ -320,6 +320,7 @@ class RichEditor(RichText):
             script, row, col = self._jedi_script()
             res = script.infer(row, col)
         except Exception:
+            res = None
             logging.exception('Jedi Error')   # jedi raised an exception
         self.mark_set('insert', index)
         if res:
