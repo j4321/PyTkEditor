@@ -347,6 +347,66 @@ class ThreeButtonBox(tk.Toplevel):
     def get_result(self):
         return self.result
 
+class NButtonBox(tk.Toplevel):
+    """Messagebox with n buttons."""
+
+    def __init__(self, parent, button1=_("Ok"), *buttons, title="", message="", image=None):
+        """
+        Create a messagebox with N buttons.
+
+        Arguments:
+            parent: parent of the toplevel window
+            title: message box title
+            message: message box text
+            button1/2/3: message displayed on the first/second button
+            image: image displayed at the left of the message
+
+        self.result contains the text of the clicked button, "" otherwise
+        """
+
+        tk.Toplevel.__init__(self, parent, padx=4, pady=4)
+        self.transient(parent)
+        self.resizable(False, False)
+        self.title(title)
+        self.columnconfigure(0, weight=1)
+        self.result = ""
+
+        if image in ICONS:
+            image = f"::tk::icons::{image}"
+        elif isinstance(image, str) and os.path.exists(image):
+            self.img = tk.PhotoImage(master=self, file=image)
+            image = self.img
+        frame = ttk.Frame(self)
+        frame.grid(row=0, column=0, sticky="ewsn")
+        if image:
+            ttk.Label(frame, image=image).pack(side="left", padx=(10, 4), pady=(10, 4))
+        ttk.Label(frame, text=message, font="TkDefaultFont 10 bold",
+                  wraplength=335).pack(side="left", padx=(4, 10), pady=(10, 4))
+
+        frame_btns = ttk.Frame(self)
+        frame_btns.grid(row=1, column=0, sticky="ew")
+        if len(buttons) > 1:
+            pack_options = dict(side='left', fill='x', expand=True, padx=8, pady=8)
+        else:
+            pack_options = dict(side='left', padx=8, pady=8)
+        b1 = ttk.Button(frame_btns, text=button1, command=lambda: self.command(button1))
+        b1.pack(**pack_options)
+        for btn in buttons:
+            ttk.Button(frame_btns, text=btn,
+                       command=lambda txt=btn: self.command(txt)).pack(**pack_options)
+        try:
+            self.grab_set()
+        except tk.TclError:
+            pass
+        b1.focus_set()
+
+    def command(self, name):
+        self.result = name
+        self.destroy()
+
+    def get_result(self):
+        return self.result
+
 
 def showmessage(title="", message="", parent=None, button=_("Ok"), image=None):
     """
@@ -438,10 +498,9 @@ def askyesno(title="", message="", parent=None, icon="question"):
     return box.get_result() == _("Yes")
 
 
-def askoptions(title="", message="", parent=None, icon="question",
-               button1=_("Yes"), button2=_("No"), button3=_("Cancel")):
+def askoptions(title="", message="", parent=None, icon="question", *buttons):
     """
-    Display a dialog with 3 buttons.
+    Display a dialog with N buttons.
 
     Return the text of the clicked button, "" otherwise.
 
@@ -452,9 +511,9 @@ def askoptions(title="", message="", parent=None, icon="question",
         icon: icon to display on the left of the message, either a PhotoImage
               or a string ('information', 'error', 'question', 'warning' or
               image path)
-       button1/2/3: button text
+       buttons: button text list
     """
-    box = ThreeButtonBox(parent, title, message, icon, button1, button2, button3)
+    box = NButtonBox(parent, *buttons, title=title, message=message, image=icon)
     box.wait_window(box)
     return box.get_result()
 
@@ -473,7 +532,9 @@ def askyesnocancel(title="", message="", parent=None, icon="question"):
               or a string ('information', 'error', 'question', 'warning' or
               image path)
     """
-    res = askoptions(title, message, parent, icon)
+    box = ThreeButtonBox(parent, title, message, icon)
+    box.wait_window(box)
+    res = box.get_result()
     if res == _('Yes'):
         return True
     if res == _('No'):

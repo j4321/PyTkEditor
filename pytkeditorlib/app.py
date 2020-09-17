@@ -440,6 +440,7 @@ class App(tk.Tk):
         self.editor.bind('<<FiletypeChanged>>', self._filetype_change)
         self.editor.bind('<<Modified>>', lambda e: self._edit_modified())
         self.editor.bind('<<Reload>>', self.reload)
+        self.editor.bind('<<ReloadAll>>', self.reload_all)
         self.editor.bind('<<SetConsoleWDir>>', self.set_console_wdir)
         self.bind('<<Inspect>>', self.show_help)
 
@@ -1154,19 +1155,38 @@ class App(tk.Tk):
                 logging.exception(str(e))
                 showerror('Error', "{}: {}".format(type(e), e), err, parent=self)
 
+    def reload_all(self, event=None):
+        self.busy(True)
+        tabs = self.editor.get_modified()
+        for tab in tabs:
+            self._reload(tab)
+        self._populate_codestructure()
+        self.check_syntax()
+        self.editor.goto_start()
+        self.busy(False)
+
     def reload(self, event=None):
-        file = self.editor.files[self.editor.current_tab]
-        txt = self.load_file(file)
-        if txt is not None:
-            self.busy(True)
-            self.editor.delete('1.0', 'end')
-            self.editor.insert('1.0', txt)
-            self.editor.edit_reset()
-            self._edit_modified(0)
+        self.busy(True)
+        ans = self._reload()
+        if ans:
             self._populate_codestructure()
             self.check_syntax()
             self.editor.goto_start()
-            self.busy(False)
+        self.busy(False)
+
+    def _reload(self, tab=None):
+        if tab is None:
+            file = self.editor.files[self.editor.current_tab]
+        else:
+            file = self.editor.files[tab]
+        txt = self.load_file(file)
+        if txt is None:
+            return False
+        self.editor.delete('1.0', 'end', tab=tab)
+        self.editor.insert('1.0', txt, tab=tab)
+        self.editor.edit_reset(tab=tab)
+        self._edit_modified(0, tab=tab)
+        return True
 
     def open_file(self, file):
         self.update_idletasks()

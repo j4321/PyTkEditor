@@ -61,6 +61,19 @@ class EditorNotebook(Notebook):
         if self.menu is not None:
             self.menu.tk_popup(event.x_root, event.y_root)
 
+    def get_modified(self):
+        """Return list of tabs for which the corresponding file has been modified outside PyTkEditor."""
+        tabs = []
+        for tab, file in self.files.items():
+            try:
+                mtime = os.stat(file).st_mtime
+                if mtime > self._files_mtime[tab]:
+                    # the file has been modified
+                    tabs.append(tab)
+            except (FileNotFoundError, NotADirectoryError):
+                pass # the file has been deleted
+        return tabs
+
     def _check_modif(self, tab):
         """Check if file has been modified outside PyTkEditor."""
         file = self.files[tab]
@@ -73,14 +86,20 @@ class EditorNotebook(Notebook):
                 self.update_idletasks()
                 ans = askoptions('Warning',
                                  f'{file} has been modified outside PyTkEditor. What do you want to do?',
-                                 self, 'warning', 'Reload', 'Overwrite', 'Cancel')
+                                 self, 'warning', 'Reload', 'Reload all', 'Overwrite', 'Cancel')
                 if ans == 'Reload':
                     self.select(tab)
                     self.event_generate('<<Reload>>')
+                    self._files_mtime[tab] = os.stat(file).st_mtime
+                elif ans == 'Reload all':
+                    self.select(tab)
+                    self.event_generate('<<ReloadAll>>')
+                    for t in self.get_modified():
+                        self._files_mtime[t] = os.stat(self.files[t]).st_mtime
                 elif ans == 'Overwrite':
                     self.save(tab=tab)
                     self.edit_modified(False, tab=tab, generate=True)
-                self._files_mtime[tab] = os.stat(file).st_mtime
+                    self._files_mtime[tab] = os.stat(file).st_mtime
         except (FileNotFoundError, NotADirectoryError):
             # the file has been deleted
             try:
@@ -179,6 +198,11 @@ class EditorNotebook(Notebook):
             tab = self.current_tab
         if tab >= 0:
             self._tabs[tab].delete(index1, index2)
+
+    def edit_reset(self, tab=None):
+        if tab is None:
+            tab = self.current_tab
+        self._tabs[tab].text.edit_reset()
 
     def edit_modified(self, *args, widget=None, generate=False, tab=None):
         if widget is None:
