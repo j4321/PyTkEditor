@@ -65,7 +65,8 @@ class SearchDialog(tk.Toplevel):
         self._search_pattern = None
         self.results = ttk.Treeview(result_frame, show='tree',
                                     columns=('tab', 'index_start', 'index_end'), displaycolumns=())
-        self.results.tag_bind('result', '<ButtonRelease-1>', self._show_file)
+        self.results.tag_bind('result', '<ButtonRelease-1>', self._show_result)
+        self.results.tag_bind('file', '<ButtonRelease-1>', self._show_file)
         scroll = AutoHideScrollbar(result_frame, orient='vertical',
                                    command=self.results.yview)
         self.results.configure(yscrollcommand=scroll.set)
@@ -87,8 +88,8 @@ class SearchDialog(tk.Toplevel):
         result_frame.pack(fill='both', expand=True, pady=4, padx=4)
         self.entry_search.focus_set()
 
-    def _show_file(self, event):
-        """Display file corresponding to the selected item."""
+    def _show_result(self, event):
+        """Display search result corresponding to the selected item."""
         item = self.results.focus()
         try:
             tab, start, end = self.results.item(item, 'values')
@@ -97,6 +98,19 @@ class SearchDialog(tk.Toplevel):
         try:
             self.master.editor.select(int(tab))
             self.master.editor.goto_item(start, end)
+            self.master.update_idletasks()
+        except (tk.TclError, KeyError, ValueError):
+            return
+
+    def _show_file(self, event):
+        """Display file corresponding to the selected item."""
+        item = self.results.focus()
+        try:
+            tab, = self.results.item(item, 'values')
+        except ValueError:
+            return
+        try:
+            self.master.editor.select(int(tab))
             self.master.update_idletasks()
         except (tk.TclError, KeyError, ValueError):
             return

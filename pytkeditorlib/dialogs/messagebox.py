@@ -347,6 +347,7 @@ class ThreeButtonBox(tk.Toplevel):
     def get_result(self):
         return self.result
 
+
 class NButtonBox(tk.Toplevel):
     """Messagebox with n buttons."""
 
@@ -511,7 +512,7 @@ def askoptions(title="", message="", parent=None, icon="question", *buttons):
         icon: icon to display on the left of the message, either a PhotoImage
               or a string ('information', 'error', 'question', 'warning' or
               image path)
-       buttons: button text list
+        buttons: button text list
     """
     box = NButtonBox(parent, *buttons, title=title, message=message, image=icon)
     box.wait_window(box)
