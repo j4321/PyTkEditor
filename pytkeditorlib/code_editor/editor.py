@@ -374,6 +374,11 @@ class Editor(ttk.Frame):
         return "break"
 
     def replace_sel(self, notify_no_match=True):
+        """
+        Replace selection if it matches search pattern.
+
+        Return True if the selection was replaced
+        """
         self.text.edit_separator()
         pattern = self.entry_search.get()
         self.entry_search.add_to_history(pattern)
@@ -383,31 +388,29 @@ class Editor(ttk.Frame):
         if not sel:
             self.search(notify_no_match=notify_no_match)
             return False
-        else:
-            sel_text = self.text.get('sel.first', 'sel.last')
-            regexp = 'selected' in self.regexp.state()
-            if regexp:
-                if 'selected' in self.full_word.state():
-                    # full word: \b at the end
-                    pattern = r"\b{}\b".format(pattern)
-                if 'selected' not in self.case_sensitive.state():
-                    # ignore case: (?i) at the start
-                    pattern = r"(?i)" + pattern
-                cpattern = re.compile('^' + pattern + '$')
-                if cpattern.match(sel_text):
-                    try:
-                        replacement = re.sub(pattern, new_text, sel_text)
-                    except re.error as e:
-                        showerror("Error", f"Replacement error: {e.msg}", parent=self)
-                        return False
-                    self.text.replace('sel.first', 'sel.last', replacement)
-                    return True
-            elif pattern == sel_text:
-                self.text.replace('sel.first', 'sel.last', new_text)
+        sel_text = self.text.get('sel.first', 'sel.last')
+        regexp = 'selected' in self.regexp.state()
+        if regexp:
+            if 'selected' in self.full_word.state():
+                # full word: \b at the end
+                pattern = r"\b{}\b".format(pattern)
+            if 'selected' not in self.case_sensitive.state():
+                # ignore case: (?i) at the start
+                pattern = r"(?i)" + pattern
+            cpattern = re.compile('^' + pattern + '$')
+            if cpattern.match(sel_text):
+                try:
+                    replacement = re.sub(pattern, new_text, sel_text)
+                except re.error as e:
+                    showerror("Error", f"Replacement error: {e.msg}", parent=self)
+                    return False
+                self.text.replace('sel.first', 'sel.last', replacement)
                 return True
-            else:
-                self.search(notify_no_match=notify_no_match)
-                return False
+        elif pattern == sel_text:
+            self.text.replace('sel.first', 'sel.last', new_text)
+            return True
+        self.search(notify_no_match=notify_no_match)
+        return False
 
     def replace_find(self, backwards=False):
         if self.replace_sel():
@@ -430,9 +433,12 @@ class Editor(ttk.Frame):
         res = True
         self.text.mark_set('insert', '1.0')
         # replace all occurences in text
+        nb = -1
         while res:
+            nb += 1
             self.search(notify_no_match=False, stopindex='end')
             res = self.replace_sel(notify_no_match=False)
+        showinfo("Information", f"{nb} occurrence(s) have been replaced.")
 
     def replace_text(self, start, end, pattern, repl):
         self.text.edit_separator()
