@@ -174,7 +174,7 @@ class ShowError(tk.Toplevel):
             frame2.columnconfigure(0, weight=1)
             frame2.rowconfigure(0, weight=1)
             txt_frame = ttk.Frame(frame2, style='txt.TFrame', relief='sunken', borderwidth=1)
-            error_msg = tk.Text(txt_frame, width=w, wrap='word', font="TkDefaultFont 10",
+            error_msg = tk.Text(txt_frame, width=w, wrap='word', font="TkFixedFont",
                                 bg=fieldbg, fg=fg, height=8)
             error_msg.bind("<Button-1>", lambda event: error_msg.focus_set())
             error_msg.insert('1.0', traceback)

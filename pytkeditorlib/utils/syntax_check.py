@@ -22,6 +22,7 @@ Syntax / PEP8 compliance checks
 """
 from subprocess import Popen, PIPE
 from multiprocessing import Process, Queue
+import traceback
 
 from pyflakes.api import checkPath
 from pyflakes.reporter import Reporter as flakeReporter
@@ -60,7 +61,10 @@ if PYLINT:
 
     def worker_pylint_check(filename, queue):
         """Return the list of messages and the stats from pylint's analysis."""
-        lint.Run([filename], reporter=MyReporter(queue=queue), do_exit=True)
+        try:
+            lint.Run([filename], reporter=MyReporter(queue=queue), do_exit=True)
+        except Exception:
+            queue.put((traceback.format_exc(),))
 
     def pylint_check(filename):
         """Launch pylint check in separate thread and return the queue and process."""
