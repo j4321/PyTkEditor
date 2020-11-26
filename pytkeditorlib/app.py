@@ -704,7 +704,7 @@ class App(tk.Tk):
                        {'sticky': 'nswe',
                         'children': [('Treeview.treearea', {'sticky': 'nswe'})]})])
         style.configure('flat.Treeview', background=theme['fieldbg'])
-        style.configure('codestructure.flat.Treeview', font="TkFixedFont")
+        style.configure('mono.flat.Treeview', font="TkFixedFont")
         style.configure('flat.Treeview.Heading', font='TkDefaultFont 9')
         style.configure('Treeview', background=theme['fieldbg'])
         style.layout('widget.TNotebook.Tab',

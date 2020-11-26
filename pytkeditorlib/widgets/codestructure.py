@@ -62,7 +62,7 @@ class Tree:
 class CodeTree(Treeview):
     def __init__(self, master, click_callback=None):
         Treeview.__init__(self, master, show='tree', selectmode='none',
-                          style='codestructure.flat.Treeview', padding=4)
+                          style='mono.flat.Treeview', padding=4)
 
         self.font = Font(self, font="TkFixedFont")
 

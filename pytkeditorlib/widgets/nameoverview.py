@@ -44,14 +44,14 @@ class NameOverview(BaseWidget):
 
         tooltips = TooltipWrapper(self)
         self.callback = click_callback
-        self.font = Font(self, font="TkDefaultFont 9")
+        self.font = Font(self, font="TkFixedFont")
         self.style = ttk.Style(self)
 
         # --- treeview
         self.treeview = ttk.Treeview(self, selectmode='none',
                                      columns=('Type', 'Full name', 'Index'),
                                      displaycolumns=('Full name', 'Type'),
-                                     style='flat.Treeview', padding=4)
+                                     style='mono.flat.Treeview', padding=4)
         self._sx = Scrollbar(self, orient='horizontal', command=self.treeview.xview)
         self._sy = Scrollbar(self, orient='vertical', command=self.treeview.yview)
         self._module = ''
@@ -228,22 +228,19 @@ class NameOverview(BaseWidget):
         if not names:
             return
         self._module = names[0].parent().full_name
-        self.treeview.insert('', 0, self._module, text=self._module, open=True, tags='0')
-        row_tag = 0
+        self.treeview.insert('', 0, self._module, text=self._module, open=True)
         for name in names:
             if name.full_name is None:
                 continue
             parent = name.parent().full_name
             if not parent:
                 parent = name.parent().name
-            if parent == self._module:
-                row_tag += 1
             try:
                 self.treeview.insert(parent, 'end', name.full_name, text=name.name,
-                                     tags=str(row_tag % 2),
                                      values=(name.type, name.full_name, f'{name.line}.{name.column}'))
             except tk.TclError:
                 pass
+        self._row_tag(self._module, 0)
 
     def populate(self, filepath=None, code=None):
         """Populate widget with namespace content from filepath or code."""
