@@ -151,6 +151,7 @@ class RichText(Text):
             self.tag_configure(tag, **tag_props)
         self.tag_configure('bold', font=font + ('bold',))
         self.tag_configure('italic', font=font + ('italic',))
+        self.tag_configure('bold italic', font=font + ('bold', 'italic'))
 
         # syntax highlighting
         for tag, opts in syntax_highlighting.items():

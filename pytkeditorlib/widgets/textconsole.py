@@ -215,9 +215,13 @@ class TextConsole(RichEditor):
         self.tag_configure('underline', underline=True)
         self.tag_configure('overstrike', overstrike=True)
         for col in ANSI_COLORS_LIGHT:
+            self.tag_configure('underline foreground ' + col, underlinefg=col, underline=True)
+            self.tag_configure('overstrike foreground ' + col, overstrikefg=col, overstrike=True)
             self.tag_configure('foreground ' + col, foreground=col)
             self.tag_configure('background ' + col, background=col)
         for col in ANSI_COLORS_DARK:
+            self.tag_configure('underline foreground ' + col, underlinefg=col, underline=True)
+            self.tag_configure('overstrike foreground ' + col, overstrikefg=col, overstrike=True)
             self.tag_configure('foreground ' + col, foreground=col)
             self.tag_configure('background ' + col, background=col)
         self.tag_raise('sel')
@@ -785,6 +789,26 @@ class TextConsole(RichEditor):
             self.insert('insert', '\n')
             self.prompt()
 
+    def _tag_combine(self, text, offset):
+        """
+        Tag combination for the output.
+
+        e.g. if character has both 'bold' and 'italic' tags, combine them into 'bold italic'
+        to display both formatting. Also needed for 'underline'/'overstrike' + foreground color
+        """
+        for i, line in enumerate(text.splitlines(), offset):
+            for j, char in enumerate(line):
+                ind = f"{i}.{j}"
+                tags = self.tag_names(ind)
+                if "bold" in tags and "italic" in tags:
+                    self.tag_add("bold italic", ind)
+                fg_tags = [tag for tag in tags if tag.startswith("foreground")]
+                if fg_tags:
+                    if "overstrike" in tags:
+                        self.tag_add(f"overstrike {fg_tags[-1]}", ind)
+                    if "underline" in tags:
+                        self.tag_add(f"underline {fg_tags[-1]}", ind)
+
     def _poll_output(self):
         """Get outputs coming in between """
         try:
@@ -804,6 +828,7 @@ class TextConsole(RichEditor):
                         self.insert(f'{index}+1c', text, 'output')
                         for tag, r in tag_ranges.items():
                             self.tag_add(tag, *r)
+                        self._tag_combine(text, offset)
                     else:
                         self.insert(f'{index}+1c', output, 'output')
                     self.see('input_end')
@@ -829,12 +854,13 @@ class TextConsole(RichEditor):
                 if output.strip():
                     output = format_long_output(output, self["width"])
                     if '\x1b' in output:  # ansi formatting
-                        offset = int(self.index('input_end').split('.')[0]) - 1
+                        offset = int(self.index('input_end').split('.')[0]) # -1
                         tag_ranges, text = parse_ansi(output, offset)
                         self.configure(state='normal')
                         self.insert('input_end', text, 'output')
                         for tag, r in tag_ranges.items():
                             self.tag_add(tag, *r)
+                        self._tag_combine(text, offset)
                     else:
                         self.configure(state='normal')
                         self.insert('input_end', output, 'output')

@@ -468,23 +468,28 @@ ANSI_COLORS_DARK = ['black', 'red', 'green', 'yellow', 'royal blue', 'magenta',
                     'cyan', 'light gray']
 ANSI_COLORS_LIGHT = ['dark gray', 'tomato', 'light green', 'light goldenrod', 'light blue',
                      'pink', 'light cyan', 'white']
-ANSI_FORMAT = {0: 'reset',
-               1: 'bold',
-               3: 'italic',
-               4: 'underline',
-               9: 'overstrike',
-               #~21: 'reset bold',
-               #~23: 'reset italic',
-               #~24: 'reset underline',
-               #~29: 'reset overstrike',
-               39: 'foreground default',
-               49: 'background default'}
+ANSI_FONT_FORMAT = {
+    1: 'bold',
+    3: 'italic',
+    4: 'underline',
+    9: 'overstrike',
+}
+
+ANSI_FONT_RESET = {
+    21: 'bold',
+    23: 'italic',
+    24: 'underline',
+    29: 'overstrike'
+}
+
+ANSI_COLOR_FG = {39: 'foreground default'}
+ANSI_COLOR_BG = {49: 'background default'}
 
 for i in range(8):
-    ANSI_FORMAT[30 + i] = 'foreground ' + ANSI_COLORS_DARK[i]
-    ANSI_FORMAT[90 + i] = 'foreground ' + ANSI_COLORS_LIGHT[i]
-    ANSI_FORMAT[40 + i] = 'background ' + ANSI_COLORS_DARK[i]
-    ANSI_FORMAT[100 + i] = 'background ' + ANSI_COLORS_LIGHT[i]
+    ANSI_COLOR_FG[30 + i] = 'foreground ' + ANSI_COLORS_DARK[i]
+    ANSI_COLOR_FG[90 + i] = 'foreground ' + ANSI_COLORS_LIGHT[i]
+    ANSI_COLOR_BG[40 + i] = 'background ' + ANSI_COLORS_DARK[i]
+    ANSI_COLOR_BG[100 + i] = 'background ' + ANSI_COLORS_LIGHT[i]
 
 
 ANSI_REGEXP = re.compile(r"\x1b\[((\d+;)*\d+)m")
@@ -511,25 +516,43 @@ def parse_ansi(text, line_offset=1):
     opened_tags = []
     for pos, codes in res:
         for code in codes:
-            if code == 0:
+            if code == 0:  # reset all
                 for tag in opened_tags:
                     tag_ranges[tag].append('%i.%i' % pos)
                 opened_tags.clear()
-            else:
-                tag = ANSI_FORMAT[code]
+            elif code in ANSI_FONT_RESET:
+                tag = ANSI_FONT_RESET[code]
+                if tag in opened_tags:
+                    tag_ranges[tag].append('%i.%i' % pos)
+                    opened_tags.remove(tag)
+            elif code in ANSI_FONT_FORMAT:
+                tag = ANSI_FONT_FORMAT[code]
                 if tag not in tag_ranges:
                     tag_ranges[tag] = []
                 tag_ranges[tag].append('%i.%i' % pos)
                 opened_tags.append(tag)
+            elif code in ANSI_COLOR_FG:
+                tag = ANSI_COLOR_FG[code]
+                for t in tuple(opened_tags):
+                    if t.startswith('foreground'):
+                        opened_tags.remove(t)
+                        tag_ranges[t].append('%i.%i' % pos)
+                if tag not in tag_ranges:
+                    tag_ranges[tag] = []
+                tag_ranges[tag].append('%i.%i' % pos)
+                opened_tags.append(tag)
+            elif code in ANSI_COLOR_BG:
+                tag = ANSI_COLOR_BG[code]
+                for t in tuple(opened_tags):
+                    if t.startswith('background'):
+                        opened_tags.remove(t)
+                        tag_ranges[t].append('%i.%i' % pos)
+                if tag not in tag_ranges:
+                    tag_ranges[tag] = []
+                tag_ranges[tag].append('%i.%i' % pos)
+                opened_tags.append(tag)
+
     for tag in opened_tags:
         tag_ranges[tag].append('end')
 
     return tag_ranges, stripped_text
-
-
-
-
-
-
-
-
