@@ -24,7 +24,7 @@ import tkinter as tk
 from tkinter.font import Font
 import sys
 import re
-from os import kill, remove, getcwd
+from os import kill, remove, getcwd, getpid
 from os.path import join, dirname, sep, expanduser
 from glob import glob
 import socket
@@ -105,6 +105,8 @@ class TextConsole(RichEditor):
 
         # --- shell socket
         self._shell_init()
+        signal.signal(signal.SIGIO, self._signal_send_input)  # to manage input prompt
+        self._input_flag = False
 
         # --- initialization
         self.insert('end', banner, 'banner')
@@ -121,12 +123,12 @@ class TextConsole(RichEditor):
         self.bind('<3>', self._post_menu)
         self.bind('<Control-Return>', self.on_ctrl_return)
         self.bind('<Shift-Return>', self.on_shift_return)
+        self.bind('<Return>', self.on_return)
         self.bind('<KeyPress>', self.on_key_press)
         self.bind('<Tab>', self.on_tab)
         self.bind('<ISO_Left_Tab>', self.unindent)
         self.bind('<Down>', self.on_down)
         self.bind('<Up>', self.on_up)
-        self.bind('<Return>', self.on_return)
         self.bind('<BackSpace>', self.on_backspace)
         self.bind('<Control-c>', self.on_ctrl_c)
         self.bind('<Control-Shift-C>', self.raw_copy)
@@ -144,6 +146,8 @@ class TextConsole(RichEditor):
 
     def parse(self, start='input', end='input_end'):
         """Syntax highlighting between start and end."""
+        if self._input_flag:
+            return
         text = self.get(start, end)
         self._parse(text, start)
 
@@ -161,7 +165,10 @@ class TextConsole(RichEditor):
             insert_moved = True
         if args[0] == "insert":
             try:
-                if self.compare('insert', '<', 'input') or self.compare('insert', '>', 'input_end'):
+                if self._input_flag:
+                    if self.compare('insert', '<=', 'input') or self.compare('insert', '>', 'input_end-1c'):
+                        self.tk.call(self._orig, 'mark', 'set', 'insert', 'input')
+                elif self.compare('insert', '<', 'input') or self.compare('insert', '>', 'input_end'):
                     self.mark_set('insert', 'input_end')
                     self._hist_item = self.history.get_length()
             except tk.TclError:
@@ -170,7 +177,12 @@ class TextConsole(RichEditor):
             try:
                 if self.compare(args[1], '<', 'input'):
                     largs[1] = 'input'
-                if len(args) > 2 and self.compare(args[2], '>', 'input_end'):
+                if self._input_flag:
+                    if len(args) == 2 and self.compare(args[1], '==', 'input_end-1c'):
+                        return
+                    if len(args) > 2 and self.compare(args[2], '>', 'input_end-1c'):
+                        largs[2] = 'input_end-1c'
+                elif len(args) > 2 and self.compare(args[2], '>', 'input_end'):
                     largs[2] = 'input_end'
             except tk.TclError:
                 return
@@ -178,7 +190,10 @@ class TextConsole(RichEditor):
             insert_moved = True
             self.clear_highlight()
             try:
-                if self.compare(args[3], '>', 'input_end'):
+                if self._input_flag:
+                    if self.compare(args[3], '>', 'input_end-1c'):
+                        largs[3] = 'input_end-1c'
+                elif self.compare(args[3], '>', 'input_end'):
                     largs[3] = 'input_end'
             except tk.TclError:
                 return
@@ -320,7 +335,7 @@ class TextConsole(RichEditor):
 
         p = Popen(['python',
                    join(dirname(dirname(__file__)), 'utils', 'interactive_console.py'),
-                   host, str(port)])
+                   host, str(port), str(getpid())])
         self.shell_pid = p.pid
         client = self.shell_socket.accept()[0]
         self.shell_client = context.wrap_socket(client, server_side=True)
@@ -441,6 +456,14 @@ class TextConsole(RichEditor):
     def on_ctrl_c(self, event):
         if self.cget('state') == 'disabled':
             self.shell_interrupt()
+        elif self._input_flag:
+            self.shell_interrupt()
+            self.bind('<Control-Return>', self.on_ctrl_return)
+            self.bind('<Shift-Return>', self.on_shift_return)
+            self.bind('<Return>', self.on_return)
+            self.bind('<Down>', self.on_down)
+            self.bind('<Up>', self.on_up)
+            self._input_flag = False
         else:
             self.copy()
         return 'break'
@@ -684,6 +707,7 @@ class TextConsole(RichEditor):
             self.insert('input_end', self._prompt1, 'prompt')
             self.edit_reset()
         self.mark_set('input', 'input_end')
+        self.mark_set('insert', 'input')
 
     # --- docstrings
     def get_docstring(self, obj):
@@ -866,7 +890,11 @@ class TextConsole(RichEditor):
                         self.insert('input_end', output, 'output')
                     self.mark_set('input', 'input_end')
                     self.see('input_end')
-                self.configure(state='disabled')
+                if self._input_flag:
+                    self.mark_set('insert', 'input_end-1c')
+                    self.mark_set('input', 'input_end-1c')
+                else:
+                    self.configure(state='disabled')
                 self.after(1, self._check_result, auto_indent, code, index, add_to_hist)
                 return
 
@@ -902,6 +930,26 @@ class TextConsole(RichEditor):
                     self.history.add_history(code)
                     self._hist_item = self.history.get_length()
             self._poll_id = self.after(100, self._poll_output)
+
+    def _signal_send_input(self, *args):
+        """Get the user input."""
+        self._input_flag = True
+        self.bind('<Control-Return>', self.send_input)
+        self.bind('<Shift-Return>', self.send_input)
+        self.bind('<Return>', self.send_input)
+        self.bind('<Down>', lambda ev: "break")
+        self.bind('<Up>', lambda ev: "break")
+
+    def send_input(self, event):
+        self._input_flag = False
+        #~self.insert('input_end', '\n')
+        self.shell_client.send(self.get('input', 'input_end').encode())
+        self.bind('<Control-Return>', self.on_ctrl_return)
+        self.bind('<Shift-Return>', self.on_shift_return)
+        self.bind('<Return>', self.on_return)
+        self.bind('<Down>', self.on_down)
+        self.bind('<Up>', self.on_up)
+        return "break"
 
     # --- brackets
     def auto_close_string(self, event):
