@@ -399,7 +399,8 @@ class SocketConsole(InteractiveConsole):
             return True
 
         # Case 3
-        self.runcode(code)
+        self.runcode(source)
+        #~self.runcode(code)
         return False
 
     def get_input(self):
@@ -443,12 +444,12 @@ class SocketConsole(InteractiveConsole):
         with redirect_stdout(self.stdout):
             while True:
                 try:
-                    line = self.socket.recv(65536).decode()
+                    code = self.socket.recv(65536).decode()
                     if self.buffer:
                         self.resetbuffer()
                     try:
                         with redirect_stderr(self.stderr):
-                            res = self.push(line)
+                            res = self.push(code)
                     except SystemExit:
                         self.write('SystemExit\n')
                         res = False
@@ -457,8 +458,8 @@ class SocketConsole(InteractiveConsole):
                         res = False
                     err = self.stderr.getvalue()
                     if not res:
-                        if line.strip():
-                            self.cm.logger.info(line.strip())
+                        if code.strip():
+                            self.cm.logger.info(code.strip())
                         if self._log_output[1:]:
                             self.cm.logger.info(self._log_output[1:])
                         self._log_output = ""

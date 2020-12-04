@@ -439,10 +439,11 @@ def format_long_output(output, wrap_length, head='', indent2=''):
         text = output[len(indent1):-len(tail)]
     else:
         text = output[len(indent1):]
-    if not head:
-        indent2 = indent1 + indent2
-        head = indent1
+
     if text[0] in CLOSE_CHAR:
+        if not head:
+            indent2 = indent1 + indent2
+            head = indent1
         close = find_closing_bracket(text, text[0], 0)
         if close == len(text) - 1:
             content = SPLITTER_REGEXP.split(text[1:-1])
