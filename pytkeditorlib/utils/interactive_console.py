@@ -41,7 +41,6 @@ import logging
 from logging import handlers
 import argparse
 
-
 from constants import CLIENT_CERT, SERVER_CERT, CONSOLE_HELP
 
 GUI = ['', 'tk']
@@ -61,6 +60,7 @@ else:
     GUI.append('gtk')
 
 
+# --- console logging (for logstart, ...)
 class TimestampFilter(logging.Filter):
 
     def filter(self, record):
@@ -80,7 +80,7 @@ class OutputFilter(logging.Filter):
             record.timestamp = ""
         return self.log_output or not output
 
-
+# --- custom stdout / stdin
 class Stdin:
     def __init__(self, query_cmd, *args):
         self.query_cmd = query_cmd
@@ -97,6 +97,7 @@ class Stdout:
         self.send_cmd(line)
 
 
+# --- special console methods
 class ConsoleMethods:
     def __init__(self, locals_):
         self.current_gui = ''
@@ -332,10 +333,13 @@ Timestamp  : {args.timestamps}"""
         print(self._log_state)
 
 
+# --- interactive console
 class SocketConsole(InteractiveConsole):
     def __init__(self, hostname, port, main_pid, locals_=None, filename='<console>'):
         InteractiveConsole.__init__(self, locals_, filename)
         self.stdout = Stdout(self.send_cmd)
+        handler = logging.StreamHandler(self.stdout)
+        logging.basicConfig(handlers=[handler])
         self.stderr = StringIO()
         sys.stdin = Stdin(self.get_input)
 
@@ -483,7 +487,7 @@ class SocketConsole(InteractiveConsole):
                     time.sleep(0.05)
 
 
+# --- main
 if __name__ == '__main__':
     c = SocketConsole(sys.argv[1], int(sys.argv[2]), int(sys.argv[3]))
     c.interact()
-

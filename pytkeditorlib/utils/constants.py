@@ -25,10 +25,7 @@ import os
 import configparser
 from glob import glob
 import re
-import logging
-from logging.handlers import TimedRotatingFileHandler
 
-import warnings
 from jedi import settings
 from pygments.lexers.python import PythonLexer
 from pygments.token import Comment
@@ -50,7 +47,6 @@ class MyLexer(PythonLexer):
 
 
 PYTHON_LEX = MyLexer()
-
 
 
 # --- paths
@@ -125,23 +121,6 @@ IM_RIGHT = os.path.join(PATH_IMG, 'right_{theme}.png')
 ANIM_LOADING = [os.path.join(PATH_IMG, 'animation', file)
                 for file in os.listdir(os.path.join(PATH_IMG, 'animation'))]
 ANIM_LOADING.sort()
-
-# --- log
-handler = TimedRotatingFileHandler(PATH_LOG, when='midnight',
-                                   interval=1, backupCount=7)
-logging.basicConfig(level=logging.INFO,
-                    format='%(asctime)-15s %(levelname)s: %(message)s',
-                    handlers=[handler])
-logging.getLogger().addHandler(logging.StreamHandler())
-
-
-def customwarn(message, category, filename, lineno, file=None, line=None):
-    """Redirect warnings to log"""
-    logging.warn(warnings.formatwarning(message, category, filename, lineno))
-
-
-warnings.showwarning = customwarn
-
 
 # --- ssl
 SERVER_CERT = os.path.join(PATH_SSL, 'server.crt')

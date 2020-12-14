@@ -26,10 +26,12 @@ import traceback
 import os
 import sys
 import signal
-import logging
 from subprocess import Popen, PIPE
 from getpass import getuser
 from datetime import datetime
+import logging
+from logging.handlers import TimedRotatingFileHandler
+import warnings
 
 from ewmh import ewmh, EWMH
 import pdfkit
@@ -49,6 +51,24 @@ from pytkeditorlib.widgets import WidgetNotebook, Help, HistoryFrame, \
 from pytkeditorlib.gui_utils import LongMenu
 
 
+# --- log
+handler = TimedRotatingFileHandler(cst.PATH_LOG, when='midnight',
+                                   interval=1, backupCount=7)
+logging.basicConfig(level=logging.INFO,
+                    format='%(asctime)-15s %(levelname)s: %(message)s',
+                    handlers=[handler])
+logging.getLogger().addHandler(logging.StreamHandler())
+
+
+def customwarn(message, category, filename, lineno, file=None, line=None):
+    """Redirect warnings to log"""
+    logging.warn(warnings.formatwarning(message, category, filename, lineno))
+
+
+warnings.showwarning = customwarn
+
+
+# --- main class
 class App(tk.Tk):
     def __init__(self, pid, *files):
         tk.Tk.__init__(self, className='PyTkEditor')
