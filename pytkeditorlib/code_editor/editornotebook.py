@@ -35,6 +35,8 @@ from .editor import Editor
 
 
 class EditorNotebook(Notebook):
+    _new_file_pattern = re.compile(r"^new(\d+).py - $")
+
     def __init__(self, master, **kw):
         Notebook.__init__(self, master, **kw)
         self._closecommand = self.close
@@ -466,10 +468,10 @@ the external terminal configuration in the settings.",
         """Create new editor tab."""
         if file is None:
             new_files = [-1]
-            pattern = re.compile(r"^new(\d+).py - $")
+
             for i in self._tab_menu_entries.values():
                 name = self._tab_menu.entrycget(i, 'label')
-                match = pattern.search(name)
+                match = self._new_file_pattern.search(name)
                 if match:
                     new_files.append(int(match.groups()[0]))
             title = f'new{max(new_files) + 1}.py'

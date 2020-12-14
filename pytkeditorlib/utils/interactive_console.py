@@ -399,8 +399,7 @@ class SocketConsole(InteractiveConsole):
             return True
 
         # Case 3
-        self.runcode(source)
-        #~self.runcode(code)
+        self.runcode(code)  # issue: does not give the right output for "print('a')\nprint(2)"
         return False
 
     def get_input(self):

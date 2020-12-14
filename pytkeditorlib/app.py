@@ -1201,6 +1201,8 @@ class App(tk.Tk):
                 self.busy(True)
                 self.editor.new(file)
                 self.editor.insert('1.0', txt)
+                if txt.startswith("#! /usr/bin/python") or txt.startswith("#!/usr/bin/env python"):
+                    self.editor.set_filetype('Python')
                 self.editor.edit_reset()
                 self._edit_modified(0)
                 self._populate_codestructure()
