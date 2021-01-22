@@ -188,7 +188,6 @@ class Editor(ttk.Frame):
         self.filetype = 'Python' if (not file or file.endswith('.py')) else 'Other'
 
         # --- bindings
-        #~self.text.bind("<Control-i>", self.inspect)
         self.text.bind("<Control-Shift-C>", self.choose_color)
         self.text.bind("<Control-Return>", self.on_ctrl_return)
         self.text.bind("<Shift-Return>", self.on_shift_return)

@@ -147,6 +147,7 @@ class RichText(Text):
         tags = list(self.tag_names())
         tags.remove('sel')
         tag_props = {key: '' for key in self.tag_configure('sel')}
+        tag_props['wrap'] = 'none'
         for tag in tags:
             self.tag_configure(tag, **tag_props)
         self.tag_configure('bold', font=font + ('bold',))
