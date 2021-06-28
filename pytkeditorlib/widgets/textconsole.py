@@ -92,6 +92,7 @@ class TextConsole(RichEditor):
         self._re_console_run = re.compile(r"^_console.run\('(.*)'\)$")
         self._re_console_external = re.compile(rf'^({ext_cmds}) ?(.*)\n*$')
         self._re_console_magic = re.compile(rf'^%({magic_cmds}) ?(.*)\n*$')
+        self._re_strip_newlines = re.compile(r"\n\n+")
         self._re_help = re.compile(r'([.\w]*)(\?{1,2})$')
         self._re_expanduser = re.compile(r'(~\w*)')
         self._re_trailing_spaces = re.compile(r' *$', re.MULTILINE)
@@ -795,7 +796,7 @@ class TextConsole(RichEditor):
 
             self.insert('insert', '\n')
             try:
-                self.shell_client.send(code.encode())
+                self.shell_client.send(self._re_strip_newlines.sub("\n", code).encode())
                 self.configure(state='disabled')
             except SystemExit:
                 self.history.new_session()

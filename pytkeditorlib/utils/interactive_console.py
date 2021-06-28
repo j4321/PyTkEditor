@@ -40,6 +40,8 @@ from textwrap import dedent
 import logging
 from logging import handlers
 import argparse
+import re
+
 
 from constants import CLIENT_CERT, SERVER_CERT, CONSOLE_HELP
 
@@ -58,6 +60,9 @@ except ImportError:
     pass
 else:
     GUI.append('gtk')
+
+
+re_split_codeblocks = re.compile(r"\n(?!\s)")
 
 
 # --- console logging (for logstart, ...)
@@ -452,7 +457,8 @@ class SocketConsole(InteractiveConsole):
                         self.resetbuffer()
                     try:
                         with redirect_stderr(self.stderr):
-                            res = self.push(code)
+                            for block in re_split_codeblocks.split(code):
+                                res = self.push(block)
                     except SystemExit:
                         self.write('SystemExit\n')
                         res = False
