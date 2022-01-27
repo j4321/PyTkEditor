@@ -137,7 +137,6 @@ class App(tk.Tk):
         self._qtconsole_ready = False
         self.jupyter_kernel = None
         self.jupyter_kernel_existing = False
-        #~self._init_kernel()
 
         # --- GUI elements
         self._horizontal_pane = ttk.PanedWindow(self._frame, orient='horizontal')
@@ -1402,20 +1401,13 @@ class App(tk.Tk):
             self.editor.focus_tab()
 
     # --- jupyter
-    def _init_kernel(self, file=None):
+    def _init_kernel(self, file=cst.JUPYTER_KERNEL_PATH):
         """Initialize Jupyter kernel"""
         if not cst.JUPYTER:
             return
         self._kernel_disconnect()
         # launch new kernel
-        if file is None:
-            cfm = cst.ConnectionFileMixin(connection_file=cst.JUPYTER_KERNEL_PATH)
-            cfm.write_connection_file()
-            self.jupyter_kernel = cst.BlockingKernelClient(connection_file=cst.JUPYTER_KERNEL_PATH)
-            self.jupyter_kernel_existing = False
-        else:
-            self.jupyter_kernel = cst.BlockingKernelClient(connection_file=file)
-            self.jupyter_kernel_existing = True
+        self.jupyter_kernel = cst.BlockingKernelClient(connection_file=file)
         self.jupyter_kernel.load_connection_file()
         self.jupyter_kernel.start_channels()
 
@@ -1434,7 +1426,9 @@ class App(tk.Tk):
         if not cst.JUPYTER:
             return
         if (self._qtconsole_process is None) or (self._qtconsole_process.poll() is not None):
-            self._init_kernel()
+            cfm = cst.ConnectionFileMixin(connection_file=cst.JUPYTER_KERNEL_PATH)
+            cfm.write_connection_file()
+            self.jupyter_kernel_existing = False
             self._qtconsole_ready = False
             cmd = ['python', '-m', 'pytkeditorlib.custom_qtconsole',
                    '--JupyterWidget.include_other_output=True',
@@ -1478,7 +1472,7 @@ class App(tk.Tk):
                 filepath = cst.find_connection_file(kernel)
             except OSError:
                 showerror('Error', f'Unable to connect to {filepath}.')
-
+            self.jupyter_kernel_existing = True
             self._init_kernel(filepath)
             self._qtconsole_ready = False
             cmd = ['python', '-m', 'pytkeditorlib.custom_qtconsole',
@@ -1507,7 +1501,8 @@ class App(tk.Tk):
 
         def ready():
             self._qtconsole_ready = True
-
+        if not self.jupyter_kernel_existing:
+            self._init_kernel()
         self.after(200, ready)
 
     def _wait_execute_in_jupyter(self, code, focus=True):
