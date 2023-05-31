@@ -41,11 +41,10 @@ class FileBar(Canvas):
     def __init__(self, master, widget, **kwargs):
         Canvas.__init__(self, master, **kwargs)
 
-        self._marks = {'warning': [], 'error': [], 'sep': []}
+        self._marks = {'warning': [], 'error': [], 'sep': [], 'search': []}
 
         self.widget = widget
-        self.colors = {'warning': 'orange', 'error': 'red', 'sep': 'blue'}
-        self.active_colors = {'warning': '#FFC355', 'error': '#FF5555', 'sep': '#5555FF'}
+        self.colors = {'warning': 'orange', 'error': 'red', 'sep': 'blue', 'search': "gray"}
         self.update_idletasks()
         self._highlight_img = Image.new('RGBA', (1, 1), "#ffffff88")
         self._highlight_photoimg = ImageTk.PhotoImage(self._highlight_img, master=self)
@@ -61,7 +60,6 @@ class FileBar(Canvas):
         self.itemconfigure(self.highlight, image=self._highlight_photoimg)
         self.configure(bg=self.option_get('background', '*Canvas'))
         self.colors['sep'] = comment_fg
-        self.active_colors['sep'] = active_color(self.winfo_rgb(comment_fg))
 
     def update_positions(self, event=None):
         height = self.winfo_height()
@@ -112,3 +110,7 @@ class FileBar(Canvas):
     def clear_cells(self):
         self.delete('sep')
         self._marks['sep'].clear()
+
+    def clear_search(self):
+        self.delete('search')
+        self._marks['search'].clear()

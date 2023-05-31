@@ -343,7 +343,7 @@ class Editor(ttk.Frame):
     # --- find and replace
     def hide_search(self):
         self.text.tag_remove('highlight_find', '1.0', 'end')
-        self._highlight_btn.state(['!selected'])
+        self.filebar.clear_search()
         self.frame_search.grid_remove()
 
     def find(self, event=None):
@@ -478,6 +478,7 @@ class Editor(ttk.Frame):
                 showinfo("Search complete", "No match found", self)
 
     def highlight_all(self):
+        self.filebar.clear_search()
         if 'selected' in self._highlight_btn.state():
             pattern = self.entry_search.get()
             self.entry_search.add_to_history(pattern)
@@ -503,6 +504,7 @@ class Editor(ttk.Frame):
             while res:
                 end = f"{res}+{self._search_count.get()}c"
                 self.text.tag_add('highlight_find', res, end)
+                self.filebar.add_mark(int(str(self.text.index(res)).split(".")[0]), "search")
                 res = self.text.search(pattern, end, **options)
         else:
             self.text.tag_remove('highlight_find', '1.0', 'end')
