@@ -74,6 +74,7 @@ class App(tk.Tk):
         self.pid = pid
         self.tk.eval('package require Tkhtml')
         self.title('PyTkEditor')
+        logging.info("Start PyTkEditor")
         self.configure(cursor='watch')
         self.update_idletasks()
         self.splash = Popen(['python',
@@ -362,6 +363,10 @@ class App(tk.Tk):
             menu_consoles.add_separator()
             menu_consoles.add_command(label='Start Jupyter QtConsole',
                                       command=self.start_jupyter,
+                                      image='img_qtconsole',
+                                      compound='left')
+            menu_consoles.add_command(label='Kill Jupyter QtConsole',
+                                      command=self._kernel_disconnect,
                                       image='img_qtconsole',
                                       compound='left')
             menu_consoles.add_command(label='Connect to existing kernel',
@@ -1101,6 +1106,7 @@ class App(tk.Tk):
                 self.destroy()
                 self.splash.terminate()
                 self.splash.wait()
+                logging.info("Quit")
                 sys.exit()
 
     def new(self, event=None):
@@ -1426,6 +1432,8 @@ class App(tk.Tk):
         if not cst.JUPYTER:
             return
         if (self._qtconsole_process is None) or (self._qtconsole_process.poll() is not None):
+            if self._qtconsole_process is not None:
+                self._qtconsole_process.terminate()
             cfm = cst.ConnectionFileMixin(connection_file=cst.JUPYTER_KERNEL_PATH)
             cfm.write_connection_file()
             self.jupyter_kernel_existing = False
