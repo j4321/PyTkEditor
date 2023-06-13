@@ -16,13 +16,11 @@ with open("pytkeditorlib/utils/version.py") as file:
 
 images = [os.path.join("pytkeditorlib/images/", img) for img in os.listdir("pytkeditorlib/images/") if img != 'animation']
 anim = [os.path.join("pytkeditorlib/images/animation", img) for img in os.listdir("pytkeditorlib/images/animation")]
-ssl = [os.path.join("pytkeditorlib/ssl/", img) for img in os.listdir("pytkeditorlib/ssl/")]
 html = [os.path.join("pytkeditorlib/html/", img) for img in os.listdir("pytkeditorlib/html/")]
 
 data_files = [("/usr/share/applications", ["{}.desktop".format(APP_NAME)]),
               ("/usr/share/{}/images/".format(APP_NAME), images),
               ("/usr/share/{}/images/animation".format(APP_NAME), anim),
-              ("/usr/share/{}/ssl/".format(APP_NAME), ssl),
               ("/usr/share/{}/html/".format(APP_NAME), html),
               ("/usr/share/doc/{}/".format(APP_NAME), ["README.rst", "pytkeditorlib/doc/DOC.rst"]),
               ("/usr/share/man/man1", ["{}.1.gz".format(APP_NAME)]),
@@ -63,5 +61,3 @@ setup(name="pytkeditor",
                         "pycups"],
       extras_require={'Execute in Jupyter QtConsole': ["qtconsole", "qtpy", "traitlets", "jupyter_client"],
                       'Code analysis widget': ['pylint']})
-
-

@@ -42,8 +42,8 @@ from logging import handlers
 import argparse
 import re
 
+from constants import CLIENT_CERT, SERVER_CERT, create_ssl_certificate, CONSOLE_HELP
 
-from constants import CLIENT_CERT, SERVER_CERT, CONSOLE_HELP
 
 GUI = ['', 'tk']
 try:
@@ -483,7 +483,7 @@ class SocketConsole(InteractiveConsole):
                     self.socket.send(msg.encode())
                     self.stderr.close()
                     self.stderr = StringIO()
-                except BrokenPipeError:
+                except (BrokenPipeError, ssl.SSLEOFError):
                     self.socket.close()
                     break
                 except socket.error as e:

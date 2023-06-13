@@ -25,6 +25,8 @@ import os
 import configparser
 from glob import glob
 import re
+from subprocess import run, PIPE, STDOUT
+import logging
 
 from jedi import settings
 from pygments.lexers.python import PythonLexer
@@ -59,7 +61,7 @@ if os.access(PATH, os.W_OK) and os.path.exists(os.path.join(PATH, "images")):
     # PATH_LOCALE = os.path.join(PATH, "locale")
     PATH_DOC = os.path.join(PATH, 'doc', "DOC.rst")
     PATH_HTML = os.path.join(PATH, 'html')
-    PATH_SSL = os.path.join(PATH, 'ssl')
+    PATH_SSL = LOCAL_PATH
     PATH_IMG = os.path.join(PATH, 'images')
 else:
     # local directory containing config files
@@ -67,7 +69,7 @@ else:
     # PATH_LOCALE = "/usr/share/locale"
     PATH_DOC = "/usr/share/doc/pytkeditor/DOC.rst"
     PATH_HTML = "/usr/share/pytkeditor/html"
-    PATH_SSL = "/usr/share/pytkeditor/ssl"
+    PATH_SSL = LOCAL_PATH
     PATH_IMG = "/usr/share/pytkeditor/images"
 
 if not os.path.exists(LOCAL_PATH):
@@ -125,6 +127,30 @@ ANIM_LOADING.sort()
 # --- ssl
 SERVER_CERT = os.path.join(PATH_SSL, 'server.crt')
 CLIENT_CERT = os.path.join(PATH_SSL, 'client.crt')
+
+
+def create_ssl_certificate(side):
+    """Create the ssl certificate for side ['clinet'/'server'] for the SocketConsole."""
+    path = os.path.join(PATH_SSL, f'{side}.%s')
+    p = run(['openssl', 'req', '-newkey', 'rsa:2048', '-nodes', '-keyout', path % 'key', '-out',  path % 'csr',
+         '-subj', f'/C=FR/ST=France/L=Grenoble/O=PyTkEditor/OU=PyTkEditor_{side.capitalize()}/CN=PyTkEditor_{side.capitalize()}'],
+        stdout=PIPE, stderr=STDOUT)
+    if p.stdout:
+        logging.info(p.stdout.decode().strip())
+    p = run(['openssl', 'x509', '-signkey', path % "key", '-in', path % "csr", '-req', '-days', '30', '-out', path % "pem"],
+            stdout=PIPE, stderr=STDOUT)
+    if p.stdout:
+        logging.info(p.stdout.decode().strip())
+    with open(path % "crt", "w") as fkey:
+        with open(path % "pem") as file:
+            fkey.write(file.read())
+        with open(path % "key") as file:
+            fkey.write(file.read())
+    os.remove(path % "pem")
+    os.remove(path % "csr")
+    os.remove(path % "key")
+    logging.info("Generated ssl certificate for %s", side)
+
 
 # --- config
 CONFIG = configparser.ConfigParser()

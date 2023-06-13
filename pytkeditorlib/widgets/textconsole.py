@@ -35,7 +35,7 @@ import logging
 
 import jedi
 
-from pytkeditorlib.utils.constants import SERVER_CERT, CLIENT_CERT,\
+from pytkeditorlib.utils.constants import SERVER_CERT, CLIENT_CERT, create_ssl_certificate,\
     MAGIC_COMMANDS, EXTERNAL_COMMANDS, PathCompletion, glob_rel, \
     magic_complete, parse_ansi, format_long_output, ANSI_COLORS_DARK, ANSI_COLORS_LIGHT
 from pytkeditorlib.dialogs import askyesno
@@ -326,8 +326,14 @@ class TextConsole(RichEditor):
         """Initialize python shell."""
         context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
         context.verify_mode = ssl.CERT_REQUIRED
-        context.load_cert_chain(certfile=SERVER_CERT)
-        context.load_verify_locations(CLIENT_CERT)
+        try:
+            context.load_cert_chain(certfile=SERVER_CERT)
+            context.load_verify_locations(CLIENT_CERT)
+        except FileNotFoundError:
+            create_ssl_certificate("client")
+            create_ssl_certificate("server")
+            context.load_cert_chain(certfile=SERVER_CERT)
+            context.load_verify_locations(CLIENT_CERT)
 
         self.shell_socket = socket.socket()
         self.shell_socket.bind(('127.0.0.1', 0))
@@ -339,7 +345,23 @@ class TextConsole(RichEditor):
                    host, str(port), str(getpid())])
         self.shell_pid = p.pid
         client = self.shell_socket.accept()[0]
-        self.shell_client = context.wrap_socket(client, server_side=True)
+
+        try:
+            self.shell_client = context.wrap_socket(client, server_side=True)
+        except ssl.SSLError as err:
+            create_ssl_certificate("client")
+            create_ssl_certificate("server")
+            context.load_cert_chain(certfile=SERVER_CERT)
+            context.load_verify_locations(CLIENT_CERT)
+            p.terminate()
+
+            p = Popen(['python',
+                       join(dirname(dirname(__file__)), 'utils', 'interactive_console.py'),
+                       host, str(port), str(getpid())])
+            self.shell_pid = p.pid
+            client = self.shell_socket.accept()[0]
+            self.shell_client = context.wrap_socket(client, server_side=True)
+
         self.shell_client.setblocking(False)
 
     def shell_restart(self, event=None):
@@ -995,5 +1017,3 @@ class ConsoleFrame(BaseWidget):
         else:
             self.console.configure(cursor='xterm')
             self.configure(cursor='')
-
-

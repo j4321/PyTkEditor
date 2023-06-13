@@ -46,6 +46,7 @@ Quickstart
 
 **Dependencies:**
 
+    - openssl
     - Python 3 with Tkinter
     - `setuptools <https://pypi.org/project/setuptools/>`_ (install dependency)
     - `docutils <https://pypi.org/project/docutils/>`_
