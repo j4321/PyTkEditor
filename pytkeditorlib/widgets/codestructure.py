@@ -20,7 +20,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 GUI widget to display the code structure
 """
-from tkinter import TclError
+from tkinter import TclError, Menu
 from tkinter.ttk import Treeview, Frame, Label, Button
 from tkinter.font import Font
 import tokenize
@@ -30,6 +30,7 @@ import logging
 
 from pytkeditorlib.gui_utils import AutoHideScrollbar, AutoCompleteCombobox2
 from pytkeditorlib.utils.constants import CONFIG
+from pytkeditorlib.dialogs import TooltipWrapper
 from .base_widget import BaseWidget
 
 
@@ -59,20 +60,31 @@ class Tree:
 
 
 class CodeTree(Treeview):
-    def __init__(self, master):
+    def __init__(self, master, click_callback=None):
         Treeview.__init__(self, master, show='tree', selectmode='none',
-                          style='flat.Treeview', padding=4)
+                          style='mono.flat.Treeview', padding=4)
 
-        self.font = Font(self, font="TkDefaultFont 9")
+        self.font = Font(self, font="TkFixedFont")
 
         self.tag_configure('class', image='img_c')
         self.tag_configure('def', image='img_f')
         self.tag_configure('_def', image="img_hf")
         self.tag_configure('#', image='img_sep')
         self.tag_configure('cell', image='img_cell')
-        self.callback = None
+        self.callback = click_callback
         self.cells = []
 
+        self._re_cell1 = re.compile(r'^# In(\[.*\].*)$')
+        self._re_cell2 = re.compile(r'^# ?%% ?(.*)$')
+
+        # right click menu
+        self.menu = Menu(self)
+        self.menu.add_command(label='Expand section', command=self._expand_section)
+        self.menu.add_command(label='Collapse section', command=self._collapse_section)
+        self._row_menu = ''  # row where the pointer was when the menu was opened
+
+        # bindings
+        self.bind('<3>', self._post_menu)
         self.bind('<1>', self._on_click)
         self.bind('<<TreeviewSelect>>', self._on_select)
 
@@ -80,9 +92,6 @@ class CodeTree(Treeview):
         if 'indicator' not in self.identify_element(event.x, event.y):
             self.selection_remove(*self.selection())
             self.selection_set(self.identify_row(event.y))
-
-    def set_callback(self, fct):
-        self.callback = fct
 
     def _on_select(self, event):
         sel = self.selection()
@@ -101,6 +110,52 @@ class CodeTree(Treeview):
         for item in self.get_children():
             rec(item)
         return opened
+
+
+    def _post_menu(self, event):
+        self._row_menu = self.identify_row(event.y_root - self.winfo_rooty())
+        if self._row_menu:
+            self.menu.tk_popup(event.x_root, event.y_root)
+
+    def _collapse_section(self):
+        self.collapse(self._row_menu)
+
+    def _expand_section(self):
+        self.expand(self._row_menu)
+
+    def expand(self, item):
+        """Expand item and all its children recursively."""
+        self.item(item, open=True)
+        for c in self.get_children(item):
+            self.expand(c)
+
+    def expand_all(self):
+        """Expand all items."""
+        for c in self.get_children(""):
+            self.expand(c)
+
+    def collapse(self, item):
+        """Collapse item and all its children recursively."""
+        self.item(item, open=False)
+        for c in self.get_children(item):
+            self.collapse(c)
+
+    def collapse_all(self):
+        """Collapse all items."""
+        for c in self.get_children(""):
+            self.collapse(c)
+
+    def get_cells(self, text):
+        self.cells.clear()
+
+        for i, line in enumerate(text.splitlines(), 1):
+            match = self._re_cell1.match(line)
+            if match:
+                self.cells.append(i)
+            else:
+                match = self._re_cell2.match(line)
+                if match:
+                    self.cells.append(i)
 
     def populate(self, text, reset):
         if reset:
@@ -138,7 +193,7 @@ class CodeTree(Treeview):
                     name = token.string[1:]
                     add = True
                 else:
-                    match = re.match(r'^# In(\[.*\].*)$', token.string)
+                    match = self._re_cell1.match(token.string)
                     if match:
                         obj_type = 'cell'
                         indent = 0
@@ -146,7 +201,7 @@ class CodeTree(Treeview):
                         add = True
                         self.cells.append(token.start[0])
                     else:
-                        match = re.match(r'^# ?%% ?(.*)$', token.string)
+                        match = self._re_cell2.match(token.string)
                         if match:
                             obj_type = 'cell'
                             indent = 0
@@ -168,45 +223,76 @@ class CodeTree(Treeview):
             self.item(item, open=True)
         return names
 
+    def update_style(self):
+        fg = self.menu.option_get('foreground', '*Menu')
+        bg = self.menu.option_get('background', '*Menu')
+        activebackground = self.menu.option_get('activeBackground', '*Menu')
+        disabledforeground = self.menu.option_get('disabledForeground', '*Menu')
+        self.menu.configure(bg=bg, activebackground=activebackground,
+                            fg=fg, selectcolor=fg, activeforeground=fg,
+                            disabledforeground=disabledforeground)
+
 
 class CodeStructure(BaseWidget):
-    def __init__(self, master, manager):
+    def __init__(self, master, manager, click_callback):
         BaseWidget.__init__(self, master, 'Code structure', style='border.TFrame')
-        self.rowconfigure(1, weight=1)
+        self.rowconfigure(2, weight=1)
         self.columnconfigure(0, weight=1)
 
         self._manager = manager
 
-        header = Frame(self)
-        header.columnconfigure(0, weight=1)
-        self._close_btn = Button(header, style='close.TButton', padding=0,
-                                 command=lambda: self.visible.set(False))
-        self._close_btn.grid(row=0, column=1)
-        self.filename = Label(header, padding=(4, 0))
-        self.filename.grid(row=0, column=0, sticky='w')
+        self._text = ''
+        self._title = ''
 
-        self.codetree = CodeTree(self)
+        tooltips = TooltipWrapper(self)
+
+        # tree
+        self.codetree = CodeTree(self, click_callback=click_callback)
         self._sx = AutoHideScrollbar(self, orient='horizontal', command=self.codetree.xview)
         self._sy = AutoHideScrollbar(self, orient='vertical', command=self.codetree.yview)
+        self.codetree.configure(xscrollcommand=self._sx.set,
+                                yscrollcommand=self._sy.set)
+        # header
+        header = Frame(self, padding=(1, 2, 1, 1))
+        header.columnconfigure(3, weight=1)
+        btn_exp = Button(header, padding=0, command=self.codetree.expand_all,
+                         image='img_expand_all')
+        btn_exp.grid(row=0, column=0)
+        tooltips.add_tooltip(btn_exp, 'Expand all')
+        btn_col = Button(header, padding=0, command=self.codetree.collapse_all,
+                         image='img_collapse_all')
+        btn_col.grid(row=0, column=1, padx=4)
+        tooltips.add_tooltip(btn_col, 'Collapse all')
+        self.btn_refresh = Button(header, padding=0, command=lambda: self.event_generate('<<Refresh>>'),
+                                  image='img_refresh')
+        self.btn_refresh.grid(row=0, column=2)
+        tooltips.add_tooltip(self.btn_refresh, 'Refresh')
+        self._close_btn = Button(header, style='close.TButton', padding=1,
+                                 command=lambda: self.visible.set(False))
+        self._close_btn.grid(row=0, column=3, sticky='e')
 
+        self.filename = Label(self, style='txt.TLabel', padding=(4, 0))
+
+        # goto bar
         self.goto_frame = Frame(self)
         Label(self.goto_frame, text='Go to:').pack(side='left')
         self.goto_entry = AutoCompleteCombobox2(self.goto_frame, completevalues=[])
         self.goto_entry.pack(side='left', fill='x', expand=True, pady=4, padx=4)
         self._goto_index = 0
 
-        self.codetree.configure(xscrollcommand=self._sx.set,
-                                yscrollcommand=self._sy.set)
-
+        # placement
         header.grid(row=0, columnspan=2, sticky='we')
-        self.codetree.grid(row=1, column=0, sticky='ewns')
-        self._sx.grid(row=2, column=0, sticky='ew')
-        self._sy.grid(row=1, column=1, sticky='ns')
-        Frame(self, style='separator.TFrame', height=1).grid(row=3, column=0, columnspan=2, sticky='ew')
-        self.goto_frame.grid(row=4, column=0, columnspan=2, sticky='nsew')
+        self.filename.grid(row=1, columnspan=2, sticky='we')
+        self.codetree.grid(row=2, column=0, sticky='ewns')
+        self._sx.grid(row=3, column=0, sticky='ew')
+        self._sy.grid(row=2, column=1, sticky='ns')
+        Frame(self, style='separator.TFrame', height=1).grid(row=4, column=0, columnspan=2, sticky='ew')
+        self.goto_frame.grid(row=5, column=0, columnspan=2, sticky='nsew')
 
-        self.set_callback = self.codetree.set_callback
+        self.update_style = self.codetree.update_style
 
+        # bindings
+        self.filename.bind('<1>', self._header_callback)
         self.goto_entry.bind('<Return>', self.goto)
         self.goto_entry.bind('<<ComboboxSelected>>', self.goto)
         self.goto_entry.bind('<Key>', self._reset_goto)
@@ -235,6 +321,10 @@ class CodeStructure(BaseWidget):
 
     def _reset_goto(self, event):
         self._goto_index = 0
+
+    def _header_callback(self, event):
+        if self.codetree.callback is not None:
+            self.codetree.callback('1.0', '1.0')
 
     def focus_set(self):
         self.goto_entry.focus_set()
@@ -270,6 +360,7 @@ class CodeStructure(BaseWidget):
         visible = self.visible.get()
         if visible:
             self.show()
+            self._display()
         else:
             self.hide()
         CONFIG.set('Code structure', 'visible', str(visible))
@@ -281,14 +372,16 @@ class CodeStructure(BaseWidget):
     def clear(self, event=None):
         self.codetree.delete(*self.codetree.get_children())
         self.filename.configure(text='')
+        self.btn_refresh.state(['disabled'])
 
-    def populate(self, title, text):
-        reset = self.filename.cget('text') != title
-        self.filename.configure(text=title)
+    def _display(self):
+        """Display code structure."""
+        reset = self.filename.cget('text') != self._title
+        self.filename.configure(text=self._title)
         self._sx.timer = self._sx.threshold + 1
         self._sy.timer = self._sy.threshold + 1
         try:
-            names = list(self.codetree.populate(text, reset))
+            names = list(self.codetree.populate(self._text, reset))
         except TclError:
             logging.exception('CodeStructure Error')
             self.codetree.delete(*self.codetree.get_children())
@@ -296,6 +389,15 @@ class CodeStructure(BaseWidget):
         names.sort()
         self.goto_entry.delete(0, "end")
         self.goto_entry.set_completion_list(names)
+        self.btn_refresh.state(['!disabled'])
+
+    def populate(self, title, text):
+        self._text = text
+        self._title = title
+        if not self.visible.get():
+            self.codetree.get_cells(text)
+        else:
+            self._display()
         self.event_generate('<<Populate>>')
 
     def goto(self, event):
@@ -308,3 +410,5 @@ class CodeStructure(BaseWidget):
             self.codetree.selection_remove(*self.codetree.selection())
             self.codetree.selection_set(res[self._goto_index])
             self._goto_index += 1
+
+

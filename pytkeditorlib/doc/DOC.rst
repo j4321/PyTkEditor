@@ -24,15 +24,17 @@ Main features
         + Console history
         + Help widget to graphically display the help about objects from the console or the editor
         + File browser with filter on file extensions
+        + Code analysis widget (available only if pylint is installed)
         + Code structure (classes, functions, TODOs, cells, comments ``# ---``)
+        + Namespace overview widget
 
-    - Autocompletion on tab in editor and console
+    - Autocompletion on Tab key :kbd:`⇥` in editor and console
 
     - Syntax highlighting (all pygments styles are supported) in editor, console and history
 
     - Search and replace (in single tab or whole session)
 
-    - Run code in external terminal, embedded console or Jupyter QtConsole
+    - Run code in external terminal, embedded console or Jupyter QtConsole (if installed)
 
     - Optional syntax and style (PEP8) checking
 
@@ -67,6 +69,8 @@ Global
 
         :kbd:`Ctrl` :kbd:`Shift` :kbd:`E`
 
+        :kbd:`Ctrl` :kbd:`Shift` :kbd:`A`
+
         :kbd:`Ctrl` :kbd:`Shift` :kbd:`P`
 
         :kbd:`Ctrl` :kbd:`Shift` :kbd:`I`
@@ -74,6 +78,8 @@ Global
         :kbd:`Ctrl` :kbd:`Shift` :kbd:`H`
 
         :kbd:`Ctrl` :kbd:`Shift` :kbd:`F`
+
+        :kbd:`Ctrl` :kbd:`Shift` :kbd:`N`
 
         :kbd:`Ctrl` :kbd:`Shift` :kbd:`G`
 
@@ -107,6 +113,8 @@ Global
 
         Switch to Editor
 
+        Switch to Code analysis
+
         Switch to Console
 
         Switch to History
@@ -114,6 +122,8 @@ Global
         Switch to Help
 
         Switch to File browser
+
+        Switch to Namespace overview
 
         Switch to Code structure (Go to entry)
 
@@ -161,6 +171,10 @@ Editor
         :kbd:`Ctrl` :kbd:`R`
 
         :kbd:`Ctrl` :kbd:`L`
+
+        :kbd:`Ctrl` :kbd:`G`
+
+        :kbd:`Ctrl` :kbd:`H`
 
         :kbd:`Ctrl` :kbd:`Shift` :kbd:`P`
 
@@ -218,6 +232,10 @@ Editor
 
         Go to line
 
+        Go to definition of object under cursor
+
+        Highlight references to object under cursor
+
         Print
 
         Save
@@ -263,6 +281,8 @@ Console
 
         :kbd:`Ctrl` :kbd:`Y`
 
+        :kbd:`Ctrl` :kbd:`Shift` :kbd:`C`
+
         :kbd:`Ctrl` :kbd:`A`
 
         :kbd:`Ctrl` :kbd:`E`
@@ -285,6 +305,8 @@ Console
 
         :kbd:`Ctrl` :kbd:`L`
 
+        :kbd:`Ctrl` :kbd:`.`
+
     .. container:: rightside
 
         Autocomplete current word or indent line / selection
@@ -294,6 +316,8 @@ Console
         Undo
 
         Redo
+
+        Copy raw text
 
         Go to the start of the line
 
@@ -315,7 +339,9 @@ Console
 
         Clear line
 
-        Clear shell
+        Clear console
+
+        Restart console
 
 
 Troubleshooting
@@ -323,3 +349,7 @@ Troubleshooting
 
 If you encounter bugs or if you have suggestions, please open an issue
 on `Github <https://github.com/j4321/PyTkEditor/issues>`_.
+
+
+
+

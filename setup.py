@@ -49,7 +49,7 @@ setup(name="pytkeditor",
       data_files=data_files,
       long_description=long_description,
       scripts=["pytkeditor"],
-      install_requires=["jedi",
+      install_requires=["jedi>=0.16.0",
                         "pygments",
                         "pyflakes",
                         "pycodestyle",
@@ -61,4 +61,7 @@ setup(name="pytkeditor",
                         "docutils",
                         "pdfkit",
                         "pycups"],
-      extras_require={'Execute in Jupyter QtConsole': ["qtconsole", "qtpy", "traitlets", "jupyter_client"]})
+      extras_require={'Execute in Jupyter QtConsole': ["qtconsole", "qtpy", "traitlets", "jupyter_client"],
+                      'Code analysis widget': ['pylint']})
+
+

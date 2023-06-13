@@ -56,7 +56,8 @@ def get_docstring(jedi_def):
 
 
 class Help(BaseWidget):
-    def __init__(self, master=None, help_cmds={}, **kw):
+    """Widget to display help."""
+    def __init__(self, master, help_cmds, **kw):
         BaseWidget.__init__(self, master, 'Help', **kw)
 
         self.help_cmds = help_cmds  # {source: help_cmd}
@@ -85,6 +86,7 @@ class Help(BaseWidget):
         self.html.pack(fill='both', expand=True)
 
     def focus_set(self):
+        """Set focus on entry."""
         self.entry.focus_set()
 
     def update_style(self):
@@ -96,6 +98,7 @@ class Help(BaseWidget):
             pass
 
     def inspect(self, obj, source=None):
+        """Display docstring for obj."""
         if source is not None:
             self._source.set(source)
         self.entry.delete(0, 'end')
@@ -103,6 +106,7 @@ class Help(BaseWidget):
         self.show_help()
 
     def show_help(self, event=None):
+        """Display docstring."""
         obj = self.entry.get()
         try:
             jedi_def = self.help_cmds[self._source.get()](obj)

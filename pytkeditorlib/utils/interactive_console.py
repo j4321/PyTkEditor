@@ -32,7 +32,7 @@ import tkinter
 import time
 import timeit
 from datetime import datetime
-from os import chdir, getcwd
+from os import chdir, getcwd, kill
 from os.path import dirname, expanduser, join
 from tempfile import mkstemp
 from subprocess import run
@@ -40,6 +40,7 @@ from textwrap import dedent
 import logging
 from logging import handlers
 import argparse
+import re
 
 
 from constants import CLIENT_CERT, SERVER_CERT, CONSOLE_HELP
@@ -61,6 +62,10 @@ else:
     GUI.append('gtk')
 
 
+re_split_codeblocks = re.compile(r"\n(?!\s)")
+
+
+# --- console logging (for logstart, ...)
 class TimestampFilter(logging.Filter):
 
     def filter(self, record):
@@ -80,6 +85,14 @@ class OutputFilter(logging.Filter):
             record.timestamp = ""
         return self.log_output or not output
 
+# --- custom stdout / stdin
+class Stdin:
+    def __init__(self, query_cmd, *args):
+        self.query_cmd = query_cmd
+
+    def readline(self):
+        return self.query_cmd()
+
 
 class Stdout:
     def __init__(self, send_cmd, *args):
@@ -89,10 +102,11 @@ class Stdout:
         self.send_cmd(line)
 
 
+# --- special console methods
 class ConsoleMethods:
-    def __init__(self, locals):
+    def __init__(self, locals_):
         self.current_gui = ''
-        self.locals = locals
+        self.locals = locals_
         sys.path.insert(0, '.')
         # log
         self.logger = logging.getLogger("pytkeditor_log")
@@ -122,7 +136,8 @@ class ConsoleMethods:
         else:
             print(dedent(obj.__doc__))
 
-    def external(self, cmd):
+    @staticmethod
+    def external(cmd):
         cmd = cmd.split()
         res = run(cmd, capture_output=True)
         err = res.stderr.decode()
@@ -131,7 +146,8 @@ class ConsoleMethods:
         else:
             print(res.stdout.decode())
 
-    def cd(self, path):
+    @staticmethod
+    def cd(path):
         "Change the current working directory."
         if '~' in path:
             path = expanduser(path)
@@ -305,10 +321,10 @@ Log output : {args.output}
 Timestamp  : {args.timestamps}"""
         self.handler.setFormatter(formatter)
         self.logger.addHandler(self.handler)
-        self.logger.debug(f'## PyTkEditor log - {datetime.now()} ##\n')
+        self.logger.debug('## PyTkEditor log - %s ##\n', datetime.now())
         hist = self._hist.getvalue()
         if hist:
-            self.logger.debug(hist + "\n")
+            self.logger.debug("%s\n", hist)
 
     def logstop(self, arg):
         """Stop logging."""
@@ -322,11 +338,15 @@ Timestamp  : {args.timestamps}"""
         print(self._log_state)
 
 
+# --- interactive console
 class SocketConsole(InteractiveConsole):
-    def __init__(self, hostname, port, locals=None, filename='<console>'):
-        InteractiveConsole.__init__(self, locals, filename)
+    def __init__(self, hostname, port, main_pid, locals_=None, filename='<console>'):
+        InteractiveConsole.__init__(self, locals_, filename)
         self.stdout = Stdout(self.send_cmd)
+        handler = logging.StreamHandler(self.stdout)
+        logging.basicConfig(handlers=[handler])
         self.stderr = StringIO()
+        sys.stdin = Stdin(self.get_input)
 
         self.cm = ConsoleMethods(self.locals)
         self._log_output = ""
@@ -341,6 +361,7 @@ class SocketConsole(InteractiveConsole):
         context.load_cert_chain(certfile=CLIENT_CERT)
         context.load_verify_locations(SERVER_CERT)
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.pytkeditor_pid = main_pid
         self.port = port
         self.host = hostname
         self.socket = context.wrap_socket(sock, server_side=False,
@@ -387,8 +408,16 @@ class SocketConsole(InteractiveConsole):
             return True
 
         # Case 3
-        self.runcode(code)
+        self.runcode(code)  # issue: does not give the right output for "print('a')\nprint(2)"
         return False
+
+    def get_input(self):
+        """Get input from TextConsole."""
+        kill(self.pytkeditor_pid, signal.SIGIO)
+        self.socket.setblocking(True)
+        user_input = self.socket.recv(65536).decode()
+        self.socket.setblocking(False)
+        return user_input
 
     def send_cmd(self, line):
         lines = line.strip().splitlines()
@@ -423,12 +452,13 @@ class SocketConsole(InteractiveConsole):
         with redirect_stdout(self.stdout):
             while True:
                 try:
-                    line = self.socket.recv(65536).decode()
+                    code = self.socket.recv(65536).decode()
                     if self.buffer:
                         self.resetbuffer()
                     try:
                         with redirect_stderr(self.stderr):
-                            res = self.push(line)
+                            for block in re_split_codeblocks.split(code):
+                                res = self.push(block)
                     except SystemExit:
                         self.write('SystemExit\n')
                         res = False
@@ -437,8 +467,8 @@ class SocketConsole(InteractiveConsole):
                         res = False
                     err = self.stderr.getvalue()
                     if not res:
-                        if line.strip():
-                            self.cm.logger.info(line.strip())
+                        if code.strip():
+                            self.cm.logger.info(code.strip())
                         if self._log_output[1:]:
                             self.cm.logger.info(self._log_output[1:])
                         self._log_output = ""
@@ -463,6 +493,7 @@ class SocketConsole(InteractiveConsole):
                     time.sleep(0.05)
 
 
+# --- main
 if __name__ == '__main__':
-    c = SocketConsole(sys.argv[1], int(sys.argv[2]))
+    c = SocketConsole(sys.argv[1], int(sys.argv[2]), int(sys.argv[3]))
     c.interact()

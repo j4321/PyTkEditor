@@ -23,4 +23,7 @@ from .help import Help
 from .history import HistoryFrame
 from .textconsole import ConsoleFrame
 from .codestructure import CodeStructure
+from .codeanalysis import CodeAnalysis
 from .base_widget import WidgetNotebook
+from .nameoverview import NameOverview
+

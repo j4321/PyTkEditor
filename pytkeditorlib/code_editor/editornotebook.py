@@ -1,8 +1,7 @@
-#! /usr/bin/python3
 # -*- coding: utf-8 -*-
 """
 PyTkEditor - Python IDE
-Copyright 2018-2020 Juliette Monsel <j_4321 at protonmail dot com>
+Copyright 2018-2021 Juliette Monsel <j_4321 at protonmail dot com>
 
 PyTkEditor is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -36,12 +35,16 @@ from .editor import Editor
 
 
 class EditorNotebook(Notebook):
+    _new_file_pattern = re.compile(r"^new(\d+).py - $")
+
     def __init__(self, master, **kw):
         Notebook.__init__(self, master, **kw)
         self._closecommand = self.close
         self.files = {}      # tab: file_path
-        self.wrapper = TooltipNotebookWrapper(self)
+        self.tooltips = TooltipNotebookWrapper(self)
         self.last_closed = []
+
+        # --- tab menu
         self.menu = Menu(self, tearoff=False)
         self.menu.add_command(label='Set Console working directory',
                               command=self.set_console_wdir)
@@ -60,6 +63,19 @@ class EditorNotebook(Notebook):
         if self.menu is not None:
             self.menu.tk_popup(event.x_root, event.y_root)
 
+    def get_modified(self):
+        """Return list of tabs for which the corresponding file has been modified outside PyTkEditor."""
+        tabs = []
+        for tab, file in self.files.items():
+            try:
+                mtime = os.stat(file).st_mtime
+                if mtime > self._files_mtime[tab]:
+                    # the file has been modified
+                    tabs.append(tab)
+            except (FileNotFoundError, NotADirectoryError):
+                pass # the file has been deleted
+        return tabs
+
     def _check_modif(self, tab):
         """Check if file has been modified outside PyTkEditor."""
         file = self.files[tab]
@@ -67,24 +83,30 @@ class EditorNotebook(Notebook):
             mtime = os.stat(file).st_mtime
             if mtime > self._files_mtime[tab]:
                 # the file has been modified
-                logging.info(f'{file} has been modified')
+                logging.info('%s has been modified', file)
                 self.edit_modified(True, tab=tab, generate=True)
                 self.update_idletasks()
                 ans = askoptions('Warning',
                                  f'{file} has been modified outside PyTkEditor. What do you want to do?',
-                                 self, 'warning', 'Reload', 'Overwrite', 'Cancel')
+                                 self, 'warning', 'Reload', 'Reload all', 'Overwrite', 'Cancel')
                 if ans == 'Reload':
                     self.select(tab)
                     self.event_generate('<<Reload>>')
+                    self._files_mtime[tab] = os.stat(file).st_mtime
+                elif ans == 'Reload all':
+                    self.select(tab)
+                    self.event_generate('<<ReloadAll>>')
+                    for t in self.get_modified():
+                        self._files_mtime[t] = os.stat(self.files[t]).st_mtime
                 elif ans == 'Overwrite':
                     self.save(tab=tab)
                     self.edit_modified(False, tab=tab, generate=True)
-                self._files_mtime[tab] = os.stat(file).st_mtime
+                    self._files_mtime[tab] = os.stat(file).st_mtime
         except (FileNotFoundError, NotADirectoryError):
             # the file has been deleted
             try:
                 if self._files_check_deletion[tab]:
-                    logging.info(f'{file} has been deleted')
+                    logging.info('%s has been deleted', file)
                     self.edit_modified(True, tab=tab, generate=True)
                     self.update_idletasks()
                     ans = askoptions('Warning',
@@ -105,22 +127,37 @@ class EditorNotebook(Notebook):
     def _menu_insert(self, tab, text):
         label = '{} - {}'.format(text, self.files.get(tab, ''))
         menu = []
-        for t in self._tabs.keys():
+        for t in self._tabs:
             menu.append((self.tab(t, 'text'), t))
         menu.sort()
         ind = menu.index((text, tab))
         self._tab_menu.insert_radiobutton(ind, label=label,
                                           variable=self._tab_var, value=tab,
                                           command=lambda t=tab: self._show(t))
-        for i, (text, tab) in enumerate(menu):
-            self._tab_menu_entries[tab] = i
+        for i, (label, key) in enumerate(menu):
+            self._tab_menu_entries[key] = i
+
+    def _fallback_attr(self, name, *args, **kwargs):
+        """Workaround to make the __getattr__ method work properly when called in a tk.Menu"""
+        if self.current_tab >= 0:
+            getattr(self._tabs[self.current_tab], name)(*args, **kwargs)
+
+    def __getattr__(self, name):
+        """Fallback to the current tab attributes."""
+        return lambda *args, **kwargs: self._fallback_attr(name, *args, **kwargs)
 
     def get_open_files(self):
         return [self.files[tab] for tab in self._visible_tabs]
 
     @property
     def filename(self):
+        """Current editor's filename."""
         return self.tab(self.current_tab, 'text')
+
+    @property
+    def filepath(self):
+        """Current editor's file path."""
+        return self.files.get(self.current_tab, '')
 
     def update_style(self):
         for editor in self._tabs.values():
@@ -137,15 +174,6 @@ class EditorNotebook(Notebook):
                                  fg=fg, selectcolor=fg, activeforeground=fg,
                                  disabledforeground=disabledforeground)
         self._canvas.configure(bg=self._canvas.option_get('background', '*Canvas'))
-
-    # --- undo / redo
-    def undo(self):
-        if self.current_tab >= 0:
-            self._tabs[self.current_tab].undo()
-
-    def redo(self):
-        if self.current_tab >= 0:
-            self._tabs[self.current_tab].redo()
 
     # --- cut / copy / paste
     def cut(self):
@@ -173,9 +201,10 @@ class EditorNotebook(Notebook):
         if tab >= 0:
             self._tabs[tab].delete(index1, index2)
 
-    def edit_reset(self):
-        if self.current_tab >= 0:
-            self._tabs[self.current_tab].text.edit_reset()
+    def edit_reset(self, tab=None):
+        if tab is None:
+            tab = self.current_tab
+        self._tabs[tab].text.edit_reset()
 
     def edit_modified(self, *args, widget=None, generate=False, tab=None):
         if widget is None:
@@ -193,14 +222,6 @@ class EditorNotebook(Notebook):
             self.event_generate('<<Modified>>')
         return b
 
-    def delete_lines(self):
-        if self.current_tab >= 0:
-            self._tabs[self.current_tab].delete_lines()
-
-    def duplicate_lines(self):
-        if self.current_tab >= 0:
-            self._tabs[self.current_tab].duplicate_lines()
-
     # --- filetype
     def get_filetype(self):
         if self.current_tab >= 0:
@@ -214,30 +235,10 @@ class EditorNotebook(Notebook):
     def set_console_wdir(self):
         self.event_generate('<<SetConsoleWDir>>')
 
-    # --- formatting
-    def toggle_comment(self):
-        if self.current_tab >= 0:
-            self._tabs[self.current_tab].toggle_comment()
-
-    def upper_case(self):
-        if self.current_tab >= 0:
-            self._tabs[self.current_tab].upper_case()
-
-    def lower_case(self):
-        if self.current_tab >= 0:
-            self._tabs[self.current_tab].lower_case()
-
-    def set_cells(self, cells):
-        self._tabs[self.current_tab].set_cells(cells)
-
     # --- indent
     def indent(self):
         if self.current_tab >= 0:
             self._tabs[self.current_tab].on_tab(force_indent=True)
-
-    def unindent(self):
-        if self.current_tab >= 0:
-            self._tabs[self.current_tab].unindent()
 
     # --- select
     def select(self, tab_id=None):
@@ -247,18 +248,11 @@ class EditorNotebook(Notebook):
             self._tabs[tab].focus_set()
         return res
 
-    def select_all(self):
-        if self.current_tab >= 0:
-            self._tabs[self.current_tab].select_all()
-
     def focus_tab(self):
         if self.current_tab >= 0:
             self._tabs[self.current_tab].text.focus_set()
 
     # --- find / replace
-    def find(self):
-        if self.current_tab >= 0:
-            self._tabs[self.current_tab].find()
 
     def find_all(self, pattern, case_sensitive, regexp, full_word):
         options = {'regexp': regexp,
@@ -276,30 +270,20 @@ class EditorNotebook(Notebook):
 
         return results
 
-    def replace(self):
-        if self.current_tab >= 0:
-            self._tabs[self.current_tab].replace()
-
     def replace_all(self, pattern, new_text, replacements):
         try:
             for tab, matches in replacements.items():
                 for start, end in reversed(matches):
                     self._tabs[tab].replace_text(start, end, pattern, new_text)
-                self._tabs[tab].update_nb_line()
                 self._tabs[tab].parse_all()
         except re.error as e:
             showerror("Error", f"Replacement error: {e.msg}", parent=self)
 
     # --- syntax check
-    def show_syntax_issues(self, results):
-        if self.current_tab >= 0:
-            self._tabs[self.current_tab].show_syntax_issues(results)
-
     def get_syntax_issues(self):
         if self.current_tab >= 0:
             return self._tabs[self.current_tab].syntax_issues_menuentries
-        else:
-            return []
+        return []
 
     # --- get
     def get(self, tab=None, strip=True):
@@ -307,20 +291,23 @@ class EditorNotebook(Notebook):
             tab = self.current_tab
         return self._tabs[tab].get(strip)
 
+    def get_lexer(self, tab=None):
+        if tab is None:
+            tab = self.current_tab
+        return self._tabs[tab].lexer
+
     def get_selection(self):
         if self._current_tab < 0:
             return ''
         sel = self._tabs[self._current_tab].text.tag_ranges('sel')
         if sel:
             return self._tabs[self._current_tab].text.get('sel.first', 'sel.last')
-        else:
-            return ''
+        return ''
 
     def get_cell(self, goto_next=False):
         if self._current_tab >= 0:
             return self._tabs[self._current_tab].get_cell(goto_next)
-        else:
-            return ''
+        return ''
 
     def get_last_closed(self):
         if self.last_closed:
@@ -329,13 +316,12 @@ class EditorNotebook(Notebook):
     def get_docstring(self, obj):
         if self.current_tab >= 0:
             return self._tabs[self.current_tab].get_docstring(obj)
-        else:
-            return ("", "")
+        return ("", "")
 
     # --- close
     def _close(self, tab):
         """Close a tab."""
-        self.wrapper.remove_tooltip(self._tab_labels[tab])
+        self.tooltips.remove_tooltip(tab)
         ed = self._tabs[tab]
         if self.files[tab]:
             self.last_closed.append(self.files[tab])
@@ -354,7 +340,8 @@ class EditorNotebook(Notebook):
         """Close tab and ask before dropping modifications."""
         rep = False
         if self.edit_modified(widget=self._tabs[tab]):
-            rep = askyesnocancel('Confirmation', 'The file %r has been modified. Do you want to save it?' % self.files[tab])
+            rep = askyesnocancel('Confirmation',
+                                 'The file %r has been modified. Do you want to save it?' % self.files[tab])
         if rep:
             self.save(tab)
         elif rep is None:
@@ -431,26 +418,35 @@ class EditorNotebook(Notebook):
             self.files[tab] = name
             self._tabs[tab].file = name
             self.tab(tab, text=os.path.split(name)[1])
-            self.wrapper.set_tooltip_text(tab, os.path.abspath(name))
+            self.tooltips.set_tooltip_text(tab, os.path.abspath(name))
             self.save(tab, force=True)
             self._files_check_deletion[tab] = True
             return True
+        return False
+
+    def save_copy_as(self, event=None):
+        tab = self.current_tab
+        file = self.files.get(tab, '')
+        if file:
+            initialdir, initialfile = os.path.split(file)
         else:
-            return False
+            initialdir, initialfile = '', 'new.py'
+        name = asksaveasfilename(self, title='Save Copy As',
+                                 initialfile=initialfile,
+                                 initialdir=initialdir, defaultext='.py',
+                                 filetypes=[('Python', '*.py'), ('All files', '*')])
+        if name:
+            try:
+                with open(name, 'w') as f:
+                    f.write(self.get(tab))
+            except PermissionError as e:
+                showerror("Error", f"PermissionError: {e.strerror}: {file}", parent=self)
 
     # --- goto
-    def goto_line(self):
-        if self.current_tab >= 0:
-            self._tabs[self.current_tab].goto_line()
-
     def goto_start(self):
         if self._current_tab >= 0:
             self._tabs[self._current_tab].text.mark_set('insert', '1.0')
-            self._tabs[self._current_tab].see('1.0')
-
-    def goto_item(self, *args):
-        if self.current_tab >= 0:
-            self._tabs[self.current_tab].goto_item(*args)
+            self._tabs[self._current_tab].text.see('1.0')
 
     # --- misc
     def run(self, interactive=True):
@@ -461,7 +457,6 @@ class EditorNotebook(Notebook):
                 filename = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'utils', 'console.py')
                 external_console = CONFIG.get('Run', 'external_console', fallback='').split()
                 try:
-
                     Popen(external_console + [f"python {filename} {file} {interactive}"])
                 except Exception:
                     showerror("Error",
@@ -470,12 +465,13 @@ the external terminal configuration in the settings.",
                               parent=self)
 
     def new(self, file=None):
+        """Create new editor tab."""
         if file is None:
             new_files = [-1]
-            pattern = re.compile(r"^new(\d+).py - $")
+
             for i in self._tab_menu_entries.values():
                 name = self._tab_menu.entrycget(i, 'label')
-                match = pattern.search(name)
+                match = self._new_file_pattern.search(name)
                 if match:
                     new_files.append(int(match.groups()[0]))
             title = f'new{max(new_files) + 1}.py'
@@ -483,7 +479,7 @@ the external terminal configuration in the settings.",
         else:
             title = os.path.split(file)[-1]
 
-        editor = Editor(self, 'Python' if title.endswith('.py') else 'Text')
+        editor = Editor(self, file)
         if len(self._visible_tabs) == 0:
             self.event_generate('<<NotebookFirstTab>>')
         tab = self.add(editor, text=title)
@@ -497,8 +493,8 @@ the external terminal configuration in the settings.",
 
         self._tab_menu.entryconfigure(self._tab_menu_entries[tab],
                                       label="{} - {}".format(title, os.path.dirname(file)))
-        self._tabs[tab].file = file
-        self.wrapper.add_tooltip(tab, file if file else title)
+        #~self._tabs[tab].file = file
+        self.tooltips.add_tooltip(tab, file if file else title)
         editor.text.bind('<<Modified>>', lambda e: self.edit_modified(widget=editor, generate=True))
         editor.text.bind('<Control-Tab>', self._select_next)
         editor.text.bind('<Shift-Control-ISO_Left_Tab>', self._select_prev)
@@ -513,9 +509,10 @@ the external terminal configuration in the settings.",
         return "break"
 
     def file_switch(self, event=None):
+        """Display file switcher dialog."""
 
         def ok(event):
-            file = c.get()
+            file = file_swicther.get()
             if file not in files:
                 top.destroy()
             else:
@@ -523,8 +520,8 @@ the external terminal configuration in the settings.",
                 top.destroy()
 
         def sel(event):
-            self.select(list(self.files.keys())[files.index(c.get())])
-            self.after(2, c.entry.focus_set)
+            self.select(list(self.files.keys())[files.index(file_swicther.get())])
+            self.after(2, file_swicther.entry.focus_set)
 
         top = Toplevel(self)
         top.geometry('+%i+%i' % self.winfo_pointerxy())
@@ -533,17 +530,13 @@ the external terminal configuration in the settings.",
         top.grab_set()
 
         files = ["{1} - {0}".format(*os.path.split(file)) for file in self.files.values()]
-        c = AutoCompleteEntryListbox(top, completevalues=sorted(files), width=60)
-        c.pack(fill='both', expand=True)
-        c.entry.bind('<Escape>', lambda e: top.destroy())
-        c.listbox.bind('<Escape>', lambda e: top.destroy())
-        c.entry.bind('<Return>', ok)
-        c.listbox.bind('<Return>', ok)
-        c.bind('<<ItemSelect>>', sel)
-        c.focus_set()
+        file_swicther = AutoCompleteEntryListbox(top, completevalues=sorted(files), width=60)
+        file_swicther.pack(fill='both', expand=True)
+        file_swicther.entry.bind('<Escape>', lambda e: top.destroy())
+        file_swicther.listbox.bind('<Escape>', lambda e: top.destroy())
+        file_swicther.entry.bind('<Return>', ok)
+        file_swicther.listbox.bind('<Return>', ok)
+        file_swicther.bind('<<ItemSelect>>', sel)
+        file_swicther.entry.focus_set()
         return "break"
 
-    def choose_color(self):
-        tab = self.current_tab
-        if tab >= 0:
-            self._tabs[self.current_tab].choose_color()

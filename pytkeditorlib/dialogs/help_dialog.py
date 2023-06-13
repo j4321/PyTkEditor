@@ -24,12 +24,13 @@ Help dialog
 from tkinter import Toplevel, TclError
 
 from pytkeditorlib.utils.constants import PATH_DOC, CSS_PATH, CONFIG
-from pytkeditorlib.gui_utils import HtmlFrame
+from pytkeditorlib.gui_utils.tkhtml import HtmlFrame
 from pytkeditorlib.utils import doc2html
 from .messagebox import showerror
 
 
 class HelpDialog(Toplevel):
+    """Help Toplevel."""
     def __init__(self, master=None, **kw):
         Toplevel.__init__(self, master, **kw)
         self.transient(master)
@@ -43,8 +44,8 @@ class HelpDialog(Toplevel):
             self.destroy()
 
         content = HtmlFrame(self)
-        with open(CSS_PATH.format(theme=CONFIG.get('General', 'theme'))) as f:
-            stylesheet = f.read()
+        with open(CSS_PATH.format(theme=CONFIG.get('General', 'theme'))) as style_file:
+            stylesheet = style_file.read()
         try:
             content.set_content(doc2html(doc))
             content.set_style(stylesheet)

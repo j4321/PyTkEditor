@@ -1,6 +1,6 @@
 # Maintainer: Juliette Monsel <j_4321 at protonmail dot com>
 pkgname=pytkeditor-git
-pkgver=1.0.0a0
+pkgver=r288.a072cc5
 pkgrel=1
 pkgdesc="Python IDE"
 arch=('any')
@@ -10,7 +10,7 @@ depends=('tk'
          'desktop-file-utils'
          'python-pillow'
          'python-xlib'
-         'python-jedi'
+         'python-jedi>=0.16.0'
          'python-docutils'
          'python-tkfilebrowser'
          'python-tkcolorpicker'
@@ -19,7 +19,7 @@ depends=('tk'
          'python-ewmh'
          'python-pdfkit'
          'python-pycups'
-         'python-pycodestyle')      
+         'python-pycodestyle')
 optdepends=('python-qtconsole: Run code in Jupyter QtConsole')
 source=("${pkgname}::git+https://gitlab.com/j_4321/PyTkEditor#branch=dev")
 sha512sums=('SKIP')
@@ -38,3 +38,4 @@ package() {
     cd "$srcdir/$pkgname"
     python setup.py install --root="$pkgdir/" --prefix=/usr --optimize=1 --skip-build
 }
+

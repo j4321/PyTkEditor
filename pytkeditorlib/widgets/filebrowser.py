@@ -28,6 +28,7 @@ import re
 
 from pytkeditorlib.gui_utils import AutoHideScrollbar as Scrollbar
 from pytkeditorlib.utils.constants import CONFIG
+from pytkeditorlib.dialogs import TooltipWrapper
 from .base_widget import BaseWidget
 
 
@@ -40,6 +41,10 @@ class Filebrowser(BaseWidget):
         self.history = []
         self.history_index = -1
 
+        self._path = ''
+
+        tooltips = TooltipWrapper(self)
+
         self.load_filters()
         # --- browsing buttons
         frame_btn = ttk.Frame(self)
@@ -49,14 +54,19 @@ class Filebrowser(BaseWidget):
                                      command=self.browse_backward)
         self.b_forward = ttk.Button(frame_btn, image='img_right', padding=0,
                                     command=self.browse_forward)
-        self.b_backward.pack(side='left', padx=2)
-        self.b_forward.pack(side='left', padx=2)
-        self.b_up.pack(side='left', padx=2)
+        self.b_backward.pack(side='left')
+        self.b_forward.pack(side='left', padx=4)
+        self.b_up.pack(side='left')
+        tooltips.add_tooltip(self.b_up, 'Parent')
+        tooltips.add_tooltip(self.b_forward, 'Next')
+        tooltips.add_tooltip(self.b_backward, 'Previous')
         self.b_forward.state(['disabled'])
         self.b_backward.state(['disabled'])
 
-        ttk.Button(frame_btn, image='img_properties', padding=0,
-                   command=self.edit_filter).pack(side='right', padx=2)
+        btn_prop = ttk.Button(frame_btn, image='img_properties', padding=0,
+                              command=self.edit_filter)
+        btn_prop.pack(side='right')
+        tooltips.add_tooltip(btn_prop, 'Edit filename filters')
 
         # --- filetree
         self.filetree = ttk.Treeview(self, show='tree', selectmode='none',
@@ -108,25 +118,33 @@ class Filebrowser(BaseWidget):
     def edit_filter(self):
 
         def ok(event=None):
-            CONFIG.set('File browser', 'filename_filter', entry.get())
+            CONFIG.set('File browser', 'filename_filter', filters.get('1.0', 'end').strip())
             CONFIG.save()
             self.load_filters()
             self.populate(self.filetree.get_children()[0], history=False)
             top.destroy()
 
         top = tk.Toplevel(self, padx=4, pady=4)
+        style = ttk.Style(self)
         top.title('Filename filters')
-        top.resizable(True, False)
         top.columnconfigure(0, weight=1)
         top.columnconfigure(1, weight=1)
+        top.rowconfigure(1, weight=1)
         ttk.Label(top, text='Name filters:').grid(columnspan=2, sticky='w')
-        entry = ttk.Entry(top)
-        entry.grid(columnspan=2, sticky='ew', pady=4)
-        entry.insert(0, CONFIG.get('File browser', 'filename_filter',
-                                   fallback='README, *.py, *.rst'))
-        entry.bind('<Return>', ok)
-        entry.bind('<Escape>', lambda e: top.destroy())
-        entry.focus_set()
+        frame = ttk.Frame(top, style='txt.TFrame', padding=1, relief='sunken', borderwidth=1)
+        filters = tk.Text(frame, wrap='word', height=5,
+                          bg=style.lookup('TEntry', 'fieldbackground'),
+                          fg=style.lookup('TEntry', 'foreground'))
+        filters.pack(expand=True, fill='both')
+        yscroll = Scrollbar(top, orient='vertical', command=filters.yview, threshold=0)
+        filters.configure(yscrollcommand=yscroll.set)
+        frame.grid(columnspan=2, sticky='ewns', pady=4)
+        yscroll.grid(row=1, column=2, sticky='ns', pady=4)
+        filters.insert('1.0', CONFIG.get('File browser', 'filename_filter',
+                                         fallback='README, *.py, *.rst'))
+        filters.bind('<Return>', ok)
+        filters.bind('<Escape>', lambda e: top.destroy())
+        filters.focus_set()
         ttk.Button(top, text='Ok', command=ok).grid(row=2, column=0, padx=4, sticky='e')
         ttk.Button(top, text='Cancel',
                    command=top.destroy).grid(row=2, column=1, padx=4, sticky='w')
@@ -196,19 +214,30 @@ class Filebrowser(BaseWidget):
             elif self.filter.search(name):
                 self.filetree.insert(path, 'end', ipath, text=name, tags='file')
 
-    def populate(self, path, history=True, reset=False):
+    def _display(self):
+        if not self.visible.get():
+            return
+
+        p = os.path.abspath(self._path)
+        root = self.filetree.get_children('')
+        if root and p == root[0]:
+            return
+
         self.configure(cursor='watch')
         self.update_idletasks()
         self._sx.timer = self._sx.threshold + 1
         self._sy.timer = self._sy.threshold + 1
 
         self.filetree.delete(*self.filetree.get_children())
-        p = os.path.abspath(path)
         self.filetree.insert('', 0, p, text=p, image='img_folder', open=True)
 
         self._lazy_populate(p)
 
         self.configure(cursor='')
+
+    def populate(self, path, history=True, reset=False):
+        self._path = path
+        self._display()
         if reset:
             self.history = []
             self.history_index = -1

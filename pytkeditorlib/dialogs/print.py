@@ -40,13 +40,15 @@ class PrintDialog(tk.Toplevel):
     def __init__(self, master):
         tk.Toplevel.__init__(self, master, class_=master.winfo_class(), padx=10)
         self.title("Print")
-
+        self.configure(cursor='watch')
+        self.update_idletasks()
         try:
             self.conn = cups.Connection()
         except RuntimeError:
             self.printers = {}
         else:
             self.printers = self.conn.getPrinters()
+        self.configure(cursor='')
 
         # --- Printer
         frame_printer = ttk.Labelframe(self, text='Printer:')
@@ -219,3 +221,4 @@ class PrintDialog(tk.Toplevel):
                                 {})
             os.remove(filename)
         self.destroy()
+

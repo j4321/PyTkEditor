@@ -28,6 +28,7 @@ from pytkeditorlib.gui_utils import AutoHideScrollbar, EntryHistory
 
 
 class SearchDialog(tk.Toplevel):
+    """Dialog to search and replace in whole session."""
     def __init__(self, master, text=''):
         tk.Toplevel.__init__(self, master, class_=master.winfo_class(), padx=4, pady=4)
         self.title('Find & replace')
@@ -64,7 +65,8 @@ class SearchDialog(tk.Toplevel):
         self._search_pattern = None
         self.results = ttk.Treeview(result_frame, show='tree',
                                     columns=('tab', 'index_start', 'index_end'), displaycolumns=())
-        self.results.tag_bind('result', '<ButtonRelease-1>', self._show_file)
+        self.results.tag_bind('result', '<ButtonRelease-1>', self._show_result)
+        self.results.tag_bind('file', '<ButtonRelease-1>', self._show_file)
         scroll = AutoHideScrollbar(result_frame, orient='vertical',
                                    command=self.results.yview)
         self.results.configure(yscrollcommand=scroll.set)
@@ -86,7 +88,8 @@ class SearchDialog(tk.Toplevel):
         result_frame.pack(fill='both', expand=True, pady=4, padx=4)
         self.entry_search.focus_set()
 
-    def _show_file(self, event):
+    def _show_result(self, event):
+        """Display search result corresponding to the selected item."""
         item = self.results.focus()
         try:
             tab, start, end = self.results.item(item, 'values')
@@ -99,7 +102,21 @@ class SearchDialog(tk.Toplevel):
         except (tk.TclError, KeyError, ValueError):
             return
 
+    def _show_file(self, event):
+        """Display file corresponding to the selected item."""
+        item = self.results.focus()
+        try:
+            tab, = self.results.item(item, 'values')
+        except ValueError:
+            return
+        try:
+            self.master.editor.select(int(tab))
+            self.master.update_idletasks()
+        except (tk.TclError, KeyError, ValueError):
+            return
+
     def find(self, event=None):
+        """Find all occurences in whole session."""
         self.results.delete(*self.results.get_children(''))
         pattern = self.entry_search.get()
         self.entry_search.add_to_history(pattern)
@@ -130,6 +147,7 @@ class SearchDialog(tk.Toplevel):
                                         tags='result')
 
     def replace(self):
+        """Search and replace all occurences in whole session."""
         self.find()
         text = self.entry_replace.get()
         self.entry_replace.add_to_history(text)

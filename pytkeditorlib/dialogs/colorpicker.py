@@ -52,6 +52,7 @@ class ColorPicker(colorpicker.ColorPicker):
         self.bind('<Escape>', lambda e: self.destroy())
 
     def insert(self):
+        """Get selected color and fire the event <<ColorSelected>>."""
         rgb, hsv, hexa = self.square.get()
         if self.alpha_channel:
             hexa = self.hexa.get()
@@ -60,13 +61,14 @@ class ColorPicker(colorpicker.ColorPicker):
         self.event_generate("<<ColorSelected>>")
 
     def get_color(self):
+        """Return selected color."""
         if self._prefix:
             # return HTML format with leading #
             return self.color[2]
-        else:
-            # return HTML format without leading #
-            return self.color[2][1:]
+        # return HTML format without leading #
+        return self.color[2][1:]
 
     def ok(self):
+        """Validate selection."""
         self.insert()
         self.destroy()

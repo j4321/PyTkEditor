@@ -21,18 +21,67 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 Syntax / PEP8 compliance checks
 """
 from subprocess import Popen, PIPE
+from multiprocessing import Process, Queue
+import traceback
 
 from pyflakes.api import checkPath
 from pyflakes.reporter import Reporter as flakeReporter
 from pyflakes.checker import builtin_vars
 
-from .constants import CONFIG
+from .constants import CONFIG, PYLINT
 
+if PYLINT:
+    from pylint.reporters.text import TextReporter
+    from pylint import lint
+
+    class MyReporter(TextReporter):
+        name = "parseable"
+        line_format = "{msg_id} (line {line}): {msg}"
+
+        def __init__(self, queue, output=None):
+            TextReporter.__init__(self, output)
+            self.queue = queue
+
+        def handle_message(self, msg):
+            """manage message of different type and in the context of path"""
+            self.queue.put((msg.category, msg.format(self._template), msg.line))
+
+        def on_close(self, *args):
+            self.queue.put(args)
+
+        def display_messages(self, layout):
+            """Launch layouts display"""
+
+        def display_reports(self, layout):
+            """Don't do anything in this reporter."""
+
+        def _display(self, layout):
+            """Do nothing."""
+
+
+    def worker_pylint_check(filename, queue):
+        """Return the list of messages and the stats from pylint's analysis."""
+        try:
+            lint.Run([filename], reporter=MyReporter(queue=queue), do_exit=True)
+        except Exception:
+            queue.put((traceback.format_exc(),))
+
+    def pylint_check(filename):
+        """Launch pylint check in separate thread and return the queue and process."""
+        queue = Queue()
+        p = Process(target=worker_pylint_check, daemon=True, args=(filename, queue))
+        p.start()
+        return queue, p
+
+else:
+
+    def pylint_check():
+        """Do nothing (pylint not installed)."""
 
 builtin_vars.append('_')
 
 
-class Logger(object):
+class Logger:
     """Logger to collect checks output."""
     def __init__(self):
         self.log = []
@@ -62,6 +111,7 @@ class Reporter(flakeReporter):
 
 
 def parse_message_style(message, results):
+    """Parse pycodestyle output."""
     txt = message.split(':')
     line = int(txt[1])
     msg = ':'.join(txt[3:]).strip()
@@ -73,6 +123,7 @@ def parse_message_style(message, results):
 
 
 def parse_message_flake(message, category, results):
+    """Parse pyflakes output."""
     txt = message.split(':')
     line = int(txt[1])
     msg = ':'.join(txt[2:]).strip()
@@ -84,17 +135,20 @@ def parse_message_flake(message, category, results):
 
 
 def pyflakes_check(filename):
+    """Run pyflakes on file and return output."""
     warning_log, err_log = Logger(), Logger()
     checkPath(filename, Reporter(warning_log, err_log))
     return err_log.log, warning_log.log
 
 
 def pycodestyle_check(filename):
+    """Run pycodestyle on file and return output."""
     p = Popen(['pycodestyle', filename], stdout=PIPE)
     return p.stdout.read().decode().splitlines()
 
 
 def check_file(filename):
+    """Run syntax and style checks on file."""
     results = {}
     if CONFIG.getboolean('Editor', 'code_check', fallback=True):
         err, warn = pyflakes_check(filename)

@@ -25,12 +25,9 @@ import os
 import configparser
 from glob import glob
 import re
-import logging
-from logging.handlers import TimedRotatingFileHandler
 
-import warnings
 from jedi import settings
-from pygments.lexers import Python3Lexer
+from pygments.lexers.python import PythonLexer
 from pygments.token import Comment
 from pygments.styles import get_style_by_name
 from Xlib import display
@@ -43,9 +40,9 @@ APP_NAME = 'PyTkEditor'
 REPORT_URL = f"https://gitlab.com/j_4321/{APP_NAME}/issues"
 
 
-class MyLexer(Python3Lexer):
+class MyLexer(PythonLexer):
     name = "PyTkPython"
-    tokens = {key: val.copy() for key, val in Python3Lexer.tokens.items()}
+    tokens = {key: val.copy() for key, val in PythonLexer.tokens.items()}
     tokens['root'].insert(4, (r'^#( In\[.*\]| ?%%).*$', Comment.Cell))
 
 
@@ -102,6 +99,12 @@ else:
     from jupyter_core.paths import jupyter_runtime_dir
     JUPYTER = True
 JUPYTER_ICON = os.path.join(PATH_IMG, 'JupyterConsole.svg')
+# --- pylint
+PYLINT = True
+try:
+    import pylint
+except ImportError:
+    PYLINT = False
 
 # --- images
 IMAGES = {}
@@ -112,26 +115,12 @@ for img in os.listdir(PATH_IMG):
 
 IM_CLOSE = os.path.join(PATH_IMG, 'close_{theme}.png')
 IM_SELECTED = os.path.join(PATH_IMG, 'selected_{theme}.png')
+IM_UP = os.path.join(PATH_IMG, 'up_{theme}.png')
+IM_LEFT = os.path.join(PATH_IMG, 'left_{theme}.png')
+IM_RIGHT = os.path.join(PATH_IMG, 'right_{theme}.png')
 ANIM_LOADING = [os.path.join(PATH_IMG, 'animation', file)
                 for file in os.listdir(os.path.join(PATH_IMG, 'animation'))]
 ANIM_LOADING.sort()
-
-# --- log
-handler = TimedRotatingFileHandler(PATH_LOG, when='midnight',
-                                   interval=1, backupCount=7)
-logging.basicConfig(level=logging.INFO,
-                    format='%(asctime)-15s %(levelname)s: %(message)s',
-                    handlers=[handler])
-logging.getLogger().addHandler(logging.StreamHandler())
-
-
-def customwarn(message, category, filename, lineno, file=None, line=None):
-    """Redirect warnings to log"""
-    logging.warn(warnings.formatwarning(message, category, filename, lineno))
-
-
-warnings.showwarning = customwarn
-
 
 # --- ssl
 SERVER_CERT = os.path.join(PATH_SSL, 'server.crt')
@@ -153,7 +142,10 @@ if i < len(external_consoles):
 else:
     external_console = ''
 
-if not CONFIG.read(PATH_CONFIG):
+sections = ['General', 'Layout', 'Editor', 'Code structure', 'Code analysis', 'Console', 'History',
+            'Help', 'File browser', 'Namespace', 'Run', 'Dark Theme', 'Light Theme']
+
+def create_config():
     CONFIG.add_section('General')
     CONFIG.set('General', 'theme', "light")
     CONFIG.set('General', 'fontfamily', "DejaVu Sans Mono")
@@ -178,6 +170,8 @@ if not CONFIG.read(PATH_CONFIG):
     CONFIG.set('Editor', 'toggle_comment_mode', 'line_by_line')
     CONFIG.add_section('Code structure')
     CONFIG.set('Code structure', 'visible', "True")
+    CONFIG.add_section('Code analysis')
+    CONFIG.set('Code analysis', 'visible', "True")
     CONFIG.add_section('Console')
     CONFIG.set('Console', 'style', "monokai")
     CONFIG.set('Console', 'visible', "True")
@@ -198,6 +192,10 @@ if not CONFIG.read(PATH_CONFIG):
     CONFIG.set('File browser', 'filename_filter', "README, INSTALL, LICENSE, CHANGELOG, *.npy, *.npz, *.csv, *.txt, *.jpg, *.png, *.gif, *.tif, *.pkl, *.pickle, *.json, *.py, *.ipynb, *.txt, *.rst, *.md, *.dat, *.pdf, *.png, *.svg, *.eps")
     CONFIG.set('File browser', 'visible', "True")
     CONFIG.set('File browser', 'order', "3")
+    CONFIG.add_section('Namespace')
+    CONFIG.set('Namespace', 'visible', "True")
+    CONFIG.set('Namespace', 'order', "3")
+    CONFIG.set('Namespace', 'all_scopes', "False")
     CONFIG.add_section('Run')
     CONFIG.set('Run', 'console', "external")
     CONFIG.set('Run', 'external_interactive', "True")
@@ -239,7 +237,7 @@ if not CONFIG.read(PATH_CONFIG):
     CONFIG.set('Light Theme', 'disabledfg', '#999999')
     CONFIG.set('Light Theme', 'disabledbg', '#dddddd')
     CONFIG.set('Light Theme', 'tooltip_bg', 'light yellow')
-
+    save_config()
 
 def save_config():
     with open(PATH_CONFIG, 'w') as f:
@@ -248,6 +246,18 @@ def save_config():
 
 CONFIG.save = save_config
 
+# restore config
+CONFIG.read(PATH_CONFIG)
+if set(CONFIG.sections()) != set(sections):
+    CONFIG.clear()
+    if CONFIG.read(PATH_CONFIG + '.bak') and set(CONFIG.sections()) == set(sections):
+        save_config()
+    else:
+        CONFIG.clear()
+        create_config()
+else:
+    os.rename(PATH_CONFIG, PATH_CONFIG + '.bak')
+    save_config()
 
 # --- style
 def load_style(stylename):
@@ -283,8 +293,7 @@ def get_screen(x, y):
         i += 1
     if i == len(monitors):
         raise ValueError("(%i, %i) is out of screen" % (x, y))
-    else:
-        return monitors[i]
+    return monitors[i]
 
 
 def valide_entree_nb(d, S):
@@ -292,8 +301,7 @@ def valide_entree_nb(d, S):
         seulement des chiffres """
     if d == '1':
         return S.isdigit()
-    else:
-        return True
+    return True
 
 
 # --- autocompletion
@@ -397,8 +405,7 @@ def find_closing_bracket(text, open_char, open_index):
         close_index = text.find(close_char, index)
     if stack == 0:
         return index - 1
-    else:
-        return -1
+    return -1
 
 
 def format_long_output(output, wrap_length, head='', indent2=''):
@@ -411,10 +418,11 @@ def format_long_output(output, wrap_length, head='', indent2=''):
         text = output[len(indent1):-len(tail)]
     else:
         text = output[len(indent1):]
-    if not head:
-        indent2 = indent1 + indent2
-        head = indent1
+
     if text[0] in CLOSE_CHAR:
+        if not head:
+            indent2 = indent1 + indent2
+            head = indent1
         close = find_closing_bracket(text, text[0], 0)
         if close == len(text) - 1:
             content = SPLITTER_REGEXP.split(text[1:-1])
@@ -440,23 +448,28 @@ ANSI_COLORS_DARK = ['black', 'red', 'green', 'yellow', 'royal blue', 'magenta',
                     'cyan', 'light gray']
 ANSI_COLORS_LIGHT = ['dark gray', 'tomato', 'light green', 'light goldenrod', 'light blue',
                      'pink', 'light cyan', 'white']
-ANSI_FORMAT = {0: 'reset',
-               1: 'bold',
-               3: 'italic',
-               4: 'underline',
-               9: 'overstrike',
-               #~21: 'reset bold',
-               #~23: 'reset italic',
-               #~24: 'reset underline',
-               #~29: 'reset overstrike',
-               39: 'foreground default',
-               49: 'background default'}
+ANSI_FONT_FORMAT = {
+    1: 'bold',
+    3: 'italic',
+    4: 'underline',
+    9: 'overstrike',
+}
+
+ANSI_FONT_RESET = {
+    21: 'bold',
+    23: 'italic',
+    24: 'underline',
+    29: 'overstrike'
+}
+
+ANSI_COLOR_FG = {39: 'foreground default'}
+ANSI_COLOR_BG = {49: 'background default'}
 
 for i in range(8):
-    ANSI_FORMAT[30 + i] = 'foreground ' + ANSI_COLORS_DARK[i]
-    ANSI_FORMAT[90 + i] = 'foreground ' + ANSI_COLORS_LIGHT[i]
-    ANSI_FORMAT[40 + i] = 'background ' + ANSI_COLORS_DARK[i]
-    ANSI_FORMAT[100 + i] = 'background ' + ANSI_COLORS_LIGHT[i]
+    ANSI_COLOR_FG[30 + i] = 'foreground ' + ANSI_COLORS_DARK[i]
+    ANSI_COLOR_FG[90 + i] = 'foreground ' + ANSI_COLORS_LIGHT[i]
+    ANSI_COLOR_BG[40 + i] = 'background ' + ANSI_COLORS_DARK[i]
+    ANSI_COLOR_BG[100 + i] = 'background ' + ANSI_COLORS_LIGHT[i]
 
 
 ANSI_REGEXP = re.compile(r"\x1b\[((\d+;)*\d+)m")
@@ -483,16 +496,42 @@ def parse_ansi(text, line_offset=1):
     opened_tags = []
     for pos, codes in res:
         for code in codes:
-            if code == 0:
+            if code == 0:  # reset all
                 for tag in opened_tags:
                     tag_ranges[tag].append('%i.%i' % pos)
                 opened_tags.clear()
-            else:
-                tag = ANSI_FORMAT[code]
+            elif code in ANSI_FONT_RESET:
+                tag = ANSI_FONT_RESET[code]
+                if tag in opened_tags:
+                    tag_ranges[tag].append('%i.%i' % pos)
+                    opened_tags.remove(tag)
+            elif code in ANSI_FONT_FORMAT:
+                tag = ANSI_FONT_FORMAT[code]
                 if tag not in tag_ranges:
                     tag_ranges[tag] = []
                 tag_ranges[tag].append('%i.%i' % pos)
                 opened_tags.append(tag)
+            elif code in ANSI_COLOR_FG:
+                tag = ANSI_COLOR_FG[code]
+                for t in tuple(opened_tags):
+                    if t.startswith('foreground'):
+                        opened_tags.remove(t)
+                        tag_ranges[t].append('%i.%i' % pos)
+                if tag not in tag_ranges:
+                    tag_ranges[tag] = []
+                tag_ranges[tag].append('%i.%i' % pos)
+                opened_tags.append(tag)
+            elif code in ANSI_COLOR_BG:
+                tag = ANSI_COLOR_BG[code]
+                for t in tuple(opened_tags):
+                    if t.startswith('background'):
+                        opened_tags.remove(t)
+                        tag_ranges[t].append('%i.%i' % pos)
+                if tag not in tag_ranges:
+                    tag_ranges[tag] = []
+                tag_ranges[tag].append('%i.%i' % pos)
+                opened_tags.append(tag)
+
     for tag in opened_tags:
         tag_ranges[tag].append('end')
 

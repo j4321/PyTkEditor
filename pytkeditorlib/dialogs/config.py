@@ -35,6 +35,7 @@ from .messagebox import askokcancel
 
 
 class ColorFrame(ttk.Frame):
+    """Color setting frame."""
     def __init__(self, master=None, color='white', label='Color'):
         ttk.Frame.__init__(self, master, padding=(4, 0))
         self.label = ttk.Label(self, text=label)
@@ -75,6 +76,7 @@ class ColorFrame(ttk.Frame):
 
 
 class FormattingFrame(ttk.Frame):
+    """Font formatting frame."""
     def __init__(self, master=None, fg='black', bg='white', *font_formatting):
         ttk.Frame.__init__(self, master, padding=4)
         style = ttk.Style(self)
@@ -119,11 +121,13 @@ class FormattingFrame(ttk.Frame):
         if bg is None:
             bg = self._init_bg
         formatting = ['bold', 'italic', 'underline']
-        font_formatting = ';'.join([f for f, cb in zip(formatting, self.formatting) if 'selected' in cb.state()])
+        font_formatting = ';'.join([f for f, cb in zip(formatting, self.formatting)
+                                    if 'selected' in cb.state()])
         return f"{fg};{bg};{font_formatting}"
 
 
 class Config(tk.Toplevel):
+    """Settings dialog."""
     def __init__(self, master):
         tk.Toplevel.__init__(self, master)
         self.transient(master)
@@ -181,7 +185,8 @@ class Config(tk.Toplevel):
         frame_template.grid(row=2, columnspan=2, sticky='w')
 
         # --- confirm quit
-        self.confirm_quit = ttk.Checkbutton(frame_general, text="Show confirmation dialog before exiting")
+        self.confirm_quit = ttk.Checkbutton(frame_general,
+                                            text="Show confirmation dialog before exiting")
         if CONFIG.getboolean("General", "confirm_quit", fallback=False):
             self.confirm_quit.state(('selected', '!alternate'))
         else:
@@ -226,7 +231,7 @@ class Config(tk.Toplevel):
         frame_s_h.columnconfigure(1, weight=1)
         styles = list(get_all_styles())
         styles.sort()
-        w = len(max(styles, key=lambda x: len(x)))
+        w = len(max(styles, key=len))
 
         self.editor_style = AutoCompleteCombobox(frame_s_h, values=styles, width=w)
         self.editor_style.insert(0, CONFIG.get('Editor', 'style'))
@@ -237,24 +242,31 @@ class Config(tk.Toplevel):
 
         ttk.Label(frame_s_h, text='Theme:').grid(row=1, column=0, sticky='e', pady=(0, 10))
         self.editor_style.grid(row=1, column=1, sticky='w', padx=8, pady=(0, 10))
-        ttk.Label(frame_s_h, text='Matching brackets:').grid(row=2, column=0, columnspan=2, sticky='w')
-        self.editor_matching_brackets.grid(row=3, column=0, columnspan=2, sticky='w', padx=4)
-        ttk.Label(frame_s_h, text='Unmatched bracket:').grid(row=4, column=0, columnspan=2, sticky='w', pady=(8, 0))
+        ttk.Label(frame_s_h, text='Matching brackets:').grid(row=2, column=0,
+                                                             columnspan=2, sticky='w')
+        self.editor_matching_brackets.grid(row=3, column=0, columnspan=2,
+                                           sticky='w', padx=4)
+        ttk.Label(frame_s_h, text='Unmatched bracket:').grid(row=4, column=0,
+                                                             columnspan=2, sticky='w',
+                                                             pady=(8, 0))
         self.editor_unmatched_bracket.grid(row=5, column=0, columnspan=2, sticky='w', padx=4)
 
         # --- placement
         ttk.Label(frame_editor,
-                  text='Comment toggle marker:').grid(row=0, column=0, sticky='e', padx=4, pady=4)
+                  text='Comment toggle marker:').grid(row=0, column=0, sticky='e',
+                                                      padx=4, pady=4)
         self.comment_marker.grid(row=0, column=1, sticky='w', padx=4, pady=4)
         ttk.Label(frame_editor,
-                  text='Comment toggle mode:').grid(row=1, column=0, sticky='e', padx=4, pady=4)
+                  text='Comment toggle mode:').grid(row=1, column=0, sticky='e',
+                                                    padx=4, pady=4)
         rbtn_frame.grid(row=1, column=1, sticky='w')
         ttk.Label(frame_editor,
                   text='Code checking (on file saving):').grid(row=2, column=0,
                                                                sticky='e', padx=4, pady=4)
         self.code_check.grid(row=2, column=1, sticky='w', padx=3, pady=4)
         self.style_check.grid(row=3, column=1, sticky='w', padx=3, pady=4)
-        ttk.Separator(frame_editor, orient='horizontal').grid(row=4, columnspan=2, sticky='ew', pady=4)
+        ttk.Separator(frame_editor, orient='horizontal').grid(row=4, columnspan=2,
+                                                              sticky='ew', pady=4)
         ttk.Label(frame_editor,
                   text='Syntax Highlighting:').grid(row=5, columnspan=2,
                                                     sticky='w', pady=4, padx=4)
@@ -275,7 +287,7 @@ class Config(tk.Toplevel):
         frame_s_h.columnconfigure(1, weight=1)
         styles = list(get_all_styles())
         styles.sort()
-        w = len(max(styles, key=lambda x: len(x)))
+        w = len(max(styles, key=len))
 
         self.console_style = AutoCompleteCombobox(frame_s_h, values=styles, width=w)
         self.console_style.insert(0, CONFIG.get('Console', 'style'))
@@ -286,9 +298,12 @@ class Config(tk.Toplevel):
 
         ttk.Label(frame_s_h, text='Theme:').grid(row=1, column=0, sticky='e', pady=(0, 10))
         self.console_style.grid(row=1, column=1, sticky='w', padx=8, pady=(0, 10))
-        ttk.Label(frame_s_h, text='Matching brackets:').grid(row=2, column=0, columnspan=2, sticky='w')
+        ttk.Label(frame_s_h, text='Matching brackets:').grid(row=2, column=0,
+                                                             columnspan=2, sticky='w')
         self.console_matching_brackets.grid(row=3, column=0, columnspan=2, sticky='w', padx=4)
-        ttk.Label(frame_s_h, text='Unmatched bracket:').grid(row=4, column=0, columnspan=2, sticky='w', pady=(8, 0))
+        ttk.Label(frame_s_h, text='Unmatched bracket:').grid(row=4, column=0,
+                                                             columnspan=2, sticky='w',
+                                                             pady=(8, 0))
         self.console_unmatched_bracket.grid(row=5, column=0, columnspan=2, sticky='w', padx=4)
 
         # --- Jupyter QtConsole
@@ -303,10 +318,12 @@ class Config(tk.Toplevel):
         ttk.Label(f1, text='JUPYTER_CONFIG_DIR').grid(sticky='e', row=1, column=0, pady=4, padx=(0, 4))
         self.ipythondir = ttk.Entry(f1)
         home = os.path.expanduser('~')
-        self.ipythondir.insert(0, CONFIG.get('Console', 'ipython_dir', fallback=f'{home}/.ipython'))
+        self.ipythondir.insert(0, CONFIG.get('Console', 'ipython_dir',
+                                             fallback=f'{home}/.ipython'))
         self.ipythondir.grid(row=0, column=1, sticky='ew', pady=4)
         self.jupyterdir = ttk.Entry(f1)
-        self.jupyterdir.insert(0, CONFIG.get('Console', 'jupyter_config_dir', fallback=f'{home}/.jupyter'))
+        self.jupyterdir.insert(0, CONFIG.get('Console', 'jupyter_config_dir',
+                                             fallback=f'{home}/.jupyter'))
         self.jupyterdir.grid(row=1, column=1, sticky='ew', pady=4)
         ttk.Button(f1, text='...', width=2,
                    command=lambda: self.select_dir(self.ipythondir),
@@ -353,8 +370,8 @@ class Config(tk.Toplevel):
         self.external_interactive = ttk.Checkbutton(frame_run,
                                                     text='Interact with the Python console after execution')
         self.external_interactive.state(['!alternate',
-                                         '!' * (self.run_console.get() == 'external') + 'disabled',
-                                         '!' * (not CONFIG.getboolean('Run', 'external_interactive')) + 'selected'])
+                                         '!'*(self.run_console.get() == 'external') + 'disabled',
+                                         '!'*(not CONFIG.getboolean('Run', 'external_interactive')) + 'selected'])
 
         self.external_console = ttk.Entry(frame_run)
         self.external_console.insert(0, CONFIG.get('Run', 'external_console', fallback=''))
@@ -478,3 +495,4 @@ class Config(tk.Toplevel):
                 return
         CONFIG.save()
         self.destroy()
+

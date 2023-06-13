@@ -1,4 +1,3 @@
-#! /usr/bin/python3
 # -*- coding: utf-8 -*-
 """
 PyTkEditor - Python IDE
@@ -24,11 +23,14 @@ import tkinter as tk
 from tkinter import ttk
 import traceback
 import os
+import sys
 import signal
-import logging
 from subprocess import Popen, PIPE
 from getpass import getuser
 from datetime import datetime
+import logging
+from logging.handlers import TimedRotatingFileHandler
+import warnings
 
 from ewmh import ewmh, EWMH
 import pdfkit
@@ -38,22 +40,41 @@ from pygments.formatters import HtmlFormatter
 from PIL import Image, ImageTk
 
 from pytkeditorlib.code_editor import EditorNotebook
-from pytkeditorlib.utils.constants import IMAGES, CONFIG, IM_CLOSE, IM_SELECTED
+from pytkeditorlib.utils.constants import IMAGES, CONFIG, IM_CLOSE, IM_SELECTED, IM_UP, IM_LEFT, IM_RIGHT
 from pytkeditorlib.utils import constants as cst
 from pytkeditorlib.utils import check_file
 from pytkeditorlib.dialogs import showerror, About, Config, SearchDialog, \
     PrintDialog, HelpDialog, SelectKernel, askyesno
 from pytkeditorlib.widgets import WidgetNotebook, Help, HistoryFrame, \
-    ConsoleFrame, Filebrowser, CodeStructure
+    ConsoleFrame, Filebrowser, CodeStructure, CodeAnalysis, NameOverview
 from pytkeditorlib.gui_utils import LongMenu
 
 
+# --- log
+handler = TimedRotatingFileHandler(cst.PATH_LOG, when='midnight',
+                                   interval=1, backupCount=7)
+logging.basicConfig(level=logging.INFO,
+                    format='%(asctime)-15s %(levelname)s: %(message)s',
+                    handlers=[handler])
+logging.getLogger().addHandler(logging.StreamHandler())
+
+
+def customwarn(message, category, filename, lineno, file=None, line=None):
+    """Redirect warnings to log"""
+    logging.warn(warnings.formatwarning(message, category, filename, lineno))
+
+
+warnings.showwarning = customwarn
+
+
+# --- main class
 class App(tk.Tk):
     def __init__(self, pid, *files):
         tk.Tk.__init__(self, className='PyTkEditor')
         self.pid = pid
         self.tk.eval('package require Tkhtml')
         self.title('PyTkEditor')
+        logging.info("Start PyTkEditor")
         self.configure(cursor='watch')
         self.update_idletasks()
         self.splash = Popen(['python',
@@ -68,6 +89,9 @@ class App(tk.Tk):
         self._im_close = tk.PhotoImage(name='img_close', master=self)
         self._im_close_menu = ImageTk.PhotoImage(Image.new('RGBA', (18, 18)), name='img_close_menu', master=self)
         self._im_selected = tk.PhotoImage(name='img_selected', master=self)
+        self._im_up = tk.PhotoImage(name='img_up', master=self)
+        self._im_left = tk.PhotoImage(name='img_left', master=self)
+        self._im_right = tk.PhotoImage(name='img_right', master=self)
         self.iconphoto(True, 'img_icon')
 
         self.option_add('*Menu.borderWidth', 1)
@@ -120,12 +144,19 @@ class App(tk.Tk):
         self._vertical_pane = ttk.PanedWindow(self._horizontal_pane, orient='vertical')
         # --- --- editor notebook
         self.editor = EditorNotebook(self._horizontal_pane, width=696)
-        # --- --- right pane
+        # --- --- widgets
         self.right_nb = WidgetNotebook(self._horizontal_pane)
-        widgets = ['Code structure', 'Console', 'History', 'Help', 'File browser']
+        widgets = ['Code structure', 'Console', 'History', 'Help', 'File browser', 'Namespace']
+        if cst.PYLINT:
+            widgets.append('Code analysis')
         widgets.sort(key=lambda w: CONFIG.getint(w, 'order', fallback=0))
-        # --- --- code structure tree
-        self.codestruct = CodeStructure(self._horizontal_pane, self.right_nb)
+        # --- --- --- code structure tree
+        self.codestruct = CodeStructure(self._horizontal_pane, self.right_nb,
+                                        self.editor.goto_item)
+        # --- --- --- code analysis
+        if cst.PYLINT:
+            self.widgets['Code analysis'] = CodeAnalysis(self.right_nb, padding=1,
+                                                         click_callback=self.editor.highlight_line)
         # --- --- --- command history
         self.widgets['History'] = HistoryFrame(self.right_nb, padding=1)
         # --- --- --- python console
@@ -139,6 +170,8 @@ class App(tk.Tk):
                                                'Console': self.console.get_docstring})
         # --- --- --- filebrowser
         self.widgets['File browser'] = Filebrowser(self.right_nb, self.open_file)
+        # --- --- --- nameoverview
+        self.widgets['Namespace'] = NameOverview(self.right_nb, self.editor.goto_item)
 
         # --- --- placement
         self._frame.pack(fill='both', expand=True)
@@ -181,6 +214,9 @@ class App(tk.Tk):
         self.menu_file.add_command(label='Save as', command=self.saveas,
                                    image='img_saveas',
                                    accelerator='Ctrl+Alt+S', compound='left')
+        self.menu_file.add_command(label='Save copy as', command=self.editor.save_copy_as,
+                                   image='img_saveas',
+                                   accelerator='Ctrl+Alt+Shift+S', compound='left')
         self.menu_file.add_command(label='Save all', command=self.saveall,
                                    image='img_saveall',
                                    accelerator='Ctrl+Shift+S', compound='left')
@@ -189,8 +225,7 @@ class App(tk.Tk):
                                    image='img_export',
                                    compound='left')
         self.menu_file.add_command(label='Print', command=self.print,
-                                   image='img_print', compound='left',
-                                   accelerator='Ctrl+Shift+P')
+                                   image='img_print', compound='left')
 
         self.menu_file.add_separator()
         self.menu_file.add_command(label='Close all files',
@@ -289,7 +324,7 @@ class App(tk.Tk):
         menu_filetype.add_radiobutton(label='Python', value='Python',
                                       variable=self.filetype,
                                       command=self.set_filetype)
-        menu_filetype.add_radiobutton(label='Text', value='Text',
+        menu_filetype.add_radiobutton(label='Other', value='Other',
                                       variable=self.filetype,
                                       command=self.set_filetype)
         # --- --- run
@@ -321,13 +356,17 @@ class App(tk.Tk):
                                   image='img_console_clear',
                                   compound='left')
         menu_consoles.add_command(label='Restart console',
-                                  command=self.console.restart_shell,
+                                  command=self.console.shell_restart,
                                   image='img_console_restart',
                                   compound='left')
         if cst.JUPYTER:
             menu_consoles.add_separator()
             menu_consoles.add_command(label='Start Jupyter QtConsole',
                                       command=self.start_jupyter,
+                                      image='img_qtconsole',
+                                      compound='left')
+            menu_consoles.add_command(label='Kill Jupyter QtConsole',
+                                      command=self._kernel_disconnect,
                                       image='img_qtconsole',
                                       compound='left')
             menu_consoles.add_command(label='Connect to existing kernel',
@@ -369,7 +408,6 @@ class App(tk.Tk):
                                          indicatoron=False,
                                          compound='left',
                                          variable=self.widgets.get(name, self.codestruct).visible)
-
         # --- --- --- layouts
         menu_layouts.add_radiobutton(label='Horizontal split',
                                      variable=self.layout,
@@ -416,6 +454,8 @@ class App(tk.Tk):
                         lambda e: e.widget.selection_clear(), True)
         self.bind_class('TEntry', '<Control-a>', self._select_all)
         self.bind_class('TCombobox', '<Control-a>', self._select_all)
+        self.widgets['Namespace'].bind('<<Refresh>>', self._populate_namespace)
+        self.codestruct.bind('<<Refresh>>', self._populate_codestructure)
         self.codestruct.bind('<<Populate>>', self._on_populate)
         self.editor.bind('<<NotebookEmpty>>', self._on_empty_notebook)
         self.editor.bind('<<NotebookFirstTab>>', self._on_first_tab_creation)
@@ -423,6 +463,7 @@ class App(tk.Tk):
         self.editor.bind('<<FiletypeChanged>>', self._filetype_change)
         self.editor.bind('<<Modified>>', lambda e: self._edit_modified())
         self.editor.bind('<<Reload>>', self.reload)
+        self.editor.bind('<<ReloadAll>>', self.reload_all)
         self.editor.bind('<<SetConsoleWDir>>', self.set_console_wdir)
         self.bind('<<Inspect>>', self.show_help)
 
@@ -438,14 +479,16 @@ class App(tk.Tk):
         self.bind('<Control-o>', lambda e: self.open())
         self.bind('<Control-Shift-W>', self.editor.closeall)
         self.bind('<Control-Shift-R>', self.search)
-        self.bind('<Control-Shift-S>', self.saveall)
+        self.bind('<Control-Alt-Shift-S>', self.editor.save_copy_as)
         self.bind('<Control-Alt-s>', self.saveas)
-        self.bind('<Control-Alt-P>', self.print)
         self.bind('<Control-Shift-E>', self.switch_to_editor)
         self.bind('<Control-Shift-P>', lambda e: self.switch_to_widget(e, self.widgets['Console']))
         self.bind('<Control-Shift-H>', lambda e: self.switch_to_widget(e, self.widgets['Help']))
         self.bind('<Control-Shift-I>', lambda e: self.switch_to_widget(e, self.widgets['History']))
         self.bind('<Control-Shift-F>', lambda e: self.switch_to_widget(e, self.widgets['File browser']))
+        self.bind('<Control-Shift-N>', lambda e: self.switch_to_widget(e, self.widgets['Namespace']))
+        if cst.PYLINT:
+            self.bind('<Control-Shift-A>', lambda e: self.switch_to_widget(e, self.widgets['Code analysis']))
         self.bind('<Control-Shift-G>', lambda e: self.switch_to_widget(e, self.codestruct))
         self.bind('<Control-Shift-Q>', self.quit)
         self.bind('<<CtrlReturn>>', self.run_cell)
@@ -510,6 +553,7 @@ class App(tk.Tk):
                 self.open_file(os.path.abspath(f))
 
     def _setup_style(self):
+        """Configure style."""
         # --- load theme
         font = (CONFIG.get("General", "fontfamily"),
                 CONFIG.getint("General", "fontsize"))
@@ -522,6 +566,9 @@ class App(tk.Tk):
         img2.paste(img, (d, d))
         self._im_close_menu.paste(img2)
         self._im_selected.configure(file=IM_SELECTED.format(theme=theme_name))
+        self._im_up.configure(file=IM_UP.format(theme=theme_name))
+        self._im_left.configure(file=IM_LEFT.format(theme=theme_name))
+        self._im_right.configure(file=IM_RIGHT.format(theme=theme_name))
 
         # --- configuration dict
         button_style_config = {'bordercolor': theme['bordercolor'],
@@ -585,6 +632,7 @@ class App(tk.Tk):
         style.configure('TCheckbutton', **button_style_config)
         style.configure('TRadiobutton', **button_style_config)
         style.configure('TEntry', **button_style_config)
+        style.configure('TSpinbox', **button_style_config)
         style.configure('TCombobox', **button_style_config)
         style.configure('TNotebook', **style_config)
         style.configure('TNotebook.Tab', **style_config)
@@ -596,6 +644,7 @@ class App(tk.Tk):
         style.map('TCheckbutton', **button_style_map)
         style.map('TRadiobutton', **button_style_map)
         style.map('TEntry', **button_style_map)
+        style.map('TSpinbox', **button_style_map)
         combo_map = button_style_map.copy()
         combo_map["fieldbackground"].extend([('readonly', theme["bg"]),
                                              ('readonly', 'focus', theme["bg"])])
@@ -641,6 +690,7 @@ class App(tk.Tk):
         style.configure("url.TLabel",
                         foreground="light" * (theme_name == 'dark') + "blue")
         style.configure("txt.TFrame", background=theme['fieldbg'])
+        style.configure("txt.TLabel", background=theme['fieldbg'], font='TkFixedFont')
         style.layout('Down.TButton',
                      [('Button.padding',
                        {'sticky': 'nswe',
@@ -667,6 +717,8 @@ class App(tk.Tk):
         style.configure('separator.TFrame', background=theme['bordercolor'], padding=1)
         style.configure('Up.TButton', arrowsize=20)
         style.configure('Down.TButton', arrowsize=20)
+        style.configure('red.Up.TButton', arrowcolor='#CA0000')
+        style.configure('red.Down.TButton', arrowcolor='#CA0000')
         style.configure('close.TButton', borderwidth=1, relief='flat')
         style.map('close.TButton', relief=[('active', 'raised')])
         style.map('toggle.TButton', relief=[('selected', 'sunken'), ('!selected', 'flat')])
@@ -675,6 +727,8 @@ class App(tk.Tk):
                        {'sticky': 'nswe',
                         'children': [('Treeview.treearea', {'sticky': 'nswe'})]})])
         style.configure('flat.Treeview', background=theme['fieldbg'])
+        style.configure('mono.flat.Treeview', font="TkFixedFont")
+        style.configure('flat.Treeview.Heading', font='TkDefaultFont 9')
         style.configure('Treeview', background=theme['fieldbg'])
         style.layout('widget.TNotebook.Tab',
                      [('Notebook.tab',
@@ -793,10 +847,24 @@ class App(tk.Tk):
         cells = self.codestruct.get_cells()
         self.editor.set_cells(cells)
 
+    def _populate_namespace(self, event=None):
+        if self.filetype.get() == 'Python':
+            self.widgets['Namespace'].populate(self.editor.filepath, self.editor.get(strip=False))
+        else:
+            self.widgets['Namespace'].populate(None, None)
+
+    def _populate_codestructure(self, event=None):
+        if self.filetype.get() == 'Python':
+            self.codestruct.populate(self.editor.filename, self.editor.get(strip=False))
+        else:
+            self.codestruct.populate(self.editor.filename, '')
+
     def _on_tab_changed(self, event):
         self.filetype.set(self.editor.get_filetype())
-        self.codestruct.set_callback(self.editor.goto_item)
-        self.codestruct.populate(self.editor.filename, self.editor.get(strip=False))
+        if cst.PYLINT:
+            self.widgets['Code analysis'].set_file(self.editor.filename, self.editor.filepath)
+        self._populate_codestructure()
+        self._populate_namespace()
         self.update_menu_errors()
         self.editor.focus_tab()
 
@@ -1016,6 +1084,7 @@ class App(tk.Tk):
         self.editor.update_style()
         for widget in self.widgets.values():
             widget.update_style()
+        self.codestruct.update_style()
 
     def kill(self, *args):
         self.splash.kill()
@@ -1037,6 +1106,8 @@ class App(tk.Tk):
                 self.destroy()
                 self.splash.terminate()
                 self.splash.wait()
+                logging.info("Quit")
+                sys.exit()
 
     def new(self, event=None):
         try:
@@ -1066,7 +1137,7 @@ class App(tk.Tk):
     def show_help(self, event):
         help = self.widgets['Help']
         try:
-            help.inspect(*event.widget._inspect_obj)
+            help.inspect(*event.widget.inspect_obj)
         except AttributeError:
             return
         self.right_nb.select(help)
@@ -1109,19 +1180,38 @@ class App(tk.Tk):
                 logging.exception(str(e))
                 showerror('Error', "{}: {}".format(type(e), e), err, parent=self)
 
+    def reload_all(self, event=None):
+        self.busy(True)
+        tabs = self.editor.get_modified()
+        for tab in tabs:
+            self._reload(tab)
+        self._populate_codestructure()
+        self.check_syntax()
+        self.editor.goto_start()
+        self.busy(False)
+
     def reload(self, event=None):
-        file = self.editor.files[self.editor.current_tab]
-        txt = self.load_file(file)
-        if txt is not None:
-            self.busy(True)
-            self.editor.delete('1.0', 'end')
-            self.editor.insert('1.0', txt)
-            self.editor.edit_reset()
-            self._edit_modified(0)
-            self.codestruct.populate(self.editor.filename, self.editor.get(strip=False))
+        self.busy(True)
+        ans = self._reload()
+        if ans:
+            self._populate_codestructure()
             self.check_syntax()
             self.editor.goto_start()
-            self.busy(False)
+        self.busy(False)
+
+    def _reload(self, tab=None):
+        if tab is None:
+            file = self.editor.files[self.editor.current_tab]
+        else:
+            file = self.editor.files[tab]
+        txt = self.load_file(file)
+        if txt is None:
+            return False
+        self.editor.delete('1.0', 'end', tab=tab)
+        self.editor.insert('1.0', txt, tab=tab)
+        self.editor.edit_reset(tab=tab)
+        self._edit_modified(0, tab=tab)
+        return True
 
     def open_file(self, file):
         self.update_idletasks()
@@ -1135,11 +1225,16 @@ class App(tk.Tk):
                 self.busy(True)
                 self.editor.new(file)
                 self.editor.insert('1.0', txt)
+                if txt.startswith("#! /usr/bin/python") or txt.startswith("#!/usr/bin/env python"):
+                    self.editor.set_filetype('Python')
                 self.editor.edit_reset()
                 self._edit_modified(0)
-                self.codestruct.populate(self.editor.filename, self.editor.get(strip=False))
+                self._populate_codestructure()
+                if cst.PYLINT:
+                    self.widgets['Code analysis'].set_file(self.editor.filename, self.editor.filepath)
                 self.check_syntax()
                 self.editor.goto_start()
+                self._populate_namespace()
                 self._update_recent_files(file)
                 CONFIG.set('General', 'recent_files', ', '.join(self.recent_files))
                 CONFIG.save()
@@ -1189,7 +1284,9 @@ class App(tk.Tk):
             self.editor.saveas(tab=tab, name=name)
             self._edit_modified(0, tab=tab)
             self.check_syntax()
-            self.codestruct.populate(self.editor.filename, self.editor.get(strip=False))
+            self._populate_codestructure()
+            if cst.PYLINT:
+                self.widgets['Code analysis'].set_file(self.editor.filename, self.editor.filepath)
             return True
         else:
             return False
@@ -1202,7 +1299,10 @@ class App(tk.Tk):
         if update and saved:
             self._edit_modified(0, tab=tab)
             self.check_syntax()
-            self.codestruct.populate(self.editor.filename, self.editor.get(strip=False))
+            self._populate_codestructure()
+            self._populate_namespace()
+            if cst.PYLINT:
+                self.widgets['Code analysis'].set_file(self.editor.filename, self.editor.filepath)
         self.editor.focus_tab()
         return saved
 
@@ -1217,13 +1317,14 @@ class App(tk.Tk):
         if style is None:
             style = CONFIG.get('Editor', 'style')
         code = self.editor.get(strip=False)
+        lexer = self.editor.get_lexer()
         if title:
             title = self.editor.filename
         else:
             title = ''
         formatter = HtmlFormatter(linenos=linenos, full=True, style=style,
                                   title=title)
-        return highlight(code, cst.PYTHON_LEX, formatter)
+        return highlight(code, lexer, formatter)
 
     def export_to_html(self, filename=None, title=True, linenos=True):
         if filename is None:
@@ -1277,7 +1378,7 @@ class App(tk.Tk):
                 tab = self.editor.current_tab
                 if tab < 0:
                     return
-                file = self.editor.files[self.editor.current_tab]
+                file = self.editor.filepath
                 wdir = os.path.dirname(file)
                 if console == "qtconsole":
                     if not cst.JUPYTER:
@@ -1331,6 +1432,8 @@ class App(tk.Tk):
         if not cst.JUPYTER:
             return
         if (self._qtconsole_process is None) or (self._qtconsole_process.poll() is not None):
+            if self._qtconsole_process is not None:
+                self._qtconsole_process.terminate()
             cfm = cst.ConnectionFileMixin(connection_file=cst.JUPYTER_KERNEL_PATH)
             cfm.write_connection_file()
             self.jupyter_kernel_existing = False
@@ -1461,3 +1564,4 @@ class App(tk.Tk):
                 self.menu_errors.add_command(label=msg,
                                              image=self._images[category],
                                              compound='left', command=cmd)
+
