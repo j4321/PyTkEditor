@@ -16,7 +16,7 @@ with open("pytkeditorlib/utils/version.py") as file:
 
 images = [os.path.join("pytkeditorlib/images/", img) for img in os.listdir("pytkeditorlib/images/") if img != 'animation']
 anim = [os.path.join("pytkeditorlib/images/animation", img) for img in os.listdir("pytkeditorlib/images/animation")]
-html = [os.path.join("pytkeditorlib/html/", img) for img in os.listdir("pytkeditorlib/html/")]
+html = [os.path.join("pytkeditorlib/html/", file) for file in os.listdir("pytkeditorlib/html/")]
 
 data_files = [("/usr/share/applications", ["{}.desktop".format(APP_NAME)]),
               ("/usr/share/{}/images/".format(APP_NAME), images),

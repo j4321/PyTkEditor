@@ -17,7 +17,7 @@ depends=('tk'
          'python-pyflakes'
          'python-pygments'
          'python-ewmh'
-         'python-pdfkit'
+         'python-xhtml2pdf'
          'python-pycups'
          'python-pycodestyle')
 optdepends=('python-qtconsole: Run code in Jupyter QtConsole')

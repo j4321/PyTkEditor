@@ -75,6 +75,8 @@ else:
 if not os.path.exists(LOCAL_PATH):
     os.mkdir(LOCAL_PATH)
 
+with open(os.path.join(PATH_HTML, 'print.css')) as file:
+    PRINT_CSS = file.read()  # css stylesheet for exporting files to pdf
 CSS_PATH = os.path.join(PATH_HTML, '{theme}.css')
 TEMPLATE_PATH = os.path.join(PATH_HTML, 'template.txt')
 HISTFILE = os.path.join(LOCAL_PATH, 'pytkeditor.history')

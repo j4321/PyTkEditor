@@ -23,6 +23,7 @@ import tkinter as tk
 from tkinter import ttk
 import traceback
 import os
+import re
 import sys
 import signal
 from subprocess import Popen, PIPE
@@ -33,7 +34,7 @@ from logging.handlers import TimedRotatingFileHandler
 import warnings
 
 from ewmh import ewmh, EWMH
-import pdfkit
+from xhtml2pdf import pisa
 from tkfilebrowser import askopenfilenames, asksaveasfilename
 from pygments import highlight
 from pygments.formatters import HtmlFormatter
@@ -1312,8 +1313,8 @@ class App(tk.Tk):
 
     # --- export / print
     def _to_html(self, title=True, linenos=True, style=None):
-        if linenos:
-            linenos = 'inline'
+        # if linenos:
+        #     linenos = 'inline'  # it is better for copy pasting with 'table' (<=> True)
         if style is None:
             style = CONFIG.get('Editor', 'style')
         code = self.editor.get(strip=False)
@@ -1346,13 +1347,19 @@ class App(tk.Tk):
                                                     ('All files', '*')])
         if not filename:
             return
+        if linenos:
+            linenos = "inline"
         kw.setdefault('margin-top', '1cm')
         kw.setdefault('margin-right', '1cm')
         kw.setdefault('margin-bottom', '1cm')
         kw.setdefault('margin-left', '1cm')
-        kw.setdefault('encoding', "UTF-8")
+        encoding = kw.pop('encoding', "UTF-8")
         content = self._to_html(title, linenos, style)
-        pdfkit.from_string(content, filename, options=kw)
+        content = re.sub(r'<span class="linenos"> ( *1)</span>', r'<span class="linenos">\1</span>', content)
+        content = re.sub(r'<span class="linenos">( *[0-9]+)</span>', r'<span class="linenos">\1&nbsp</span>', content)
+        css = cst.PRINT_CSS % kw
+        with open(filename, "wb") as pdf_file:
+            pisa.CreatePDF(content, dest=pdf_file, default_css=css, encoding=encoding)
 
     def print(self, event=None):
         p = PrintDialog(self)
@@ -1564,4 +1571,3 @@ class App(tk.Tk):
                 self.menu_errors.add_command(label=msg,
                                              image=self._images[category],
                                              compound='left', command=cmd)
-
