@@ -222,6 +222,7 @@ class NameOverview(BaseWidget):
             return
         self.treeview.delete(*self.treeview.get_children())
         if self._filepath is None and self._code is None:
+            self._module = ""
             return
         script = jedi.Script(code=self._code, path=self._filepath)
         names = script.get_names(all_scopes='selected' in self.all_scopes.state())
